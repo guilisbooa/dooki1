@@ -12,7 +12,9 @@ const state = {
     tickets: []
   },
   selectedStoreId: null,
-  selectedPlanId: null
+  selectedPlanId: null,
+  selectedTicketId: null,
+  selectedTicketMessages: []
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -503,11 +505,12 @@ function renderSupport() {
         <span>Os chamados de suporte aparecerão aqui.</span>
       </div>
     `;
+    renderSelectedTicket();
     return;
   }
 
   listEl.innerHTML = tickets.map((ticket) => `
-    <div class="pro-support-card">
+    <div class="pro-support-card" onclick="selectSupportTicket('${ticket.id}')" style="cursor:pointer;">
       <div class="pro-support-main">
         <div>
           <strong>${ticket.subject}</strong>
@@ -517,6 +520,78 @@ function renderSupport() {
       </div>
     </div>
   `).join("");
+
+  renderSelectedTicket();
+}
+
+async function selectSupportTicket(ticketId) {
+  state.selectedTicketId = ticketId;
+
+  try {
+    state.selectedTicketMessages = await window.DookiData.getTicketMessages(ticketId);
+  } catch (error) {
+    console.error(error);
+    state.selectedTicketMessages = [];
+  }
+
+  renderSelectedTicket();
+}
+
+function renderSelectedTicket() {
+  const detailEl = document.querySelector("[data-ticket-detail]");
+  const messagesEl = document.querySelector("[data-ticket-messages]");
+  const replyForm = document.querySelector("[data-ticket-reply-form]");
+
+  if (!detailEl || !messagesEl || !replyForm) return;
+
+  const ticket = (state.snapshot.tickets || []).find((item) => item.id === state.selectedTicketId);
+
+  if (!ticket) {
+    detailEl.innerHTML = `
+      <div class="pro-empty-state">
+        <strong>Selecione um ticket</strong>
+        <span>Os detalhes e respostas aparecerão aqui.</span>
+      </div>
+    `;
+    messagesEl.innerHTML = "";
+    replyForm.reset();
+    return;
+  }
+
+  detailEl.innerHTML = `
+    <div class="pro-summary-item"><span>Loja</span><strong>${ticket.storeName}</strong></div>
+    <div class="pro-summary-item"><span>Assunto</span><strong>${ticket.subject}</strong></div>
+    <div class="pro-summary-item"><span>Prioridade</span><strong>${ticket.priority}</strong></div>
+    <div class="pro-summary-item"><span>Status</span><strong>${ticket.status}</strong></div>
+    <div class="pro-summary-item"><span>Responsável</span><strong>${ticket.assigned_to || "-"}</strong></div>
+  `;
+
+  if (!state.selectedTicketMessages.length) {
+    messagesEl.innerHTML = `
+      <div class="pro-empty-state">
+        <strong>Sem mensagens</strong>
+        <span>Ainda não existem respostas nesse ticket.</span>
+      </div>
+    `;
+  } else {
+    messagesEl.innerHTML = state.selectedTicketMessages.map((message) => `
+      <div class="pro-support-card">
+        <div class="pro-support-main">
+          <div>
+            <strong>${message.sender_name || message.sender_type}</strong>
+            <span>${new Date(message.created_at).toLocaleString("pt-BR")}</span>
+          </div>
+          <span class="pro-status-badge ${message.sender_type === "admin" ? "info" : "neutral"}">
+            ${message.sender_type === "admin" ? "Admin" : "Loja"}
+          </span>
+        </div>
+        <div style="margin-top:10px; color:#334155;">${message.message}</div>
+      </div>
+    `).join("");
+  }
+
+  replyForm.elements.status.value = ticket.status || "aberto";
+  replyForm.elements.assigned_to.value = ticket.assigned_to || "";
 }
 
 function renderReports() {
@@ -596,11 +671,54 @@ function bindAdminEvents() {
   const upgradeProfileButton = document.querySelector("[data-profile-upgrade]");
   const ticketFilter = document.querySelector("[data-ticket-filter]");
   const logoutButton = document.querySelector("[data-admin-logout]");
+  const ticketReplyForm = document.querySelector("[data-ticket-reply-form]");
 
   if (searchEl) searchEl.addEventListener("input", renderStores);
   if (cityEl) cityEl.addEventListener("change", renderStores);
   if (ticketFilter) ticketFilter.addEventListener("change", renderSupport);
   if (logoutButton) logoutButton.addEventListener("click", logoutAdmin);
+
+  if (ticketReplyForm) {
+  ticketReplyForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!state.selectedTicketId) {
+      alert("Selecione um ticket primeiro.");
+      return;
+    }
+
+    const formData = new FormData(ticketReplyForm);
+    const message = (formData.get("message") || "").toString().trim();
+    const status = (formData.get("status") || "aberto").toString();
+    const assigned_to = (formData.get("assigned_to") || "").toString().trim();
+
+    try {
+      if (message) {
+        await window.DookiData.sendTicketMessage(state.selectedTicketId, {
+          sender_type: "admin",
+          sender_name: state.admin?.name || "Admin",
+          message
+        });
+      }
+
+      await window.DookiData.updateSupportTicket(state.selectedTicketId, {
+        status,
+        assigned_to,
+        last_message: message || undefined
+      });
+
+      ticketReplyForm.reset();
+      await refreshSnapshot();
+      await selectSupportTicket(state.selectedTicketId);
+      renderSupport();
+
+      alert("Ticket atualizado com sucesso.");
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Erro ao atualizar ticket.");
+    }
+  });
+}
 
   if (planForm) {
     planForm.addEventListener("submit", async (event) => {
@@ -1092,3 +1210,4 @@ window.openEditPlanModal = openEditPlanModal;
 window.handleDeleteStore = handleDeleteStore;
 window.handleDeletePlan = handleDeletePlan;
 window.logoutAdmin = logoutAdmin;
+window.selectSupportTicket = selectSupportTicket;

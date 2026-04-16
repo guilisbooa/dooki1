@@ -102,6 +102,24 @@ function normalizeTicket(row) {
     subject: row.subject || "Sem assunto",
     priority: row.priority || "Baixa",
     status: row.status || "aberto",
+    assigned_to: row.assigned_to || null,
+    closed_at: row.closed_at || null,
+    updated_at: row.updated_at || null,
+    last_message: row.last_message || null,
+    created_at: row.created_at || null,
+    raw: row
+  };
+}
+
+function normalizeMessage(row) {
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    ticket_id: row.ticket_id,
+    sender_type: row.sender_type,
+    sender_name: row.sender_name || "",
+    message: row.message || "",
     created_at: row.created_at || null,
     raw: row
   };
@@ -165,10 +183,14 @@ async function createStore(payload) {
     status: payload.status || "active",
     email: payload.email || null,
     whatsapp: payload.whatsapp || payload.phone || null,
-    plan: payload.plan || null,
     logo_url: payload.logo_url || payload.logoUrl || null,
     banner_url: payload.banner_url || payload.bannerUrl || null
   };
+
+  // Só envia plan_name se existir no payload
+  if (payload.plan || payload.plan_name) {
+    preparedPayload.plan_name = payload.plan_name || payload.plan;
+  }
 
   const { data, error } = await client
     .from("establishments")
@@ -191,12 +213,16 @@ async function updateStore(id, payload) {
     ...(payload.email !== undefined ? { email: payload.email } : {}),
     ...(payload.whatsapp !== undefined ? { whatsapp: payload.whatsapp } : {}),
     ...(payload.phone !== undefined ? { whatsapp: payload.phone } : {}),
-    ...(payload.plan !== undefined ? { plan: payload.plan } : {}),
     ...(payload.logo_url !== undefined ? { logo_url: payload.logo_url } : {}),
     ...(payload.logoUrl !== undefined ? { logo_url: payload.logoUrl } : {}),
     ...(payload.banner_url !== undefined ? { banner_url: payload.banner_url } : {}),
     ...(payload.bannerUrl !== undefined ? { banner_url: payload.bannerUrl } : {})
   };
+
+  // NÃO envia "plan"
+  if (payload.plan !== undefined || payload.plan_name !== undefined) {
+    preparedPayload.plan_name = payload.plan_name || payload.plan || null;
+  }
 
   const { data, error } = await client
     .from("establishments")
@@ -386,7 +412,10 @@ async function createSupportTicket(payload) {
     store_name: payload.storeName || payload.store_name || "Loja",
     subject: payload.subject || "Sem assunto",
     priority: payload.priority || "Baixa",
-    status: payload.status || "aberto"
+    status: payload.status || "aberto",
+    assigned_to: payload.assigned_to || null,
+    last_message: payload.last_message || null,
+    updated_at: new Date().toISOString()
   };
 
   const { data, error } = await client
@@ -407,8 +436,15 @@ async function updateSupportTicket(id, payload) {
     ...(payload.storeName !== undefined ? { store_name: payload.storeName } : {}),
     ...(payload.subject !== undefined ? { subject: payload.subject } : {}),
     ...(payload.priority !== undefined ? { priority: payload.priority } : {}),
-    ...(payload.status !== undefined ? { status: payload.status } : {})
+    ...(payload.status !== undefined ? { status: payload.status } : {}),
+    ...(payload.assigned_to !== undefined ? { assigned_to: payload.assigned_to } : {}),
+    ...(payload.last_message !== undefined ? { last_message: payload.last_message } : {}),
+    updated_at: new Date().toISOString()
   };
+
+  if (payload.status === "fechado" || payload.status === "resolvido") {
+    preparedPayload.closed_at = new Date().toISOString();
+  }
 
   const { error } = await client
     .from("support_tickets")
@@ -417,6 +453,46 @@ async function updateSupportTicket(id, payload) {
 
   if (error) throw error;
   return true;
+}
+
+async function getTicketMessages(ticketId) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error("Supabase não configurado.");
+
+  const { data, error } = await client
+    .from("support_ticket_messages")
+    .select("*")
+    .eq("ticket_id", ticketId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return (data || []).map(normalizeMessage);
+}
+
+async function sendTicketMessage(ticketId, payload) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error("Supabase não configurado.");
+
+  const preparedPayload = {
+    ticket_id: ticketId,
+    sender_type: payload.sender_type || "admin",
+    sender_name: payload.sender_name || "Admin",
+    message: payload.message || ""
+  };
+
+  const { data, error } = await client
+    .from("support_ticket_messages")
+    .insert([preparedPayload])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  await updateSupportTicket(ticketId, {
+    last_message: payload.message
+  });
+
+  return normalizeMessage(data);
 }
 
 window.DookiData = {
@@ -430,5 +506,7 @@ window.DookiData = {
   createPayment,
   updatePaymentStatus,
   createSupportTicket,
-  updateSupportTicket
+  updateSupportTicket,
+  getTicketMessages,
+  sendTicketMessage
 };

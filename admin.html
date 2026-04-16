@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="admin-app-body" data-admin-required="true">
-  <div class="admin-app admin-app-compact">
+  <div class="admin-app">
     <aside class="admin-sidebar">
       <div class="sidebar-top">
         <img class="sidebar-logo" src="logo-dooki.png" alt="Dooki">
@@ -376,43 +376,59 @@
                 <h3>Chamados recentes</h3>
               </div>
             </div>
+
             <div class="toolbar-row">
               <select class="input" data-ticket-filter>
                 <option value="all">Todos os tickets</option>
                 <option value="aberto">Abertos</option>
                 <option value="andamento">Em andamento</option>
                 <option value="resolvido">Resolvidos</option>
+                <option value="fechado">Fechados</option>
               </select>
             </div>
+
             <div class="list-stack" data-support-list></div>
           </article>
 
-          <article class="panel">
+          <article class="panel panel-gold">
             <div class="panel-head">
               <div>
-                <span class="panel-kicker">Novo ticket</span>
-                <h3>Abertura manual</h3>
+                <span class="panel-kicker">Atendimento</span>
+                <h3>Responder ticket</h3>
               </div>
             </div>
 
-            <form class="form-grid admin-form" data-ticket-form>
-              <label class="field">
-                <span>Loja</span>
-                <input class="input" name="storeName" placeholder="Ex: Burger Prime" required>
+            <div class="summary-list" data-ticket-detail>
+              <div class="pro-empty-state">
+                <strong>Selecione um ticket</strong>
+                <span>Os detalhes e respostas aparecerão aqui.</span>
+              </div>
+            </div>
+
+            <div class="list-stack" data-ticket-messages></div>
+
+            <form class="form-grid admin-form" data-ticket-reply-form>
+              <label class="field full-span">
+                <span>Resposta</span>
+                <textarea class="input" name="message" rows="4" placeholder="Digite sua resposta ao estabelecimento"></textarea>
               </label>
+
               <label class="field">
-                <span>Prioridade</span>
-                <select class="input" name="priority">
-                  <option value="Baixa">Baixa</option>
-                  <option value="Media">Média</option>
-                  <option value="Alta">Alta</option>
+                <span>Status</span>
+                <select class="input" name="status">
+                  <option value="aberto">Aberto</option>
+                  <option value="andamento">Em andamento</option>
+                  <option value="resolvido">Resolvido</option>
+                  <option value="fechado">Fechado</option>
                 </select>
               </label>
-              <label class="field full-span">
-                <span>Assunto</span>
-                <input class="input" name="subject" placeholder="Ex: Ajuste de cobrança" required>
+
+              <label class="field">
+                <span>Responsável</span>
+                <input class="input" name="assigned_to" placeholder="Ex: Guilherme">
               </label>
-              <button class="primary-button full-span" type="submit">Criar ticket</button>
+
+              <button class="primary-button full-span" type="submit">Enviar resposta e atualizar ticket</button>
             </form>
           </article>
         </div>

@@ -9,58 +9,36 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="admin-login-body">
-  <main class="admin-login-page compact-login-page">
-    <section class="login-brand-panel compact-brand-panel">
-      <div class="login-brand-top">
-        <img class="login-logo" src="logo-dooki.png" alt="Dooki">
-        <span class="login-badge">PAINEL ADMIN</span>
+<body class="minimal-login-body">
+  <main class="minimal-login-wrapper">
+    <section class="minimal-login-modal">
+      <div class="minimal-login-header">
+        <img class="minimal-login-logo" src="logo-dooki.png" alt="Dooki">
+        <span class="panel-kicker">Painel administrativo</span>
       </div>
 
-      <div class="login-brand-content">
-        <h1>Gestão central da plataforma Dooki</h1>
-        <p>
-          Controle estabelecimentos, acompanhe métricas, planos, pagamentos e suporte em um único painel.
-        </p>
+      <div class="minimal-login-content">
+        <h1>Entrar no admin</h1>
+        <p class="panel-copy">Use seu acesso administrativo para entrar no painel da Dooki.</p>
 
-        <div class="login-feature-list">
-          <div class="login-feature-item">
-            <strong>Operação centralizada</strong>
-            <span>Visualize lojas, tickets, pagamentos e performance em tempo real.</span>
-          </div>
-          <div class="login-feature-item">
-            <strong>Decisão mais rápida</strong>
-            <span>Acompanhe o crescimento da base e aja com mais velocidade.</span>
-          </div>
-        </div>
+        <form id="admin-login-form" class="minimal-login-form">
+          <label class="field">
+            <span>Email</span>
+            <input class="input" id="email" name="email" type="email" placeholder="Seu email" required>
+          </label>
 
-        <div class="demo-box compact-demo-box">
-          <strong>Acesso administrativo</strong>
-          <span>Entre com seu email e senha cadastrados no Supabase.</span>
-        </div>
+          <label class="field">
+            <span>Senha</span>
+            <input class="input" id="password" name="password" type="password" placeholder="Sua senha" required>
+          </label>
+
+          <div class="error-box" id="login-error" hidden></div>
+
+          <button class="primary-button full-width-button" type="submit" id="login-button">
+            Acessar painel admin
+          </button>
+        </form>
       </div>
-    </section>
-
-    <section class="login-form-panel compact-form-panel">
-      <form class="login-form-card compact-login-card" id="admin-login-form">
-        <span class="panel-kicker">Entrar no admin</span>
-        <h2>Bem-vindo de volta</h2>
-        <p class="panel-copy">Acesse o ambiente administrativo principal da Dooki.</p>
-
-        <label class="field">
-          <span>Email</span>
-          <input class="input" id="email" name="email" type="email" placeholder="Seu email" required>
-        </label>
-
-        <label class="field">
-          <span>Senha</span>
-          <input class="input" id="password" name="password" type="password" placeholder="Sua senha" required>
-        </label>
-
-        <div class="error-box" id="login-error" hidden></div>
-
-        <button class="primary-button full-width-button" type="submit" id="login-button">Acessar painel admin</button>
-      </form>
     </section>
   </main>
 

@@ -16,6 +16,8 @@ const state = {
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
+  forceCloseAllModals();
+
   const ok = await loadAdminSession();
   if (!ok) return;
 
@@ -23,6 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindNavigationEvents();
   await refreshSnapshot();
   renderDashboard();
+  forceCloseAllModals();
 });
 
 async function loadAdminSession() {
@@ -800,6 +803,8 @@ function bindNavigationEvents() {
   const backToStoresButton = document.querySelector("[data-back-to-stores]");
   const closeStoreModalButtons = document.querySelectorAll("[data-close-store-modal]");
   const closePlanModalButtons = document.querySelectorAll("[data-close-plan-modal]");
+  const storeModal = document.querySelector("[data-store-modal]");
+  const planModal = document.querySelector("[data-plan-modal]");
 
   navButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -829,6 +834,33 @@ function bindNavigationEvents() {
   closePlanModalButtons.forEach((button) => {
     button.addEventListener("click", closePlanModal);
   });
+
+  if (storeModal) {
+    storeModal.addEventListener("click", (event) => {
+      if (event.target === storeModal) closeStoreModal();
+    });
+  }
+
+  if (planModal) {
+    planModal.addEventListener("click", (event) => {
+      if (event.target === planModal) closePlanModal();
+    });
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeStoreModal();
+      closePlanModal();
+    }
+  });
+}
+
+function forceCloseAllModals() {
+  const storeModal = document.querySelector("[data-store-modal]");
+  const planModal = document.querySelector("[data-plan-modal]");
+
+  if (storeModal) storeModal.hidden = true;
+  if (planModal) planModal.hidden = true;
 }
 
 function openStoreModal() {
@@ -877,11 +909,16 @@ function renderStoreProfile(store) {
   const statusEl = document.querySelector("[data-profile-status]");
   const statsEl = document.querySelector("[data-profile-stats]");
   const detailsEl = document.querySelector("[data-profile-details]");
+  const avatarEl = document.querySelector("[data-profile-avatar]");
 
   if (nameEl) nameEl.textContent = store.name;
   if (headingEl) headingEl.textContent = store.name;
   if (summaryEl) summaryEl.textContent = `${store.city || "-"} • ${store.email || "Sem email"}`;
-  if (statusEl) statusEl.textContent = store.status || "-";
+  if (statusEl) {
+    statusEl.textContent = store.status || "-";
+    statusEl.className = `pro-status-badge ${getStatusClass(store.status)}`;
+  }
+  if (avatarEl) avatarEl.textContent = (store.name || "L").charAt(0).toUpperCase();
 
   if (statsEl) {
     statsEl.innerHTML = `
@@ -999,6 +1036,7 @@ async function handleDeletePlan(planId) {
     await window.DookiData.deletePlan(planId);
     await refreshSnapshot();
     renderDashboard();
+    closePlanModal();
     alert("Plano excluído com sucesso.");
   } catch (error) {
     console.error(error);

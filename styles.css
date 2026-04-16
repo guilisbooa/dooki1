@@ -20,7 +20,6 @@
   --radius-lg: 18px;
   --radius-md: 14px;
   --sidebar-width: 290px;
-  --max-content: 1380px;
   --font-scale: 0.93;
 }
 
@@ -60,157 +59,73 @@ strong {
   font-weight: 800;
 }
 
-.admin-login-body {
+[hidden] {
+  display: none !important;
+}
+
+/* LOGIN MINIMAL */
+.minimal-login-body {
   min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
   background:
-    radial-gradient(circle at top left, rgba(218, 165, 32, 0.08), transparent 26%),
-    radial-gradient(circle at bottom right, rgba(15, 23, 42, 0.08), transparent 22%),
+    radial-gradient(circle at top left, rgba(218, 165, 32, 0.1), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(15, 23, 42, 0.08), transparent 26%),
     #f7f4ed;
-  overflow: hidden;
 }
 
-.admin-login-page {
-  min-height: 100dvh;
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 24px;
+.minimal-login-wrapper {
+  width: 100%;
   display: grid;
-  grid-template-columns: 1.08fr 0.92fr;
-  gap: 24px;
-  align-items: stretch;
+  place-items: center;
 }
 
-.compact-login-page {
-  min-height: 100dvh;
-  padding-block: 18px;
-}
-
-.login-brand-panel,
-.login-form-panel {
-  min-height: calc(100dvh - 48px);
+.minimal-login-modal {
+  width: min(460px, 100%);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
   border-radius: 30px;
-  overflow: hidden;
-}
-
-.compact-brand-panel {
-  background: linear-gradient(180deg, #0f172a 0%, #16233d 100%);
   padding: 28px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  color: #fff;
-}
-
-.login-brand-top {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.login-logo {
-  width: 116px;
-}
-
-.login-badge {
-  width: fit-content;
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff7df;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.login-brand-content {
+  box-shadow: 0 20px 70px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(15, 23, 42, 0.06);
   display: grid;
-  gap: 18px;
-  max-width: 520px;
+  gap: 20px;
 }
 
-.login-brand-content h1 {
-  font-size: 2.7rem;
-  line-height: 1.02;
+.minimal-login-header {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.minimal-login-logo {
+  width: 110px;
+}
+
+.minimal-login-content {
+  display: grid;
+  gap: 16px;
+}
+
+.minimal-login-content h1 {
+  text-align: center;
+  font-size: 2rem;
+  line-height: 1;
   font-family: "Space Grotesk", sans-serif;
 }
 
-.login-brand-content p {
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-.login-feature-list {
+.minimal-login-form {
   display: grid;
-  gap: 12px;
-}
-
-.login-feature-item {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  padding: 16px;
-  display: grid;
-  gap: 6px;
-}
-
-.login-feature-item strong {
-  color: #fff;
-  font-size: 1rem;
-}
-
-.login-feature-item span {
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 0.92rem;
-  line-height: 1.5;
-}
-
-.compact-demo-box {
-  background: linear-gradient(135deg, rgba(218, 165, 32, 0.18), rgba(255, 255, 255, 0.06));
-  border: 1px solid rgba(218, 165, 32, 0.22);
-  border-radius: 20px;
-  padding: 16px;
-  display: grid;
-  gap: 6px;
-}
-
-.compact-demo-box strong {
-  color: #fff4cd;
-}
-
-.compact-demo-box span {
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 0.92rem;
-}
-
-.compact-form-panel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  padding: 20px;
-}
-
-.compact-login-card {
-  width: 100%;
-  max-width: 470px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(8px);
-  border-radius: 28px;
-  padding: 28px;
-  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
 .panel-kicker {
   width: fit-content;
   display: inline-flex;
   align-items: center;
+  justify-self: center;
   padding: 8px 14px;
   border-radius: 999px;
   background: #f5ebc7;
@@ -221,15 +136,10 @@ strong {
   text-transform: uppercase;
 }
 
-.compact-login-card h2 {
-  font-size: 2rem;
-  line-height: 1;
-  font-family: "Space Grotesk", sans-serif;
-}
-
 .panel-copy {
   color: var(--text-soft);
   line-height: 1.55;
+  text-align: center;
 }
 
 .field {
@@ -317,6 +227,7 @@ select.input:focus {
   background: #ffecec;
 }
 
+/* ADMIN */
 .admin-app-body {
   min-height: 100dvh;
   background: var(--bg-main);
@@ -326,10 +237,6 @@ select.input:focus {
   min-height: 100dvh;
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
-}
-
-.admin-app-compact {
-  transform-origin: top left;
 }
 
 .admin-sidebar {
@@ -449,7 +356,7 @@ select.input:focus {
 }
 
 .compact-topbar h1 {
-  font-size: 3.1rem;
+  font-size: 3rem;
   line-height: 0.95;
   font-family: "Space Grotesk", sans-serif;
   margin-top: 12px;
@@ -537,7 +444,7 @@ select.input:focus {
 }
 
 .stat-card {
-  min-height: 126px;
+  min-height: 120px;
   display: grid;
   gap: 14px;
   align-content: start;
@@ -549,7 +456,7 @@ select.input:focus {
 }
 
 .stat-card strong {
-  font-size: 2rem;
+  font-size: 1.85rem;
   line-height: 1;
   font-family: "Space Grotesk", sans-serif;
 }
@@ -941,7 +848,7 @@ select.input:focus {
 }
 
 .refined-profile-stats .stat-card strong {
-  font-size: 1.9rem;
+  font-size: 1.7rem;
   line-height: 1.05;
   word-break: break-word;
 }
@@ -969,7 +876,7 @@ select.input:focus {
   display: grid;
   place-items: center;
   padding: 20px;
-  z-index: 50;
+  z-index: 1000;
 }
 
 .modal-card {
@@ -1019,26 +926,6 @@ select.input:focus {
 @media (max-width: 1080px) {
   :root {
     --font-scale: 0.9;
-  }
-
-  .admin-login-body {
-    overflow: auto;
-  }
-
-  .admin-login-page {
-    min-height: auto;
-    grid-template-columns: 1fr;
-    padding: 18px;
-  }
-
-  .login-brand-panel,
-  .login-form-panel {
-    min-height: auto;
-  }
-
-  .compact-brand-panel,
-  .compact-form-panel {
-    padding: 22px;
   }
 
   .admin-app {
@@ -1116,8 +1003,9 @@ select.input:focus {
     --font-scale: 0.86;
   }
 
-  .compact-login-card {
+  .minimal-login-modal {
     padding: 22px;
+    border-radius: 24px;
   }
 
   .compact-topbar h1 {

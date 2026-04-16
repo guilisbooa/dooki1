@@ -3,7 +3,7 @@
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_OcPB-sa5X56hJoCLfttj_Q_V1vEsHjy";
 
   if (!window.supabase?.createClient) {
-    console.error("❌ SDK do Supabase não carregado.");
+    console.error("SDK do Supabase não carregado.");
 
     window.DookiSupabase = {
       client: null,
@@ -11,9 +11,7 @@
       warning: "SDK do Supabase nao carregado."
     };
 
-    // 🔥 GARANTE compatibilidade com dooki-data.js
     window.supabaseClient = null;
-
     return;
   }
 
@@ -22,21 +20,19 @@
     SUPABASE_PUBLISHABLE_KEY,
     {
       auth: {
-        persistSession: false,
-        autoRefreshToken: false
+        persistSession: true,
+        autoRefreshToken: true
       }
     }
   );
 
-  // ✅ estrutura original mantida
   window.DookiSupabase = {
     url: SUPABASE_URL,
     client,
     enabled: true
   };
 
-  // 🔥 ESSA LINHA RESOLVE TUDO
   window.supabaseClient = client;
 
-  console.log("✅ Supabase conectado com sucesso");
+  console.log("Supabase conectado com sucesso.");
 })();

@@ -1,57 +1,218 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dooki Admin | Login</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dooki Admin Login</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: #f6f7fb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 18px;
+      padding: 32px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .brand h1 {
+      font-size: 28px;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .brand p {
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #374151;
+      font-weight: 600;
+    }
+
+    .field input {
+      width: 100%;
+      height: 48px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      padding: 0 14px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    .field input:focus {
+      border-color: #111827;
+    }
+
+    .btn {
+      width: 100%;
+      height: 48px;
+      border: none;
+      border-radius: 12px;
+      background: #111827;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .message {
+      margin-top: 16px;
+      font-size: 14px;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    .message.error {
+      color: #dc2626;
+    }
+
+    .message.success {
+      color: #16a34a;
+    }
+  </style>
 </head>
-<body class="admin-login-body">
-  <main class="admin-login-page">
-    <section class="login-brand-panel">
-      <img class="login-logo" src="logo-dooki.png" alt="Dooki">
-      <span class="login-badge">PAINEL ADMIN</span>
-      <h1>Gestão central da plataforma Dooki.</h1>
-      <p>
-        Controle estabelecimentos, acompanhe metricas gerais, monitore planos,
-        suporte e operacao em uma unica visao.
-      </p>
-      <div class="demo-box">
-        <strong>Acesso de teste</strong>
-        <span>Email: admin@dooki.com</span>
-        <span>Senha: 123456</span>
+<body>
+  <div class="login-card">
+    <div class="brand">
+      <h1>Dooki Admin</h1>
+      <p>Entre com seu usuário administrador</p>
+    </div>
+
+    <form id="admin-login-form">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="Seu email" required />
       </div>
-    </section>
 
-    <section class="login-form-panel">
-      <form class="login-form-card" data-admin-login-form>
-        <span class="panel-kicker">Entrar no admin</span>
-        <h2>Bem-vindo de volta</h2>
-        <p class="panel-copy">Acesse o ambiente administrativo principal da Dooki.</p>
+      <div class="field">
+        <label for="password">Senha</label>
+        <input type="password" id="password" placeholder="Sua senha" required />
+      </div>
 
-        <label class="field">
-          <span>Email</span>
-          <input class="input" name="email" value="admin@dooki.com" />
-        </label>
+      <button type="submit" class="btn" id="login-button">Entrar</button>
+    </form>
 
-        <label class="field">
-          <span>Senha</span>
-          <input class="input" name="password" type="password" value="123456" />
-        </label>
-
-        <div class="error-box" data-admin-login-error hidden></div>
-
-        <button class="primary-button" type="submit">Acessar painel admin</button>
-      </form>
-    </section>
-  </main>
+    <div id="login-message" class="message"></div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-client.js"></script>
-  <script src="dooki-data.js"></script>
-  <script src="admin-app.js"></script>
+
+  <script>
+    async function handleAdminLogin(event) {
+      event.preventDefault();
+
+      const emailInput = document.getElementById("email");
+      const passwordInput = document.getElementById("password");
+      const loginButton = document.getElementById("login-button");
+      const messageEl = document.getElementById("login-message");
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      messageEl.textContent = "";
+      messageEl.className = "message";
+
+      if (!email || !password) {
+        messageEl.textContent = "Preencha email e senha.";
+        messageEl.classList.add("error");
+        return;
+      }
+
+      if (!window.supabaseClient) {
+        messageEl.textContent = "Supabase não configurado.";
+        messageEl.classList.add("error");
+        return;
+      }
+
+      loginButton.disabled = true;
+      loginButton.textContent = "Entrando...";
+
+      try {
+        const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) throw error;
+
+        const user = data?.user;
+        if (!user) {
+          throw new Error("Usuário não encontrado.");
+        }
+
+        const { data: profile, error: profileError } = await window.supabaseClient
+          .from("admin_profiles")
+          .select("*")
+          .eq("id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (profileError) throw profileError;
+
+        if (!profile) {
+          throw new Error("Seu usuário não possui acesso ao painel admin.");
+        }
+
+        localStorage.setItem("dooki-admin-session", JSON.stringify({
+          id: user.id,
+          name: profile.name || "Administrador",
+          email: profile.email || user.email,
+          role: profile.role || "admin"
+        }));
+
+        messageEl.textContent = "Login realizado com sucesso.";
+        messageEl.classList.add("success");
+
+        window.location.href = "admin.html";
+      } catch (error) {
+        console.error("Erro no login:", error);
+        messageEl.textContent = error.message || "Não foi possível entrar.";
+        messageEl.classList.add("error");
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = "Entrar";
+      }
+    }
+
+    document
+      .getElementById("admin-login-form")
+      .addEventListener("submit", handleAdminLogin);
+  </script>
 </body>
 </html>

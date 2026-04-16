@@ -19,39 +19,99 @@
         Controle estabelecimentos, acompanhe métricas gerais, monitore planos,
         suporte e operação em uma única visão.
       </p>
+
       <div class="demo-box">
-        <strong>Acesso de teste</strong>
+        <strong>Acesso do administrador</strong>
         <span>Email: admin@dooki.com</span>
         <span>Senha: 123456</span>
       </div>
     </section>
 
     <section class="login-form-panel">
-      <form class="login-form-card" data-admin-login-form>
+      <form class="login-form-card" id="admin-login-form">
         <span class="panel-kicker">Entrar no admin</span>
         <h2>Bem-vindo de volta</h2>
         <p class="panel-copy">Acesse o ambiente administrativo principal da Dooki.</p>
 
         <label class="field">
           <span>Email</span>
-          <input class="input" name="email" value="admin@dooki.com" />
+          <input class="input" id="email" name="email" type="email" value="admin@dooki.com" required>
         </label>
 
         <label class="field">
           <span>Senha</span>
-          <input class="input" name="password" type="password" value="123456" />
+          <input class="input" id="password" name="password" type="password" value="123456" required>
         </label>
 
-        <div class="error-box" data-admin-login-error hidden></div>
+        <div class="error-box" id="login-error" hidden></div>
 
-        <button class="primary-button" type="submit">Acessar painel admin</button>
+        <button class="primary-button" type="submit" id="login-button">Acessar painel admin</button>
       </form>
     </section>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-client.js"></script>
-  <script src="dooki-data.js"></script>
-  <script src="admin-app.js"></script>
+  <script>
+    (function () {
+      const form = document.getElementById("admin-login-form");
+      const emailInput = document.getElementById("email");
+      const passwordInput = document.getElementById("password");
+      const errorBox = document.getElementById("login-error");
+      const loginButton = document.getElementById("login-button");
+
+      const ADMIN_EMAIL = "admin@dooki.com";
+      const ADMIN_PASSWORD = "123456";
+
+      // se já estiver logado, entra direto
+      const existingSession = localStorage.getItem("dooki-admin-session");
+      if (existingSession) {
+        window.location.href = "admin.html";
+        return;
+      }
+
+      function showError(message) {
+        errorBox.hidden = false;
+        errorBox.textContent = message;
+      }
+
+      function hideError() {
+        errorBox.hidden = true;
+        errorBox.textContent = "";
+      }
+
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        hideError();
+
+        const email = emailInput.value.trim().toLowerCase();
+        const password = passwordInput.value;
+
+        loginButton.disabled = true;
+        loginButton.textContent = "Entrando...";
+
+        try {
+          if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+            throw new Error("Email ou senha inválidos.");
+          }
+
+          const session = {
+            id: "admin-local",
+            name: "Guilherme",
+            email: ADMIN_EMAIL,
+            role: "super_admin",
+            loginType: "local"
+          };
+
+          localStorage.setItem("dooki-admin-session", JSON.stringify(session));
+
+          window.location.href = "admin.html";
+        } catch (error) {
+          console.error("Erro no login:", error);
+          showError(error.message || "Não foi possível entrar.");
+          loginButton.disabled = false;
+          loginButton.textContent = "Acessar painel admin";
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

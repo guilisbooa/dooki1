@@ -1,5 +1,5 @@
 // =====================================================
-// DOOKI ADMIN APP
+// DOOKI ADMIN APP (CORRIGIDO)
 // =====================================================
 
 const state = {
@@ -28,17 +28,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 // =====================================================
 
 function loadAdminSession() {
-  const saved = localStorage.getItem("dooki_admin");
+  const saved = localStorage.getItem("dooki-admin-session");
 
   if (saved) {
     state.admin = JSON.parse(saved);
   } else {
-    // mock temporário
     state.admin = {
       name: "Administrador Dooki",
       email: "admin@dooki.com"
     };
   }
+
+  renderAdminInfo();
+}
+
+function renderAdminInfo() {
+  const nameEl = document.querySelector("[data-admin-name]");
+  const emailEl = document.querySelector("[data-admin-email]");
+
+  if (nameEl) nameEl.textContent = state.admin.name;
+  if (emailEl) emailEl.textContent = state.admin.email;
 }
 
 // =====================================================
@@ -71,7 +80,7 @@ function renderStores() {
   const container = document.getElementById("stores-list");
   if (!container) return;
 
-  const stores = state.snapshot.establishments;
+  const stores = state.snapshot.establishments || [];
 
   container.innerHTML = "";
 
@@ -90,9 +99,8 @@ function renderStores() {
       <p><strong>Status:</strong> ${store.status || "-"}</p>
 
       <div class="actions">
-        <button onclick="handleDeleteStore('${store.id}')">
-          🗑️ Excluir
-        </button>
+        <button onclick="handleEditStore('${store.id}')">✏️ Editar</button>
+        <button onclick="handleDeleteStore('${store.id}')">🗑️ Excluir</button>
       </div>
     `;
 
@@ -101,58 +109,10 @@ function renderStores() {
 }
 
 // =====================================================
-// 🔥 EXCLUSÃO PROFISSIONAL
+// CRIAR ESTABELECIMENTO
 // =====================================================
 
-async function handleDeleteStore(storeId) {
-  const store = state.snapshot.establishments.find(s => s.id === storeId);
-
-  if (!store) {
-    alert("Estabelecimento não encontrado.");
-    return;
-  }
-
-  // 1) pede motivo
-  const reason = window.prompt(
-    `Digite o motivo da exclusão do estabelecimento "${store.name}":`,
-    `Exclusão manual da loja ${store.name}`
-  );
-
-  if (reason === null) return;
-
-  // 2) confirmação forte
-  const confirmed = window.confirm(
-    `⚠️ ATENÇÃO ⚠️\n\nVocê está prestes a excluir PERMANENTEMENTE o estabelecimento:\n\n${store.name}\n\nEssa ação NÃO pode ser desfeita.\n\nMotivo: ${reason}\n\nDeseja continuar?`
-  );
-
-  if (!confirmed) return;
-
-  try {
-    // 3) chama exclusão auditada
-    await window.DookiData.deleteStore(store.id, {
-      deletedByEmail: state.admin?.email,
-      deletedByName: state.admin?.name,
-      deleteReason: reason,
-      deleteOrigin: "admin_portal"
-    });
-
-    alert("✅ Estabelecimento excluído com sucesso.");
-
-    // 4) atualiza tela
-    await refreshSnapshot();
-    renderStores();
-
-  } catch (error) {
-    console.error("Erro ao excluir:", error);
-    alert(`Erro ao excluir: ${error.message}`);
-  }
-}
-
-// =====================================================
-// (EXTRA) CRIAR ESTABELECIMENTO
-// =====================================================
-
-async function createStore() {
+async function handleCreateStore() {
   const name = prompt("Nome da loja:");
   if (!name) return;
 
@@ -173,9 +133,96 @@ async function createStore() {
 }
 
 // =====================================================
-// (EXTRA) DEBUG
+// EDITAR ESTABELECIMENTO
+// =====================================================
+
+async function handleEditStore(storeId) {
+  const store = state.snapshot.establishments.find(s => s.id === storeId);
+  if (!store) return;
+
+  const newName = prompt("Novo nome da loja:", store.name);
+  if (!newName) return;
+
+  try {
+    await window.DookiData.updateStore(storeId, {
+      name: newName
+    });
+
+    await refreshSnapshot();
+    renderStores();
+
+  } catch (error) {
+    console.error(error);
+    alert("Erro ao editar loja.");
+  }
+}
+
+// =====================================================
+// 🔥 EXCLUSÃO
+// =====================================================
+
+async function handleDeleteStore(storeId) {
+  const store = state.snapshot.establishments.find(s => s.id === storeId);
+
+  if (!store) {
+    alert("Estabelecimento não encontrado.");
+    return;
+  }
+
+  const reason = prompt(
+    `Motivo da exclusão da loja "${store.name}":`,
+    `Exclusão manual`
+  );
+
+  if (reason === null) return;
+
+  const confirmed = confirm(
+    `Tem certeza que deseja excluir "${store.name}"?\n\nEssa ação é permanente.\n\nMotivo: ${reason}`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await window.DookiData.deleteStore(store.id, {
+      deletedByEmail: state.admin.email,
+      deletedByName: state.admin.name,
+      deleteReason: reason,
+      deleteOrigin: "admin_portal"
+    });
+
+    alert("Loja excluída com sucesso.");
+
+    await refreshSnapshot();
+    renderStores();
+
+  } catch (error) {
+    console.error(error);
+    alert("Erro ao excluir loja.");
+  }
+}
+
+// =====================================================
+// LOGOUT
+// =====================================================
+
+function logoutAdmin() {
+  localStorage.removeItem("dooki-admin-session");
+  window.location.href = "index.html";
+}
+
+// =====================================================
+// DEBUG
 // =====================================================
 
 window.debugSnapshot = () => {
   console.log(state.snapshot);
 };
+
+// =====================================================
+// GLOBAL (IMPORTANTE)
+// =====================================================
+
+window.handleCreateStore = handleCreateStore;
+window.handleEditStore = handleEditStore;
+window.handleDeleteStore = handleDeleteStore;
+window.logoutAdmin = logoutAdmin;

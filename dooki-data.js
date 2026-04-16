@@ -1,13 +1,13 @@
 // =====================================================
-// DOOKI DATA LAYER (Supabase + Fallback)
+// DOOKI DATA LAYER
 // =====================================================
 
 function getSupabaseClient() {
-  return window.supabaseClient || null;
+  return window.supabaseClient || window.DookiSupabase?.client || null;
 }
 
 // =====================================================
-// SNAPSHOT (carrega tudo)
+// SNAPSHOT
 // =====================================================
 
 async function getSnapshot() {
@@ -26,25 +26,31 @@ async function getSnapshot() {
 
   try {
     const [
-      establishments,
-      plans,
-      orders,
-      payments,
-      tickets
+      establishmentsRes,
+      plansRes,
+      ordersRes,
+      paymentsRes,
+      ticketsRes
     ] = await Promise.all([
-      client.from("establishments").select("*"),
-      client.from("plans").select("*"),
-      client.from("orders").select("*"),
-      client.from("payments").select("*"),
-      client.from("support_tickets").select("*")
+      client.from("establishments").select("*").order("created_at", { ascending: false }),
+      client.from("plans").select("*").order("created_at", { ascending: false }),
+      client.from("orders").select("*").order("created_at", { ascending: false }),
+      client.from("payments").select("*").order("created_at", { ascending: false }),
+      client.from("support_tickets").select("*").order("created_at", { ascending: false })
     ]);
 
+    if (establishmentsRes.error) throw establishmentsRes.error;
+    if (plansRes.error) throw plansRes.error;
+    if (ordersRes.error) throw ordersRes.error;
+    if (paymentsRes.error) throw paymentsRes.error;
+    if (ticketsRes.error) throw ticketsRes.error;
+
     return {
-      establishments: establishments.data || [],
-      plans: plans.data || [],
-      orders: orders.data || [],
-      payments: payments.data || [],
-      tickets: tickets.data || []
+      establishments: establishmentsRes.data || [],
+      plans: plansRes.data || [],
+      orders: ordersRes.data || [],
+      payments: paymentsRes.data || [],
+      tickets: ticketsRes.data || []
     };
   } catch (error) {
     console.error("Erro ao carregar snapshot:", error);
@@ -60,9 +66,21 @@ async function createStore(payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
 
+  const preparedPayload = {
+    name: payload.name || "Nova loja",
+    city: payload.city || null,
+    status: payload.status || "active",
+    email: payload.email || null,
+    whatsapp: payload.whatsapp || null,
+    plan: payload.plan || null,
+    logo_url: payload.logo_url || null,
+    banner_url: payload.banner_url || null,
+    created_at: payload.created_at || new Date().toISOString()
+  };
+
   const { data, error } = await client
     .from("establishments")
-    .insert([payload])
+    .insert([preparedPayload])
     .select()
     .single();
 
@@ -74,9 +92,13 @@ async function updateStore(id, payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
 
+  const preparedPayload = {
+    ...payload
+  };
+
   const { data, error } = await client
     .from("establishments")
-    .update(payload)
+    .update(preparedPayload)
     .eq("id", id)
     .select()
     .single();
@@ -85,16 +107,10 @@ async function updateStore(id, payload) {
   return data;
 }
 
-// =====================================================
-// 🔥 EXCLUSÃO COM AUDITORIA (CORRIGIDA)
-// =====================================================
-
 async function deleteStore(id, options = {}) {
   const client = getSupabaseClient();
-
   if (!client) {
-    console.warn("Sem Supabase - exclusão local ignorada");
-    return true;
+    throw new Error("Supabase não configurado.");
   }
 
   const {
@@ -104,8 +120,8 @@ async function deleteStore(id, options = {}) {
     deleteOrigin = "admin_portal"
   } = options || {};
 
+  // 1) tenta excluir usando a função RPC
   try {
-    // tenta RPC
     const { data, error } = await client.rpc("admin_delete_establishment", {
       p_establishment_id: id,
       p_deleted_by_email: deletedByEmail,
@@ -117,42 +133,42 @@ async function deleteStore(id, options = {}) {
     if (error) throw error;
 
     if (data?.success === false) {
-      throw new Error(data.message);
+      throw new Error(data.message || "Não foi possível excluir o estabelecimento.");
     }
 
     return true;
   } catch (rpcError) {
-    console.warn("Fallback delete:", rpcError);
+    console.warn("Falha ao excluir via RPC. Tentando fallback manual:", rpcError);
 
-    // busca loja
-    const { data: store, error: fetchError } = await client
+    // 2) fallback: busca a loja
+    const { data: existingStore, error: fetchError } = await client
       .from("establishments")
       .select("*")
       .eq("id", id)
       .maybeSingle();
 
     if (fetchError) throw fetchError;
-    if (!store) throw new Error("Estabelecimento não encontrado.");
+    if (!existingStore) throw new Error("Estabelecimento não encontrado.");
 
-    // auditoria manual
+    // 3) tenta gravar auditoria
     const { error: auditError } = await client
       .from("deleted_establishments_audit")
       .insert({
-        establishment_id: store.id,
-        establishment_name: store.name || null,
-        establishment_code: store.code || null,
+        establishment_id: existingStore.id,
+        establishment_name: existingStore.name || null,
+        establishment_code: existingStore.code || null,
         deleted_by_email: deletedByEmail,
         deleted_by_name: deletedByName,
         delete_reason: deleteReason,
         delete_origin: deleteOrigin,
-        snapshot: store
+        snapshot: existingStore
       });
 
     if (auditError) {
-      console.warn("Erro auditoria:", auditError);
+      console.warn("Erro ao salvar auditoria manual:", auditError);
     }
 
-    // delete real
+    // 4) exclui da tabela principal
     const { error: deleteError } = await client
       .from("establishments")
       .delete()

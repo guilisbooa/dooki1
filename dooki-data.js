@@ -6,9 +6,75 @@ function getSupabaseClient() {
   return window.supabaseClient || window.DookiSupabase?.client || null;
 }
 
-// =====================================================
-// SNAPSHOT
-// =====================================================
+function normalizeStore(row) {
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    name: row.name || row.store_name || "Sem nome",
+    city: row.city || row.store_city || "-",
+    status: row.status || "active",
+    email: row.email || null,
+    whatsapp: row.whatsapp || row.phone || null,
+    plan: row.plan || row.plan_name || null,
+    logo_url: row.logo_url || row.logo || null,
+    banner_url: row.banner_url || row.banner || null,
+    code: row.code || row.establishment_code || null,
+    created_at: row.created_at || null,
+    raw: row
+  };
+}
+
+function normalizePlan(row) {
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    name: row.name || "Plano",
+    price: Number(row.price || 0),
+    discount: Number(row.discount || 0),
+    annualPrice: Number(row.annual_price || row.annualPrice || 0),
+    annualDiscount: Number(row.annual_discount || row.annualDiscount || 0),
+    trialDays: Number(row.trial_days || row.trialDays || 0),
+    description: row.description || "",
+    created_at: row.created_at || null,
+    raw: row
+  };
+}
+
+function normalizePayment(row) {
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    establishment_id: row.establishment_id || null,
+    establishment_name: row.establishment_name || row.store_name || row.storeName || "Loja",
+    direction: row.direction || "charge",
+    category: row.category || "Mensalidade",
+    amount: Number(row.amount || 0),
+    status: row.status || "pending",
+    due_date: row.due_date || row.dueDate || null,
+    pix_key: row.pix_key || row.pixKey || null,
+    notes: row.notes || "",
+    created_at: row.created_at || null,
+    raw: row
+  };
+}
+
+function normalizeTicket(row) {
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    establishment_id: row.establishment_id || null,
+    storeName: row.store_name || row.establishment_name || row.storeName || "Loja",
+    subject: row.subject || "Sem assunto",
+    priority: row.priority || "Baixa",
+    status: row.status || "aberto",
+    created_at: row.created_at || null,
+    raw: row
+  };
+}
 
 async function getSnapshot() {
   const client = getSupabaseClient();
@@ -46,21 +112,17 @@ async function getSnapshot() {
     if (ticketsRes.error) throw ticketsRes.error;
 
     return {
-      establishments: establishmentsRes.data || [],
-      plans: plansRes.data || [],
+      establishments: (establishmentsRes.data || []).map(normalizeStore),
+      plans: (plansRes.data || []).map(normalizePlan),
       orders: ordersRes.data || [],
-      payments: paymentsRes.data || [],
-      tickets: ticketsRes.data || []
+      payments: (paymentsRes.data || []).map(normalizePayment),
+      tickets: (ticketsRes.data || []).map(normalizeTicket)
     };
   } catch (error) {
     console.error("Erro ao carregar snapshot:", error);
     throw error;
   }
 }
-
-// =====================================================
-// ESTABELECIMENTOS
-// =====================================================
 
 async function createStore(payload) {
   const client = getSupabaseClient();
@@ -71,11 +133,10 @@ async function createStore(payload) {
     city: payload.city || null,
     status: payload.status || "active",
     email: payload.email || null,
-    whatsapp: payload.whatsapp || null,
+    whatsapp: payload.whatsapp || payload.phone || null,
     plan: payload.plan || null,
-    logo_url: payload.logo_url || null,
-    banner_url: payload.banner_url || null,
-    created_at: payload.created_at || new Date().toISOString()
+    logo_url: payload.logo_url || payload.logoUrl || null,
+    banner_url: payload.banner_url || payload.bannerUrl || null
   };
 
   const { data, error } = await client
@@ -85,7 +146,7 @@ async function createStore(payload) {
     .single();
 
   if (error) throw error;
-  return data;
+  return normalizeStore(data);
 }
 
 async function updateStore(id, payload) {
@@ -93,7 +154,17 @@ async function updateStore(id, payload) {
   if (!client) throw new Error("Supabase não configurado.");
 
   const preparedPayload = {
-    ...payload
+    ...(payload.name !== undefined ? { name: payload.name } : {}),
+    ...(payload.city !== undefined ? { city: payload.city } : {}),
+    ...(payload.status !== undefined ? { status: payload.status } : {}),
+    ...(payload.email !== undefined ? { email: payload.email } : {}),
+    ...(payload.whatsapp !== undefined ? { whatsapp: payload.whatsapp } : {}),
+    ...(payload.phone !== undefined ? { whatsapp: payload.phone } : {}),
+    ...(payload.plan !== undefined ? { plan: payload.plan } : {}),
+    ...(payload.logo_url !== undefined ? { logo_url: payload.logo_url } : {}),
+    ...(payload.logoUrl !== undefined ? { logo_url: payload.logoUrl } : {}),
+    ...(payload.banner_url !== undefined ? { banner_url: payload.banner_url } : {}),
+    ...(payload.bannerUrl !== undefined ? { banner_url: payload.bannerUrl } : {})
   };
 
   const { data, error } = await client
@@ -104,14 +175,12 @@ async function updateStore(id, payload) {
     .single();
 
   if (error) throw error;
-  return data;
+  return normalizeStore(data);
 }
 
 async function deleteStore(id, options = {}) {
   const client = getSupabaseClient();
-  if (!client) {
-    throw new Error("Supabase não configurado.");
-  }
+  if (!client) throw new Error("Supabase não configurado.");
 
   const {
     deletedByEmail = null,
@@ -120,7 +189,6 @@ async function deleteStore(id, options = {}) {
     deleteOrigin = "admin_portal"
   } = options || {};
 
-  // 1) tenta excluir usando a função RPC
   try {
     const { data, error } = await client.rpc("admin_delete_establishment", {
       p_establishment_id: id,
@@ -140,7 +208,6 @@ async function deleteStore(id, options = {}) {
   } catch (rpcError) {
     console.warn("Falha ao excluir via RPC. Tentando fallback manual:", rpcError);
 
-    // 2) fallback: busca a loja
     const { data: existingStore, error: fetchError } = await client
       .from("establishments")
       .select("*")
@@ -150,7 +217,6 @@ async function deleteStore(id, options = {}) {
     if (fetchError) throw fetchError;
     if (!existingStore) throw new Error("Estabelecimento não encontrado.");
 
-    // 3) tenta gravar auditoria
     const { error: auditError } = await client
       .from("deleted_establishments_audit")
       .insert({
@@ -168,7 +234,6 @@ async function deleteStore(id, options = {}) {
       console.warn("Erro ao salvar auditoria manual:", auditError);
     }
 
-    // 4) exclui da tabela principal
     const { error: deleteError } = await client
       .from("establishments")
       .delete()
@@ -180,37 +245,53 @@ async function deleteStore(id, options = {}) {
   }
 }
 
-// =====================================================
-// PLANOS
-// =====================================================
-
 async function createPlan(payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
 
+  const preparedPayload = {
+    name: payload.name || "Novo plano",
+    price: Number(payload.price || 0),
+    discount: Number(payload.discount || 0),
+    annual_price: Number(payload.annualPrice || payload.annual_price || 0),
+    annual_discount: Number(payload.annualDiscount || payload.annual_discount || 0),
+    trial_days: Number(payload.trialDays || payload.trial_days || 0),
+    description: payload.description || ""
+  };
+
   const { data, error } = await client
     .from("plans")
-    .insert([payload])
+    .insert([preparedPayload])
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return normalizePlan(data);
 }
 
 async function updatePlan(id, payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
 
+  const preparedPayload = {
+    ...(payload.name !== undefined ? { name: payload.name } : {}),
+    ...(payload.price !== undefined ? { price: Number(payload.price || 0) } : {}),
+    ...(payload.discount !== undefined ? { discount: Number(payload.discount || 0) } : {}),
+    ...(payload.annualPrice !== undefined ? { annual_price: Number(payload.annualPrice || 0) } : {}),
+    ...(payload.annualDiscount !== undefined ? { annual_discount: Number(payload.annualDiscount || 0) } : {}),
+    ...(payload.trialDays !== undefined ? { trial_days: Number(payload.trialDays || 0) } : {}),
+    ...(payload.description !== undefined ? { description: payload.description } : {})
+  };
+
   const { data, error } = await client
     .from("plans")
-    .update(payload)
+    .update(preparedPayload)
     .eq("id", id)
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return normalizePlan(data);
 }
 
 async function deletePlan(id) {
@@ -226,53 +307,30 @@ async function deletePlan(id) {
   return true;
 }
 
-// =====================================================
-// PEDIDOS
-// =====================================================
-
-async function createOrder(payload) {
-  const client = getSupabaseClient();
-  if (!client) throw new Error("Supabase não configurado.");
-
-  const { data, error } = await client
-    .from("orders")
-    .insert([payload])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-async function updateOrderStatus(id, status) {
-  const client = getSupabaseClient();
-  if (!client) throw new Error("Supabase não configurado.");
-
-  const { error } = await client
-    .from("orders")
-    .update({ status })
-    .eq("id", id);
-
-  if (error) throw error;
-  return true;
-}
-
-// =====================================================
-// PAGAMENTOS
-// =====================================================
-
 async function createPayment(payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
 
+  const preparedPayload = {
+    establishment_id: payload.establishment_id || payload.storeId || null,
+    establishment_name: payload.establishment_name || payload.storeName || null,
+    direction: payload.direction || "charge",
+    category: payload.category || "Mensalidade",
+    amount: Number(payload.amount || 0),
+    status: payload.status || "pending",
+    due_date: payload.due_date || payload.dueDate || null,
+    pix_key: payload.pix_key || payload.pixKey || null,
+    notes: payload.notes || ""
+  };
+
   const { data, error } = await client
     .from("payments")
-    .insert([payload])
+    .insert([preparedPayload])
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return normalizePayment(data);
 }
 
 async function updatePaymentStatus(id, status) {
@@ -288,40 +346,47 @@ async function updatePaymentStatus(id, status) {
   return true;
 }
 
-// =====================================================
-// SUPORTE
-// =====================================================
-
 async function createSupportTicket(payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
 
+  const preparedPayload = {
+    establishment_id: payload.establishment_id || null,
+    store_name: payload.storeName || payload.store_name || "Loja",
+    subject: payload.subject || "Sem assunto",
+    priority: payload.priority || "Baixa",
+    status: payload.status || "aberto"
+  };
+
   const { data, error } = await client
     .from("support_tickets")
-    .insert([payload])
+    .insert([preparedPayload])
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return normalizeTicket(data);
 }
 
 async function updateSupportTicket(id, payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
 
+  const preparedPayload = {
+    ...(payload.storeName !== undefined ? { store_name: payload.storeName } : {}),
+    ...(payload.subject !== undefined ? { subject: payload.subject } : {}),
+    ...(payload.priority !== undefined ? { priority: payload.priority } : {}),
+    ...(payload.status !== undefined ? { status: payload.status } : {})
+  };
+
   const { error } = await client
     .from("support_tickets")
-    .update(payload)
+    .update(preparedPayload)
     .eq("id", id);
 
   if (error) throw error;
   return true;
 }
-
-// =====================================================
-// EXPORT GLOBAL
-// =====================================================
 
 window.DookiData = {
   getSnapshot,
@@ -331,8 +396,6 @@ window.DookiData = {
   createPlan,
   updatePlan,
   deletePlan,
-  createOrder,
-  updateOrderStatus,
   createPayment,
   updatePaymentStatus,
   createSupportTicket,

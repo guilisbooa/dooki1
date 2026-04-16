@@ -21,9 +21,8 @@
       </p>
 
       <div class="demo-box">
-        <strong>Acesso do administrador</strong>
-        <span>Email: admin@dooki.com</span>
-        <span>Senha: 123456</span>
+        <strong>Acesso administrativo</strong>
+        <span>Entre com seu email e senha reais cadastrados no Supabase.</span>
       </div>
     </section>
 
@@ -35,12 +34,12 @@
 
         <label class="field">
           <span>Email</span>
-          <input class="input" id="email" name="email" type="email" value="admin@dooki.com" required>
+          <input class="input" id="email" name="email" type="email" placeholder="Seu email" required>
         </label>
 
         <label class="field">
           <span>Senha</span>
-          <input class="input" id="password" name="password" type="password" value="123456" required>
+          <input class="input" id="password" name="password" type="password" placeholder="Sua senha" required>
         </label>
 
         <div class="error-box" id="login-error" hidden></div>
@@ -50,6 +49,9 @@
     </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+
   <script>
     (function () {
       const form = document.getElementById("admin-login-form");
@@ -58,14 +60,36 @@
       const errorBox = document.getElementById("login-error");
       const loginButton = document.getElementById("login-button");
 
-      const ADMIN_EMAIL = "admin@dooki.com";
-      const ADMIN_PASSWORD = "123456";
+      async function tryAutoRedirect() {
+        if (!window.supabaseClient) return;
 
-      // se já estiver logado, entra direto
-      const existingSession = localStorage.getItem("dooki-admin-session");
-      if (existingSession) {
-        window.location.href = "admin.html";
-        return;
+        try {
+          const { data } = await window.supabaseClient.auth.getUser();
+          const user = data?.user;
+
+          if (!user) return;
+
+          const { data: profile, error } = await window.supabaseClient
+            .from("admin_profiles")
+            .select("*")
+            .eq("id", user.id)
+            .eq("is_active", true)
+            .maybeSingle();
+
+          if (error || !profile) return;
+
+          localStorage.setItem("dooki-admin-session", JSON.stringify({
+            id: user.id,
+            name: profile.name || "Administrador",
+            email: profile.email || user.email,
+            role: profile.role || "admin",
+            loginType: "supabase"
+          }));
+
+          window.location.href = "admin.html";
+        } catch (error) {
+          console.warn("Auto login não realizado.", error);
+        }
       }
 
       function showError(message) {
@@ -78,7 +102,7 @@
         errorBox.textContent = "";
       }
 
-      form.addEventListener("submit", function (event) {
+      form.addEventListener("submit", async function (event) {
         event.preventDefault();
         hideError();
 
@@ -89,19 +113,42 @@
         loginButton.textContent = "Entrando...";
 
         try {
-          if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
-            throw new Error("Email ou senha inválidos.");
+          if (!window.supabaseClient) {
+            throw new Error("Supabase não configurado.");
           }
 
-          const session = {
-            id: "admin-local",
-            name: "Guilherme",
-            email: ADMIN_EMAIL,
-            role: "super_admin",
-            loginType: "local"
-          };
+          const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+            email,
+            password
+          });
 
-          localStorage.setItem("dooki-admin-session", JSON.stringify(session));
+          if (error) throw error;
+
+          const user = data?.user;
+          if (!user) {
+            throw new Error("Usuário não encontrado.");
+          }
+
+          const { data: profile, error: profileError } = await window.supabaseClient
+            .from("admin_profiles")
+            .select("*")
+            .eq("id", user.id)
+            .eq("is_active", true)
+            .maybeSingle();
+
+          if (profileError) throw profileError;
+
+          if (!profile) {
+            throw new Error("Seu usuário não possui acesso ao painel admin.");
+          }
+
+          localStorage.setItem("dooki-admin-session", JSON.stringify({
+            id: user.id,
+            name: profile.name || "Administrador",
+            email: profile.email || user.email,
+            role: profile.role || "admin",
+            loginType: "supabase"
+          }));
 
           window.location.href = "admin.html";
         } catch (error) {
@@ -111,6 +158,8 @@
           loginButton.textContent = "Acessar painel admin";
         }
       });
+
+      tryAutoRedirect();
     })();
   </script>
 </body>

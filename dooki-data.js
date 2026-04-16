@@ -30,13 +30,44 @@ function normalizePlan(row) {
 
   return {
     id: row.id,
-    name: row.name || "Plano",
-    price: Number(row.price || 0),
-    discount: Number(row.discount || 0),
-    annualPrice: Number(row.annual_price || row.annualPrice || 0),
-    annualDiscount: Number(row.annual_discount || row.annualDiscount || 0),
-    trialDays: Number(row.trial_days || row.trialDays || 0),
-    description: row.description || "",
+    name: row.name || row.plan_name || "Plano",
+    price: Number(
+      row.price ??
+      row.monthly_price ??
+      row.price_monthly ??
+      row.valor ??
+      row.value ??
+      0
+    ),
+    discount: Number(
+      row.discount ??
+      row.monthly_discount ??
+      row.desconto ??
+      0
+    ),
+    annualPrice: Number(
+      row.annual_price ??
+      row.annualPrice ??
+      row.yearly_price ??
+      row.price_yearly ??
+      row.valor_anual ??
+      0
+    ),
+    annualDiscount: Number(
+      row.annual_discount ??
+      row.annualDiscount ??
+      row.yearly_discount ??
+      row.desconto_anual ??
+      0
+    ),
+    trialDays: Number(
+      row.trial_days ??
+      row.trialDays ??
+      row.trial ??
+      row.dias_trial ??
+      0
+    ),
+    description: row.description || row.descricao || "",
     created_at: row.created_at || null,
     raw: row
   };

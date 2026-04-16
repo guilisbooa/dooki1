@@ -993,3 +993,114 @@ img {
     padding: 10px 14px;
   }
 }
+/* =========================
+   UI UPGRADE DOOKI ADMIN
+========================= */
+
+.panel {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.panel-gold {
+  background: linear-gradient(135deg, #fff8e6, #fff);
+  border: 1px solid #f2d17b;
+}
+
+/* TÍTULOS */
+h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.panel-kicker {
+  font-size: 12px;
+  color: #b38b00;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* INPUTS */
+.input {
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 12px;
+  transition: 0.2s;
+}
+
+.input:focus {
+  border-color: #DAA520;
+  box-shadow: 0 0 0 2px rgba(218,165,32,0.15);
+}
+
+/* BOTÕES */
+.primary-button {
+  background: linear-gradient(135deg, #DAA520, #c79200);
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.primary-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(218,165,32,0.3);
+}
+
+.ghost-button {
+  border-radius: 10px;
+}
+
+.danger-ghost {
+  color: #e11d48;
+}
+
+/* LISTA DE ITENS */
+.list-stack > div {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  transition: 0.2s;
+}
+
+.list-stack > div:hover {
+  background: #f3f4f6;
+}
+
+/* BADGES */
+.tag {
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.active-tag {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+/* HEADER MELHOR */
+.admin-topbar {
+  margin-bottom: 24px;
+}
+
+/* GRID */
+.content-grid {
+  gap: 20px;
+}
+
+/* SCROLL MAIS LIMPO */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+}

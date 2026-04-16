@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!ok) return;
 
   bindAdminEvents();
+  bindNavigationEvents();
   await refreshSnapshot();
   renderDashboard();
 });
@@ -124,8 +125,14 @@ function renderKpis() {
   const tickets = state.snapshot.tickets || [];
 
   const activeStores = stores.filter((item) => item.status === "active" || item.status === "Ativo").length;
-  const pendingApprovals = stores.filter((item) => item.status === "approval" || item.status === "Aprovacao" || item.status === "Aprovação").length;
-  const openTickets = tickets.filter((item) => item.status === "aberto" || item.status === "andamento").length;
+  const pendingApprovals = stores.filter((item) =>
+    item.status === "approval" ||
+    item.status === "Aprovacao" ||
+    item.status === "Aprovação"
+  ).length;
+  const openTickets = tickets.filter((item) =>
+    item.status === "aberto" || item.status === "andamento"
+  ).length;
 
   const kpis = {
     activeStores,
@@ -147,17 +154,27 @@ function renderDashboardHighlights() {
   const stores = [...(state.snapshot.establishments || [])].slice(0, 5);
 
   if (!stores.length) {
-    container.innerHTML = `<div class="list-item"><strong>Nenhum estabelecimento encontrado</strong></div>`;
+    container.innerHTML = `
+      <div class="pro-empty-state">
+        <strong>Nenhum estabelecimento encontrado</strong>
+        <span>Cadastre a primeira loja para começar.</span>
+      </div>
+    `;
     return;
   }
 
   container.innerHTML = stores.map((store) => `
-    <div class="list-item">
-      <div>
-        <strong>${store.name}</strong>
-        <span>${store.city || "-"}</span>
+    <div class="pro-list-card">
+      <div class="pro-list-main">
+        <div class="pro-avatar">
+          ${(store.name || "L").charAt(0).toUpperCase()}
+        </div>
+        <div class="pro-list-content">
+          <strong>${store.name}</strong>
+          <span>${store.city || "-"} • ${store.email || "Sem email"}</span>
+        </div>
       </div>
-      <span>${store.status || "-"}</span>
+      <span class="pro-status-badge ${getStatusClass(store.status)}">${store.status || "-"}</span>
     </div>
   `).join("");
 }
@@ -175,9 +192,18 @@ function renderDashboardSummary() {
     .reduce((acc, item) => acc + Number(item.amount || 0), 0);
 
   container.innerHTML = `
-    <div class="summary-item"><span>Lojas cadastradas</span><strong>${stores.length}</strong></div>
-    <div class="summary-item"><span>Planos cadastrados</span><strong>${plans.length}</strong></div>
-    <div class="summary-item"><span>Receita lançada</span><strong>R$ ${totalRevenue.toFixed(2)}</strong></div>
+    <div class="pro-summary-item">
+      <span>Lojas cadastradas</span>
+      <strong>${stores.length}</strong>
+    </div>
+    <div class="pro-summary-item">
+      <span>Planos cadastrados</span>
+      <strong>${plans.length}</strong>
+    </div>
+    <div class="pro-summary-item">
+      <span>Receita lançada</span>
+      <strong>R$ ${totalRevenue.toFixed(2)}</strong>
+    </div>
   `;
 }
 
@@ -190,17 +216,22 @@ function renderPriorityTickets() {
     .slice(0, 5);
 
   if (!tickets.length) {
-    container.innerHTML = `<div class="list-item"><strong>Nenhum chamado prioritário</strong></div>`;
+    container.innerHTML = `
+      <div class="pro-empty-state">
+        <strong>Nenhum chamado prioritário</strong>
+        <span>Os tickets mais críticos aparecerão aqui.</span>
+      </div>
+    `;
     return;
   }
 
   container.innerHTML = tickets.map((ticket) => `
-    <div class="list-item">
-      <div>
+    <div class="pro-list-card">
+      <div class="pro-list-content">
         <strong>${ticket.subject}</strong>
         <span>${ticket.storeName}</span>
       </div>
-      <span>${ticket.priority}</span>
+      <span class="pro-priority-badge ${getPriorityClass(ticket.priority)}">${ticket.priority}</span>
     </div>
   `).join("");
 }
@@ -215,9 +246,9 @@ function renderSupportSummary() {
   const resolvido = tickets.filter((item) => item.status === "resolvido").length;
 
   container.innerHTML = `
-    <div class="summary-item"><span>Abertos</span><strong>${aberto}</strong></div>
-    <div class="summary-item"><span>Em andamento</span><strong>${andamento}</strong></div>
-    <div class="summary-item"><span>Resolvidos</span><strong>${resolvido}</strong></div>
+    <div class="pro-summary-item"><span>Abertos</span><strong>${aberto}</strong></div>
+    <div class="pro-summary-item"><span>Em andamento</span><strong>${andamento}</strong></div>
+    <div class="pro-summary-item"><span>Resolvidos</span><strong>${resolvido}</strong></div>
   `;
 }
 
@@ -234,9 +265,9 @@ function renderGrowthLegend() {
   ring.textContent = `${percent}%`;
 
   legend.innerHTML = `
-    <div class="summary-item"><span>Ativas</span><strong>${active}</strong></div>
-    <div class="summary-item"><span>Total</span><strong>${stores.length}</strong></div>
-    <div class="summary-item"><span>Saúde</span><strong>${percent}%</strong></div>
+    <div class="pro-summary-item"><span>Ativas</span><strong>${active}</strong></div>
+    <div class="pro-summary-item"><span>Total</span><strong>${stores.length}</strong></div>
+    <div class="pro-summary-item"><span>Saúde da base</span><strong>${percent}%</strong></div>
   `;
 }
 
@@ -247,15 +278,24 @@ function renderDashboardStoreCards() {
   const stores = [...(state.snapshot.establishments || [])].slice(0, 4);
 
   if (!stores.length) {
-    container.innerHTML = `<div class="panel"><strong>Nenhuma loja encontrada</strong></div>`;
+    container.innerHTML = `
+      <div class="pro-empty-state">
+        <strong>Nenhuma loja encontrada</strong>
+      </div>
+    `;
     return;
   }
 
   container.innerHTML = stores.map((store) => `
-    <div class="panel">
-      <span class="panel-kicker">${store.city || "-"}</span>
-      <h4>${store.name}</h4>
-      <p>${store.status || "-"}</p>
+    <div class="pro-store-card">
+      <div class="pro-store-card-top">
+        <div class="pro-avatar large">${(store.name || "L").charAt(0).toUpperCase()}</div>
+        <span class="pro-status-badge ${getStatusClass(store.status)}">${store.status || "-"}</span>
+      </div>
+      <div class="pro-store-card-body">
+        <h4>${store.name}</h4>
+        <p>${store.city || "-"} • ${store.plan || "Sem plano"}</p>
+      </div>
       <button class="ghost-button" type="button" onclick="selectStore('${store.id}')">Ver loja</button>
     </div>
   `).join("");
@@ -295,20 +335,32 @@ function renderStores() {
   }
 
   if (!filtered.length) {
-    container.innerHTML = `<div class="list-item"><strong>Nenhum estabelecimento encontrado.</strong></div>`;
+    container.innerHTML = `
+      <div class="pro-empty-state">
+        <strong>Nenhum estabelecimento encontrado.</strong>
+        <span>Tente ajustar os filtros ou cadastre uma nova loja.</span>
+      </div>
+    `;
     return;
   }
 
   container.innerHTML = filtered.map((store) => `
-    <div class="list-item">
-      <div>
-        <strong>${store.name}</strong>
-        <span>${store.city || "-"} • ${store.email || "Sem email"}</span>
+    <div class="pro-store-row">
+      <div class="pro-store-row-left">
+        <div class="pro-avatar">${(store.name || "L").charAt(0).toUpperCase()}</div>
+        <div class="pro-store-row-content">
+          <strong>${store.name}</strong>
+          <span>${store.city || "-"} • ${store.email || "Sem email"}</span>
+        </div>
       </div>
-      <div class="inline-actions">
-        <button class="ghost-button" type="button" onclick="selectStore('${store.id}')">Ver</button>
-        <button class="ghost-button" type="button" onclick="openEditStoreModal('${store.id}')">Editar</button>
-        <button class="ghost-button danger-ghost" type="button" onclick="handleDeleteStore('${store.id}')">Excluir</button>
+
+      <div class="pro-store-row-right">
+        <span class="pro-status-badge ${getStatusClass(store.status)}">${store.status || "-"}</span>
+        <div class="pro-action-group">
+          <button class="ghost-button" type="button" onclick="selectStore('${store.id}')">Ver</button>
+          <button class="ghost-button" type="button" onclick="openEditStoreModal('${store.id}')">Editar</button>
+          <button class="ghost-button danger-ghost" type="button" onclick="handleDeleteStore('${store.id}')">Excluir</button>
+        </div>
       </div>
     </div>
   `).join("");
@@ -322,15 +374,20 @@ function renderStoreDetail() {
   const selected = stores.find((item) => item.id === state.selectedStoreId) || stores[0];
 
   if (!selected) {
-    detailEl.innerHTML = `<div class="summary-item"><span>Sem dados</span><strong>Nenhuma loja selecionada</strong></div>`;
+    detailEl.innerHTML = `
+      <div class="pro-empty-state">
+        <strong>Sem dados</strong>
+        <span>Nenhuma loja selecionada.</span>
+      </div>
+    `;
     return;
   }
 
   detailEl.innerHTML = `
-    <div class="summary-item"><span>Loja</span><strong>${selected.name}</strong></div>
-    <div class="summary-item"><span>Cidade</span><strong>${selected.city || "-"}</strong></div>
-    <div class="summary-item"><span>Status</span><strong>${selected.status || "-"}</strong></div>
-    <div class="summary-item"><span>Plano</span><strong>${selected.plan || "-"}</strong></div>
+    <div class="pro-summary-item"><span>Loja</span><strong>${selected.name}</strong></div>
+    <div class="pro-summary-item"><span>Cidade</span><strong>${selected.city || "-"}</strong></div>
+    <div class="pro-summary-item"><span>Status</span><strong>${selected.status || "-"}</strong></div>
+    <div class="pro-summary-item"><span>Plano</span><strong>${selected.plan || "-"}</strong></div>
   `;
 }
 
@@ -341,17 +398,35 @@ function renderPlans() {
   const plans = state.snapshot.plans || [];
 
   if (!plans.length) {
-    container.innerHTML = `<div class="list-item"><strong>Nenhum plano cadastrado.</strong></div>`;
+    container.innerHTML = `
+      <div class="pro-empty-state">
+        <strong>Nenhum plano cadastrado.</strong>
+        <span>Crie o primeiro plano da plataforma.</span>
+      </div>
+    `;
     return;
   }
 
   container.innerHTML = plans.map((plan) => `
-    <div class="list-item">
-      <div>
-        <strong>${plan.name}</strong>
-        <span>R$ ${Number(plan.price || 0).toFixed(2)} / mês</span>
+    <div class="pro-plan-card">
+      <div class="pro-plan-main">
+        <div>
+          <strong>${plan.name}</strong>
+          <span>${plan.description || "Plano ativo da plataforma"}</span>
+        </div>
+
+        <div class="pro-plan-price">
+          <strong>R$ ${Number(plan.price || 0).toFixed(2)}</strong>
+          <span>/ mês</span>
+        </div>
       </div>
-      <div class="inline-actions">
+
+      <div class="pro-plan-meta">
+        <span>Anual: R$ ${Number(plan.annualPrice || 0).toFixed(2)}</span>
+        <span>Trial: ${Number(plan.trialDays || 0)} dias</span>
+      </div>
+
+      <div class="pro-action-group">
         <button class="ghost-button" type="button" onclick="openEditPlanModal('${plan.id}')">Editar</button>
         <button class="ghost-button danger-ghost" type="button" onclick="handleDeletePlan('${plan.id}')">Excluir</button>
       </div>
@@ -369,9 +444,9 @@ function renderPayments() {
     const payouts = payments.filter((item) => item.direction === "payout").reduce((acc, item) => acc + Number(item.amount || 0), 0);
 
     summaryEl.innerHTML = `
-      <div class="summary-item"><span>Cobranças</span><strong>R$ ${charges.toFixed(2)}</strong></div>
-      <div class="summary-item"><span>Repasses</span><strong>R$ ${payouts.toFixed(2)}</strong></div>
-      <div class="summary-item"><span>Lançamentos</span><strong>${payments.length}</strong></div>
+      <div class="pro-summary-item"><span>Cobranças</span><strong>R$ ${charges.toFixed(2)}</strong></div>
+      <div class="pro-summary-item"><span>Repasses</span><strong>R$ ${payouts.toFixed(2)}</strong></div>
+      <div class="pro-summary-item"><span>Lançamentos</span><strong>${payments.length}</strong></div>
     `;
   }
 
@@ -379,17 +454,27 @@ function renderPayments() {
     const payments = [...(state.snapshot.payments || [])].slice(0, 10);
 
     if (!payments.length) {
-      listEl.innerHTML = `<div class="list-item"><strong>Nenhum pagamento encontrado.</strong></div>`;
+      listEl.innerHTML = `
+        <div class="pro-empty-state">
+          <strong>Nenhum pagamento encontrado.</strong>
+          <span>Os lançamentos financeiros aparecerão aqui.</span>
+        </div>
+      `;
       return;
     }
 
     listEl.innerHTML = payments.map((item) => `
-      <div class="list-item">
-        <div>
-          <strong>${item.establishment_name}</strong>
-          <span>${item.category} • ${item.direction}</span>
+      <div class="pro-payment-card">
+        <div class="pro-payment-main">
+          <div>
+            <strong>${item.category || "Pagamento"}</strong>
+            <span>${item.establishment_name || "Loja"} • ${item.direction === "charge" ? "Cobrança" : "Repasse"}</span>
+          </div>
+
+          <div class="pro-payment-amount ${item.direction === "charge" ? "negative" : "positive"}">
+            ${item.direction === "charge" ? "-" : "+"} R$ ${Number(item.amount || 0).toFixed(2)}
+          </div>
         </div>
-        <span>R$ ${Number(item.amount || 0).toFixed(2)}</span>
       </div>
     `).join("");
   }
@@ -409,17 +494,24 @@ function renderSupport() {
   }
 
   if (!tickets.length) {
-    listEl.innerHTML = `<div class="list-item"><strong>Nenhum ticket encontrado.</strong></div>`;
+    listEl.innerHTML = `
+      <div class="pro-empty-state">
+        <strong>Nenhum ticket encontrado.</strong>
+        <span>Os chamados de suporte aparecerão aqui.</span>
+      </div>
+    `;
     return;
   }
 
   listEl.innerHTML = tickets.map((ticket) => `
-    <div class="list-item">
-      <div>
-        <strong>${ticket.subject}</strong>
-        <span>${ticket.storeName} • ${ticket.priority}</span>
+    <div class="pro-support-card">
+      <div class="pro-support-main">
+        <div>
+          <strong>${ticket.subject}</strong>
+          <span>${ticket.storeName} • ${ticket.priority}</span>
+        </div>
+        <span class="pro-status-badge ${getTicketStatusClass(ticket.status)}">${ticket.status}</span>
       </div>
-      <span>${ticket.status}</span>
     </div>
   `).join("");
 }
@@ -432,10 +524,10 @@ function renderReports() {
 
   if (summaryEl) {
     summaryEl.innerHTML = `
-      <div class="summary-item"><span>Lojas</span><strong>${state.snapshot.establishments.length}</strong></div>
-      <div class="summary-item"><span>Planos</span><strong>${state.snapshot.plans.length}</strong></div>
-      <div class="summary-item"><span>Tickets</span><strong>${state.snapshot.tickets.length}</strong></div>
-      <div class="summary-item"><span>Pagamentos</span><strong>${state.snapshot.payments.length}</strong></div>
+      <div class="pro-summary-item"><span>Lojas</span><strong>${state.snapshot.establishments.length}</strong></div>
+      <div class="pro-summary-item"><span>Planos</span><strong>${state.snapshot.plans.length}</strong></div>
+      <div class="pro-summary-item"><span>Tickets</span><strong>${state.snapshot.tickets.length}</strong></div>
+      <div class="pro-summary-item"><span>Pagamentos</span><strong>${state.snapshot.payments.length}</strong></div>
     `;
   }
 
@@ -450,15 +542,15 @@ function renderReports() {
   if (revenueSummaryEl) {
     const total = (state.snapshot.payments || []).reduce((acc, item) => acc + Number(item.amount || 0), 0);
     revenueSummaryEl.innerHTML = `
-      <div class="summary-item"><span>Total movimentado</span><strong>R$ ${total.toFixed(2)}</strong></div>
-      <div class="summary-item"><span>Planos ativos</span><strong>${state.snapshot.plans.length}</strong></div>
+      <div class="pro-summary-item"><span>Total movimentado</span><strong>R$ ${total.toFixed(2)}</strong></div>
+      <div class="pro-summary-item"><span>Planos ativos</span><strong>${state.snapshot.plans.length}</strong></div>
     `;
   }
 
   if (planBarsEl) {
     const plans = state.snapshot.plans || [];
     planBarsEl.innerHTML = plans.map((plan) => `
-      <div class="summary-item">
+      <div class="pro-summary-item">
         <span>${plan.name}</span>
         <strong>R$ ${Number(plan.price || 0).toFixed(2)}</strong>
       </div>
@@ -500,10 +592,12 @@ function bindAdminEvents() {
   const deleteProfileButton = document.querySelector("[data-profile-delete]");
   const upgradeProfileButton = document.querySelector("[data-profile-upgrade]");
   const ticketFilter = document.querySelector("[data-ticket-filter]");
+  const logoutButton = document.querySelector("[data-admin-logout]");
 
   if (searchEl) searchEl.addEventListener("input", renderStores);
   if (cityEl) cityEl.addEventListener("change", renderStores);
   if (ticketFilter) ticketFilter.addEventListener("change", renderSupport);
+  if (logoutButton) logoutButton.addEventListener("click", logoutAdmin);
 
   if (planForm) {
     planForm.addEventListener("submit", async (event) => {
@@ -699,6 +793,44 @@ function bindAdminEvents() {
   }
 }
 
+function bindNavigationEvents() {
+  const navButtons = document.querySelectorAll("[data-admin-screen]");
+  const titleEl = document.querySelector("[data-screen-title]");
+  const sidebarToggle = document.querySelector("[data-sidebar-toggle]");
+  const backToStoresButton = document.querySelector("[data-back-to-stores]");
+  const closeStoreModalButtons = document.querySelectorAll("[data-close-store-modal]");
+  const closePlanModalButtons = document.querySelectorAll("[data-close-plan-modal]");
+
+  navButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setScreen(button.dataset.adminScreen);
+    });
+  });
+
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", () => {
+      document.body.classList.toggle("sidebar-open");
+      const sidebar = document.querySelector(".admin-sidebar");
+      if (sidebar) sidebar.classList.toggle("open");
+    });
+  }
+
+  if (backToStoresButton) {
+    backToStoresButton.addEventListener("click", () => {
+      setScreen("stores");
+      if (titleEl) titleEl.textContent = "Estabelecimentos";
+    });
+  }
+
+  closeStoreModalButtons.forEach((button) => {
+    button.addEventListener("click", closeStoreModal);
+  });
+
+  closePlanModalButtons.forEach((button) => {
+    button.addEventListener("click", closePlanModal);
+  });
+}
+
 function openStoreModal() {
   const modal = document.querySelector("[data-store-modal]");
   if (modal) modal.hidden = false;
@@ -762,10 +894,10 @@ function renderStoreProfile(store) {
 
   if (detailsEl) {
     detailsEl.innerHTML = `
-      <div class="summary-item"><span>Nome</span><strong>${store.name}</strong></div>
-      <div class="summary-item"><span>Status</span><strong>${store.status || "-"}</strong></div>
-      <div class="summary-item"><span>Plano</span><strong>${store.plan || "-"}</strong></div>
-      <div class="summary-item"><span>Código</span><strong>${store.code || "-"}</strong></div>
+      <div class="pro-summary-item"><span>Nome</span><strong>${store.name}</strong></div>
+      <div class="pro-summary-item"><span>Status</span><strong>${store.status || "-"}</strong></div>
+      <div class="pro-summary-item"><span>Plano</span><strong>${store.plan || "-"}</strong></div>
+      <div class="pro-summary-item"><span>Código</span><strong>${store.code || "-"}</strong></div>
     `;
   }
 }
@@ -885,6 +1017,32 @@ async function logoutAdmin() {
 
   localStorage.removeItem("dooki-admin-session");
   window.location.href = "index.html";
+}
+
+function getStatusClass(status) {
+  const value = String(status || "").toLowerCase();
+
+  if (value.includes("active") || value.includes("ativo")) return "success";
+  if (value.includes("approval") || value.includes("aprova")) return "warning";
+  if (value.includes("upgrade")) return "info";
+  return "neutral";
+}
+
+function getPriorityClass(priority) {
+  const value = String(priority || "").toLowerCase();
+
+  if (value.includes("alta")) return "danger";
+  if (value.includes("media") || value.includes("média")) return "warning";
+  return "neutral";
+}
+
+function getTicketStatusClass(status) {
+  const value = String(status || "").toLowerCase();
+
+  if (value.includes("aberto")) return "warning";
+  if (value.includes("andamento")) return "info";
+  if (value.includes("resolvido")) return "success";
+  return "neutral";
 }
 
 window.refreshSnapshot = refreshSnapshot;

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dooki | Painel da cozinha</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-requires-auth="restaurant">
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a class="brand" href="index.html"><img class="brand-logo" src="logo-dooki.png" alt="Dooki"></a>
+      <nav class="site-nav" data-menu>
+        <a href="index.html">Site principal</a>
+        <a href="estabelecimento.html">Estabelecimento</a>
+        <a href="entregador.html">Entregador</a>
+      </nav>
+      <div class="nav-actions" data-auth-slot>
+        <a class="btn btn-highlight" href="cardapio-mesa.html">Ver cardapio mesa</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="container">
+      <section class="page-hero">
+        <span class="panel-label">Sistema 04</span>
+        <h1>Painel da cozinha</h1>
+        <p>Uma tela limpa e visual para acompanhar tickets em fila, separar status e reduzir ruido na operacao.</p>
+        <div class="hero-pills">
+          <span data-session-label>Loja conectada</span>
+        </div>
+      </section>
+
+      <section class="ticket-columns" data-kitchen-columns></section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script src="dooki-data.js"></script>
+  <script src="modules-app.js"></script>
+</body>
+</html>

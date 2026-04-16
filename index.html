@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dooki Admin | Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="admin-login-body">
+  <main class="admin-login-page">
+    <section class="login-brand-panel">
+      <img class="login-logo" src="logo-dooki.png" alt="Dooki">
+      <span class="login-badge">PAINEL ADMIN</span>
+      <h1>Gestão central da plataforma Dooki.</h1>
+      <p>
+        Controle estabelecimentos, acompanhe metricas gerais, monitore planos,
+        suporte e operacao em uma unica visao.
+      </p>
+      <div class="demo-box">
+        <strong>Acesso de teste</strong>
+        <span>Email: admin@dooki.com</span>
+        <span>Senha: 123456</span>
+      </div>
+    </section>
+
+    <section class="login-form-panel">
+      <form class="login-form-card" data-admin-login-form>
+        <span class="panel-kicker">Entrar no admin</span>
+        <h2>Bem-vindo de volta</h2>
+        <p class="panel-copy">Acesse o ambiente administrativo principal da Dooki.</p>
+
+        <label class="field">
+          <span>Email</span>
+          <input class="input" name="email" value="admin@dooki.com" />
+        </label>
+
+        <label class="field">
+          <span>Senha</span>
+          <input class="input" name="password" type="password" value="123456" />
+        </label>
+
+        <div class="error-box" data-admin-login-error hidden></div>
+
+        <button class="primary-button" type="submit">Acessar painel admin</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script src="dooki-data.js"></script>
+  <script src="admin-app.js"></script>
+</body>
+</html>

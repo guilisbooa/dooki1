@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dooki | Cardapio via QR Code da mesa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a class="brand" href="index.html"><img class="brand-logo" src="logo-dooki.png" alt="Dooki"></a>
+      <nav class="site-nav" data-menu>
+        <a href="index.html">Site principal</a>
+        <a href="cardapio-link.html">Via link</a>
+        <a href="cozinha.html">Cozinha</a>
+      </nav>
+      <div class="nav-actions" data-auth-slot>
+        <a class="btn btn-highlight" href="login.html">Painel da loja</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="container" data-cart-scope="mesa-12">
+      <section class="page-hero menu-hero">
+        <span class="panel-label">Sistema 06</span>
+        <h1 data-menu-title>Cardapio do cliente via QR Code da mesa</h1>
+        <p data-menu-description>Mesa 12 identificada. Experiencia de consumo no local com pedido direto, visual premium e menos friccao no atendimento.</p>
+        <div class="hero-pills">
+          <span data-table-label>Mesa 12</span>
+          <span>Atendimento no salao</span>
+          <span>Pedido direto pelo celular</span>
+        </div>
+      </section>
+
+      <section class="menu-page-shell">
+        <div class="menu-grid" data-menu-grid></div>
+
+        <aside class="cart-box">
+          <article class="cart-box">
+            <div class="row-between">
+              <div>
+                <span class="panel-label">Pedido da mesa</span>
+                <h3 class="page-title" data-table-cart-title>Mesa 12</h3>
+              </div>
+              <span class="soft-pill" data-cart-count>0 item(ns)</span>
+            </div>
+            <div class="cart-list" data-cart-items></div>
+            <div class="fields" style="margin-top:18px;">
+              <div class="field"><label>Nome para identificar</label><input class="input" placeholder="Ex: Guilherme" data-customer-name></div>
+              <div class="field"><label>Observacoes</label><textarea class="textarea" placeholder="Ex: sem cebola" data-customer-notes></textarea></div>
+            </div>
+            <div class="row-between" style="margin-top:18px;">
+              <strong>Total</strong>
+              <strong data-cart-total>R$ 0,00</strong>
+            </div>
+            <div class="cart-actions" style="margin-top:18px;">
+              <button class="btn btn-dark" type="button" data-submit-order>Enviar para cozinha</button>
+              <button class="btn btn-soft" type="button" data-reset-cart>Limpar</button>
+            </div>
+            <div class="muted" data-cart-feedback></div>
+          </article>
+        </aside>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script src="dooki-data.js"></script>
+  <script src="modules-app.js"></script>
+</body>
+</html>

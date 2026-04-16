@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dooki | Cardapio via link</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a class="brand" href="index.html"><img class="brand-logo" src="logo-dooki.png" alt="Dooki"></a>
+      <nav class="site-nav" data-menu>
+        <a href="index.html">Site principal</a>
+        <a href="estabelecimento.html">Estabelecimento</a>
+        <a href="cardapio-mesa.html">Via mesa</a>
+      </nav>
+      <div class="nav-actions" data-auth-slot>
+        <a class="btn btn-highlight" href="login.html">Entrar na loja</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="container" data-cart-scope="link">
+      <section class="page-hero menu-hero">
+        <span class="panel-label">Sistema 05</span>
+        <h1 data-menu-title>Cardapio do cliente via link</h1>
+        <p data-menu-description>Uma vitrine digital para delivery com destaque visual forte, categorias claras e carrinho lateral.</p>
+        <div class="menu-categories" data-menu-categories></div>
+      </section>
+
+      <section class="menu-page-shell">
+        <div class="menu-grid" data-menu-grid></div>
+
+        <aside class="cart-box">
+          <article class="cart-box">
+            <div class="row-between">
+              <div>
+                <span class="panel-label">Carrinho</span>
+                <h3 class="page-title">Pedido delivery</h3>
+              </div>
+              <span class="soft-pill" data-cart-count>0 item(ns)</span>
+            </div>
+            <div class="cart-list" data-cart-items></div>
+            <div class="fields" style="margin-top:18px;">
+              <div class="field"><label>Nome</label><input class="input" placeholder="Seu nome" data-customer-name></div>
+              <div class="field"><label>Endereco</label><input class="input" placeholder="Rua, numero e complemento" data-customer-address></div>
+            </div>
+            <div class="row-between" style="margin-top:18px;">
+              <strong>Total</strong>
+              <strong data-cart-total>R$ 0,00</strong>
+            </div>
+            <div class="cart-actions" style="margin-top:18px;">
+              <button class="btn btn-dark" type="button" data-submit-order>Enviar pedido</button>
+              <button class="btn btn-soft" type="button" data-reset-cart>Limpar</button>
+            </div>
+            <div class="muted" data-cart-feedback></div>
+          </article>
+        </aside>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script src="dooki-data.js"></script>
+  <script src="modules-app.js"></script>
+</body>
+</html>

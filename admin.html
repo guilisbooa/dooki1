@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="admin-app-body" data-admin-required="true">
-  <div class="admin-app">
+  <div class="admin-app admin-app-compact">
     <aside class="admin-sidebar">
       <div class="sidebar-top">
         <img class="sidebar-logo" src="logo-dooki.png" alt="Dooki">
@@ -41,7 +41,7 @@
     </aside>
 
     <main class="admin-content">
-      <header class="admin-topbar">
+      <header class="admin-topbar compact-topbar">
         <div>
           <button class="sidebar-toggle" type="button" data-sidebar-toggle>Menu</button>
           <span class="panel-kicker">Painel administrativo</span>
@@ -56,10 +56,10 @@
 
       <section class="admin-screen active" data-screen-panel="dashboard">
         <div class="stats-grid admin-stats">
-          <article class="panel stat-card"><span>Lojas ativas</span><strong data-kpi="activeStores">148</strong></article>
-          <article class="panel stat-card"><span>Pedidos hoje</span><strong data-kpi="ordersToday">4.820</strong></article>
-          <article class="panel stat-card"><span>Aprovações pendentes</span><strong data-kpi="pendingApprovals">12</strong></article>
-          <article class="panel stat-card"><span>Suportes abertos</span><strong data-kpi="openTickets">12</strong></article>
+          <article class="panel stat-card"><span>Lojas ativas</span><strong data-kpi="activeStores">0</strong></article>
+          <article class="panel stat-card"><span>Pedidos hoje</span><strong data-kpi="ordersToday">0</strong></article>
+          <article class="panel stat-card"><span>Aprovações pendentes</span><strong data-kpi="pendingApprovals">0</strong></article>
+          <article class="panel stat-card"><span>Suportes abertos</span><strong data-kpi="openTickets">0</strong></article>
         </div>
 
         <div class="content-grid two-large">
@@ -117,7 +117,7 @@
             <div class="chart-shell">
               <div class="ring-chart">
                 <div class="ring-chart-inner">
-                  <strong data-growth-ring>82%</strong>
+                  <strong data-growth-ring>0%</strong>
                   <span>saúde média</span>
                 </div>
               </div>
@@ -209,7 +209,6 @@
               </label>
               <div class="modal-actions full-span">
                 <button class="primary-button" type="submit">Cadastrar estabelecimento</button>
-                <button class="ghost-button" type="button" id="create-store-prompt-button">Cadastro rápido por prompt</button>
               </div>
             </form>
 
@@ -229,6 +228,7 @@
             </div>
             <div class="list-stack" data-plans-list></div>
           </article>
+
           <article class="panel">
             <div class="panel-head">
               <div>
@@ -434,34 +434,39 @@
       </section>
 
       <section class="admin-screen" data-screen-panel="store-profile">
-        <div class="content-grid two-large">
-          <article class="panel">
-            <div class="panel-head">
+        <div class="content-grid store-profile-grid">
+          <article class="panel store-profile-main">
+            <div class="panel-head profile-header-row">
               <div>
                 <span class="panel-kicker">Visão individual</span>
                 <h3 data-profile-name>Loja selecionada</h3>
               </div>
               <button class="ghost-button" type="button" data-back-to-stores>Voltar para estabelecimentos</button>
             </div>
-            <div class="profile-hero-card">
-              <div>
-                <h4 data-profile-heading>Perfil da loja</h4>
-                <p data-profile-summary>Resumo da conta selecionada.</p>
+
+            <div class="store-profile-hero">
+              <div class="store-profile-hero-left">
+                <div class="pro-avatar large" data-profile-avatar>L</div>
+                <div>
+                  <h4 data-profile-heading>Perfil da loja</h4>
+                  <p data-profile-summary>Resumo da conta selecionada.</p>
+                </div>
               </div>
-              <span class="tag active-tag" data-profile-status>Ativo</span>
+              <span class="pro-status-badge success" data-profile-status>Ativo</span>
             </div>
-            <div class="stats-grid profile-stats" data-profile-stats></div>
+
+            <div class="stats-grid profile-stats refined-profile-stats" data-profile-stats></div>
           </article>
 
-          <article class="panel panel-gold">
+          <article class="panel panel-gold store-profile-actions">
             <div class="panel-head">
               <div>
                 <span class="panel-kicker">Ações</span>
                 <h3>Gerenciar conta</h3>
               </div>
             </div>
-            <div class="summary-list" data-profile-details></div>
-            <div class="inline-actions profile-actions">
+            <div class="summary-list refined-summary-list" data-profile-details></div>
+            <div class="inline-actions profile-actions refined-profile-actions">
               <button class="primary-button" type="button" data-open-store-modal>Editar loja</button>
               <button class="ghost-button" type="button" data-profile-upgrade>Avançar plano</button>
               <button class="ghost-button danger-ghost" type="button" data-profile-delete>Excluir loja</button>
@@ -580,154 +585,5 @@
   <script src="supabase-client.js"></script>
   <script src="dooki-data.js"></script>
   <script src="admin-app.js"></script>
-
-  <script>
-    (function () {
-      const navButtons = document.querySelectorAll("[data-admin-screen]");
-      const screens = document.querySelectorAll("[data-screen-panel]");
-      const titleEl = document.querySelector("[data-screen-title]");
-      const sidebar = document.querySelector(".admin-sidebar");
-      const sidebarToggle = document.querySelector("[data-sidebar-toggle]");
-      const logoutButton = document.querySelector("[data-admin-logout]");
-      const storeForm = document.getElementById("store-form");
-      const promptCreateButton = document.getElementById("create-store-prompt-button");
-      const storeModal = document.querySelector("[data-store-modal]");
-      const closeStoreModalButtons = document.querySelectorAll("[data-close-store-modal]");
-      const planModal = document.querySelector("[data-plan-modal]");
-      const closePlanModalButtons = document.querySelectorAll("[data-close-plan-modal]");
-      const backToStoresButton = document.querySelector("[data-back-to-stores]");
-      const remoteStatusEl = document.querySelector("[data-remote-status]");
-
-      function setScreen(screenName) {
-        navButtons.forEach((button) => {
-          button.classList.toggle("active", button.dataset.adminScreen === screenName);
-        });
-
-        screens.forEach((screen) => {
-          screen.classList.toggle("active", screen.dataset.screenPanel === screenName);
-        });
-
-        const activeButton = document.querySelector(`[data-admin-screen="${screenName}"]`);
-        if (titleEl && activeButton) {
-          titleEl.textContent = activeButton.textContent.trim();
-        }
-      }
-
-      navButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-          setScreen(button.dataset.adminScreen);
-        });
-      });
-
-      if (sidebarToggle) {
-        sidebarToggle.addEventListener("click", () => {
-          document.body.classList.toggle("sidebar-open");
-          if (sidebar) sidebar.classList.toggle("open");
-        });
-      }
-
-      if (logoutButton) {
-        logoutButton.addEventListener("click", () => {
-          if (window.logoutAdmin) {
-            window.logoutAdmin();
-            return;
-          }
-          localStorage.removeItem("dooki-admin-session");
-          window.location.href = "index.html";
-        });
-      }
-
-      if (storeForm) {
-        storeForm.addEventListener("submit", async (event) => {
-          event.preventDefault();
-
-          const formData = new FormData(storeForm);
-
-          const payload = {
-            name: formData.get("name")?.toString().trim(),
-            city: formData.get("city")?.toString().trim(),
-            plan: formData.get("plan")?.toString().trim(),
-            status: formData.get("status")?.toString().trim(),
-            email: formData.get("email")?.toString().trim(),
-            whatsapp: formData.get("phone")?.toString().trim(),
-            logo_url: formData.get("logoUrl")?.toString().trim(),
-            banner_url: formData.get("bannerUrl")?.toString().trim()
-          };
-
-          try {
-            await window.DookiData.createStore(payload);
-
-            storeForm.reset();
-
-            if (remoteStatusEl) {
-              remoteStatusEl.textContent = "Dados sincronizados";
-            }
-
-            if (typeof refreshSnapshot === "function") {
-              await refreshSnapshot();
-            }
-
-            if (typeof renderDashboard === "function") {
-              renderDashboard();
-            } else if (typeof renderStores === "function") {
-              renderStores();
-            } else {
-              window.location.reload();
-            }
-
-            setScreen("stores");
-            alert("Estabelecimento cadastrado com sucesso.");
-          } catch (error) {
-            console.error(error);
-            alert(error.message || "Erro ao cadastrar estabelecimento.");
-          }
-        });
-      }
-
-      if (promptCreateButton) {
-        promptCreateButton.addEventListener("click", () => {
-          if (window.handleCreateStore) {
-            window.handleCreateStore();
-          }
-        });
-      }
-
-      if (backToStoresButton) {
-        backToStoresButton.addEventListener("click", () => {
-          setScreen("stores");
-        });
-      }
-
-      closeStoreModalButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-          if (storeModal) storeModal.hidden = true;
-        });
-      });
-
-      closePlanModalButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-          if (planModal) planModal.hidden = true;
-        });
-      });
-
-      const saved = localStorage.getItem("dooki-admin-session");
-      if (saved) {
-        try {
-          const admin = JSON.parse(saved);
-          const nameEl = document.querySelector("[data-admin-name]");
-          const emailEl = document.querySelector("[data-admin-email]");
-
-          if (nameEl) nameEl.textContent = admin.name || "Administrador Dooki";
-          if (emailEl) emailEl.textContent = admin.email || "admin@dooki.com";
-        } catch (error) {
-          console.warn("Não foi possível ler a sessão do admin.", error);
-        }
-      }
-
-      if (remoteStatusEl) {
-        remoteStatusEl.textContent = "Painel pronto";
-      }
-    })();
-  </script>
 </body>
 </html>

@@ -1,10 +1,6 @@
 {
   "cleanUrls": false,
   "rewrites": [
-    { "source": "/", "destination": "/public/index.html" },
-    { "source": "/login.html", "destination": "/public/login.html" },
-    { "source": "/admin", "destination": "/public/login.html" },
-    { "source": "/establishment", "destination": "/establishment/establishment-login.html" },
-    { "source": "/establishment-login", "destination": "/establishment/establishment-login.html" }
+    { "source": "/", "destination": "/public/index.html" }
   ]
 }

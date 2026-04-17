@@ -1,6 +1,14 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+(function () {
+  const SUPABASE_URL = 'https://lvnhwtmdpzwjfjktkmtd.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_OcPB-sa5X56hJoCLfttj_Q_V1vEsHjy';
 
-const SUPABASE_URL = 'https://lvnhwtmdpzwjfjktkmtd.supabase.co'
-const SUPABASE_ANON_KEY = '"sb_publishable_OcPB-sa5X56hJoCLfttj_Q_V1vEsHjy'
+  if (!window.supabase) {
+    console.error("Biblioteca do Supabase não carregada.");
+    return;
+  }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  window.supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+  );
+})();

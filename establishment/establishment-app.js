@@ -10,46 +10,132 @@
     categories: [],
     tickets: [],
     tables: [],
-    finance: null,
-    inventoryMovements: []
+    inventoryMovements: [],
+    finance: null
   };
 
   const screenMeta = {
     dashboard: {
-      title: "Visão geral",
-      copy: "Acompanhe pedidos, vendas, estoque e desempenho da sua operação."
+      title: "Central da loja",
+      copy: "Tudo o que sua operação precisa no dia a dia, com foco em praticidade."
     },
     orders: {
       title: "Pedidos",
-      copy: "Visualize e acompanhe os pedidos recebidos pela sua loja."
+      copy: "Acompanhe, pesquise e atualize o andamento dos pedidos."
     },
     products: {
-      title: "Produtos",
-      copy: "Gerencie o cardápio, preços e disponibilidade dos seus itens."
+      title: "Cardápio",
+      copy: "Gerencie produtos, preços e disponibilidade."
     },
     categories: {
       title: "Categorias",
-      copy: "Organize o cardápio por seções para facilitar a navegação."
+      copy: "Organize melhor o cardápio da sua loja."
     },
     inventory: {
       title: "Estoque",
-      copy: "Controle o estoque e acompanhe movimentações dos produtos."
+      copy: "Controle quantidades, custos e itens com baixa."
     },
     tables: {
       title: "Mesas",
-      copy: "Gerencie QR codes, atendimento em mesa e sessões abertas."
+      copy: "Gestão prática para atendimento por QR code."
     },
     finance: {
       title: "Financeiro",
-      copy: "Acompanhe receita, custos, comissão Dooki e lucro estimado."
+      copy: "Veja receita, custo, comissão Dooki e lucro estimado."
     },
     support: {
       title: "Suporte",
-      copy: "Abra tickets e acompanhe o histórico de atendimento da sua loja."
+      copy: "Abra tickets e acompanhe o atendimento da sua loja."
     },
     settings: {
       title: "Configurações",
-      copy: "Atualize os dados principais do seu estabelecimento."
+      copy: "Atualize os principais dados do estabelecimento."
+    }
+  };
+
+  const PLAN_FEATURES_FALLBACK = {
+    standard: [
+      "digital_menu",
+      "delivery_orders",
+      "establishment_panel",
+      "full_dashboard",
+      "inventory_management",
+      "ticket_support",
+      "menu_qr_code",
+      "dooki_watermark"
+    ],
+    premium: [
+      "digital_menu",
+      "delivery_orders",
+      "establishment_panel",
+      "full_dashboard",
+      "inventory_management",
+      "ticket_support",
+      "menu_qr_code",
+      "table_qr_code",
+      "table_ordering",
+      "profit_analysis",
+      "dooki_watermark"
+    ],
+    enterprise: [
+      "digital_menu",
+      "delivery_orders",
+      "establishment_panel",
+      "full_dashboard",
+      "inventory_management",
+      "ticket_support",
+      "menu_qr_code",
+      "table_qr_code",
+      "table_ordering",
+      "profit_analysis",
+      "split_bill",
+      "group_orders",
+      "support_24h",
+      "custom_packaging",
+      "table_qr_stands"
+    ]
+  };
+
+    const FEATURE_UPGRADE_RULES = {
+    inventory_management: {
+      minPlan: "standard",
+      label: "Gestão de estoque"
+    },
+    ticket_support: {
+      minPlan: "standard",
+      label: "Suporte por ticket"
+    },
+    table_qr_code: {
+      minPlan: "premium",
+      label: "QR code por mesa"
+    },
+    table_ordering: {
+      minPlan: "premium",
+      label: "Pedidos por mesa"
+    },
+    profit_analysis: {
+      minPlan: "premium",
+      label: "Análise de gastos e ganhos"
+    },
+    split_bill: {
+      minPlan: "enterprise",
+      label: "Divisão de conta"
+    },
+    group_orders: {
+      minPlan: "enterprise",
+      label: "Pedidos interligados por grupo"
+    },
+    support_24h: {
+      minPlan: "enterprise",
+      label: "Suporte 24h"
+    },
+    custom_packaging: {
+      minPlan: "enterprise",
+      label: "Embalagens personalizadas"
+    },
+    table_qr_stands: {
+      minPlan: "enterprise",
+      label: "Suportes físicos de QR"
     }
   };
 
@@ -77,10 +163,62 @@
     return window.supabaseClient;
   }
 
-  function bindBaseEvents() {
+    function getUpgradeMessage(featureKey) {
+    const rule = FEATURE_UPGRADE_RULES[featureKey];
+
+    if (!rule) {
+      return `Faça upgrade do plano para liberar este recurso. Seu plano atual: ${getPlanLabel()}.`;
+    }
+
+    const minPlanLabel =
+      rule.minPlan === "premium"
+        ? "Premium"
+        : rule.minPlan === "enterprise"
+          ? "Enterprise"
+          : "Standard";
+
+    return `${rule.label} disponível a partir do plano ${minPlanLabel}. Seu plano atual: ${getPlanLabel()}.`;
+  }
+
+  function ensureLockedTooltip() {
+    let tooltip = document.getElementById("locked-tooltip");
+
+    if (!tooltip) {
+      tooltip = document.createElement("div");
+      tooltip.id = "locked-tooltip";
+      tooltip.className = "locked-tooltip";
+      document.body.appendChild(tooltip);
+    }
+
+    return tooltip;
+  }
+
+  function showLockedTooltip(message, target) {
+    const tooltip = ensureLockedTooltip();
+    tooltip.textContent = message;
+
+    const rect = target.getBoundingClientRect();
+    tooltip.style.left = `${rect.right + 12}px`;
+    tooltip.style.top = `${rect.top}px`;
+    tooltip.classList.add("visible");
+  }
+
+  function hideLockedTooltip() {
+    const tooltip = document.getElementById("locked-tooltip");
+    if (tooltip) {
+      tooltip.classList.remove("visible");
+    }
+  }
+
+    function bindBaseEvents() {
     document.getElementById("establishment-logout").addEventListener("click", async function () {
-      await window.EstablishmentAuth.signOut();
-      window.location.href = "./establishment-login.html";
+      try {
+        await window.EstablishmentAuth.signOut();
+      } catch (error) {
+        console.error("Erro ao sair:", error);
+      } finally {
+        window.location.href = "./establishment-login.html";
+      }
     });
 
     document.getElementById("sidebar-toggle").addEventListener("click", function () {
@@ -89,16 +227,26 @@
 
     document.querySelectorAll("[data-screen]").forEach(function (button) {
       button.addEventListener("click", function () {
-        const screen = button.dataset.screen;
-        if (!screen) return;
+        const featureKey = button.dataset.feature;
 
-        if (button.dataset.feature && !hasFeature(button.dataset.feature)) {
-          openScreen(screen);
-          renderLockedTables();
+        if (featureKey && !hasFeature(featureKey)) {
+          showLockedTooltip(getUpgradeMessage(featureKey), button);
+          setTimeout(hideLockedTooltip, 2200);
           return;
         }
 
-        openScreen(screen);
+        openScreen(button.dataset.screen);
+      });
+
+      button.addEventListener("mouseenter", function () {
+        const featureKey = button.dataset.feature;
+        if (featureKey && !hasFeature(featureKey)) {
+          showLockedTooltip(getUpgradeMessage(featureKey), button);
+        }
+      });
+
+      button.addEventListener("mouseleave", function () {
+        hideLockedTooltip();
       });
     });
 
@@ -121,10 +269,10 @@
     renderProducts();
     renderCategories();
     renderInventory();
+    renderTables();
     renderFinance();
     renderSupport();
     fillSettingsForm();
-    renderTables();
   }
 
   async function loadAllData() {
@@ -157,7 +305,7 @@
 
     state.establishment = establishmentRes.data || null;
     state.plan = planRes || null;
-    state.features = featuresRes || [];
+    state.features = normalizeFeatures(featuresRes || [], state.establishment, state.plan);
     state.orders = ordersRes || [];
     state.products = productsRes || [];
     state.categories = categoriesRes || [];
@@ -193,7 +341,7 @@
     const client = getClient();
 
     try {
-      let query = client.from(viewName).select("*").eq(field, value);
+      const query = client.from(viewName).select("*").eq(field, value);
 
       if (single) {
         const { data, error } = await query.maybeSingle();
@@ -216,9 +364,31 @@
     }
   }
 
+  function normalizeFeatures(features, establishment, plan) {
+    if (features.length) return features;
+
+    const rawPlan = String(
+      plan?.plan_name ||
+      plan?.plan_display_name ||
+      establishment?.plan ||
+      establishment?.current_plan_name ||
+      "standard"
+    ).toLowerCase();
+
+    const fallback = PLAN_FEATURES_FALLBACK[rawPlan] || PLAN_FEATURES_FALLBACK.standard;
+
+    return fallback.map(function (key) {
+      return {
+        feature_key: key,
+        enabled: true,
+        limit_value: null
+      };
+    });
+  }
+
   function computeFinance() {
     const completedOrders = state.orders.filter(function (order) {
-      return order.completed_at || order.status === "completed" || order.status === "delivered";
+      return order.completed_at || ["completed", "delivered"].includes(String(order.status || "").toLowerCase());
     });
 
     const grossRevenue = completedOrders.reduce(function (acc, order) {
@@ -226,7 +396,10 @@
     }, 0);
 
     const dookiFee = completedOrders.reduce(function (acc, order) {
-      return acc + Number(order.dooki_commission_amount || 0);
+      if (order.dooki_commission_amount != null) {
+        return acc + Number(order.dooki_commission_amount || 0);
+      }
+      return acc + (Number(order.total_amount || 0) * getCommissionPercent() / 100);
     }, 0);
 
     const totalCost = state.products.reduce(function (acc, product) {
@@ -243,10 +416,41 @@
     };
   }
 
-  function hasFeature(featureKey) {
-    return state.features.some(function (feature) {
-      return feature.feature_key === featureKey && feature.enabled;
-    });
+  function getPlanName() {
+    return String(
+      state.plan?.plan_name ||
+      state.plan?.plan_display_name ||
+      state.establishment?.plan ||
+      state.establishment?.current_plan_name ||
+      "Standard"
+    );
+  }
+
+  function getPlanLevel(planKey) {
+    if (planKey === "standard") return 1;
+    if (planKey === "premium") return 2;
+    if (planKey === "enterprise") return 3;
+    return 0;
+  }
+
+  function getCommissionPercent() {
+    const raw = state.plan?.commission_percent ?? state.establishment?.current_commission_percent;
+    if (raw != null && raw !== "") return Number(raw || 0);
+
+    const planKey = getPlanKey();
+    if (planKey === "standard") return 2;
+    if (planKey === "premium") return 1.5;
+    if (planKey === "enterprise") return 1;
+    return 0;
+  }
+
+  function getUpgradeBadgeText(featureKey) {
+    const rule = FEATURE_UPGRADE_RULES[featureKey];
+    if (!rule) return "Upgrade";
+
+    if (rule.minPlan === "premium") return "Premium";
+    if (rule.minPlan === "enterprise") return "Enterprise";
+    return "Upgrade";
   }
 
   function formatMoney(value) {
@@ -267,29 +471,47 @@
         hour: "2-digit",
         minute: "2-digit"
       });
-    } catch (error) {
+    } catch {
       return "—";
     }
   }
 
   function getPlanLabel() {
-    return state.plan?.plan_display_name || state.plan?.plan_name || state.establishment?.plan || "Sem plano";
+    return state.plan?.plan_display_name || state.plan?.plan_name || state.establishment?.plan || "Standard";
+  }
+
+  function isWatermarkEnabled() {
+    if (state.plan?.watermark_enabled != null) {
+      return state.plan.watermark_enabled !== false;
+    }
+    return getPlanKey() !== "enterprise";
   }
 
   function renderHeader() {
-    document.getElementById("sidebar-store-name").textContent = state.establishment?.name || "Estabelecimento";
+    document.getElementById("sidebar-store-name").textContent = state.establishment?.name || "Minha Loja";
     document.getElementById("sidebar-user-name").textContent = state.establishment?.name || "Responsável";
     document.getElementById("sidebar-user-email").textContent = state.user?.email || "—";
     document.getElementById("current-plan-pill").textContent = `Plano ${getPlanLabel()}`;
-    document.getElementById("watermark-pill").textContent = state.plan?.watermark_enabled === false
-      ? "Sem marca d’água"
-      : "Com marca Dooki";
+    document.getElementById("watermark-pill").textContent = isWatermarkEnabled()
+      ? "Com marca Dooki"
+      : "Sem marca d’água";
   }
 
-  function renderSidebar() {
+    function renderSidebar() {
     document.querySelectorAll("[data-feature]").forEach(function (button) {
-      const feature = button.dataset.feature;
-      button.style.display = hasFeature(feature) ? "" : "";
+      const featureKey = button.dataset.feature;
+      const locked = !hasFeature(featureKey);
+
+      button.classList.toggle("locked-nav-item", locked);
+      button.classList.toggle("is-locked", locked);
+
+      if (locked) {
+        button.setAttribute("title", getUpgradeMessage(featureKey));
+        button.setAttribute("data-upgrade-label", getUpgradeBadgeText(featureKey));
+      } else {
+        button.removeAttribute("title");
+        button.removeAttribute("data-upgrade-label");
+      }
     });
 
     populateCategorySelect();
@@ -297,9 +519,11 @@
 
   function populateCategorySelect() {
     const select = document.getElementById("product-category-select");
-    select.innerHTML = `<option value="">Sem categoria</option>` + state.categories.map(function (category) {
-      return `<option value="${category.id}">${category.name}</option>`;
-    }).join("");
+    select.innerHTML =
+      `<option value="">Sem categoria</option>` +
+      state.categories.map(function (category) {
+        return `<option value="${category.id}">${category.name}</option>`;
+      }).join("");
   }
 
   function openScreen(screen) {
@@ -315,17 +539,55 @@
     document.getElementById("screen-title").textContent = meta.title;
     document.getElementById("screen-copy").textContent = meta.copy;
 
+    // =========================
+    // Aba Central da Loja
+    // =========================
     if (screen === "dashboard") renderDashboard();
+
+    // =========================
+    // Aba de Pedidos
+    // =========================
     if (screen === "orders") renderOrders();
+
+    // =========================
+    // Aba de Cardápio / Produtos
+    // =========================
     if (screen === "products") renderProducts();
+
+    // =========================
+    // Aba de Categorias
+    // =========================
     if (screen === "categories") renderCategories();
+
+    // =========================
+    // Aba de Estoque
+    // =========================
     if (screen === "inventory") renderInventory();
+
+    // =========================
+    // Aba de Mesas
+    // =========================
     if (screen === "tables") renderTables();
+
+    // =========================
+    // Aba de Financeiro
+    // =========================
     if (screen === "finance") renderFinance();
+
+    // =========================
+    // Aba de Suporte
+    // =========================
     if (screen === "support") renderSupport();
+
+    // =========================
+    // Aba de Configurações
+    // =========================
     if (screen === "settings") fillSettingsForm();
   }
 
+  // =========================
+  // Aba Central da Loja
+  // =========================
   function renderDashboard() {
     document.getElementById("kpi-orders-completed").textContent = String(state.finance.completedOrders);
     document.getElementById("kpi-gross-revenue").textContent = formatMoney(state.finance.grossRevenue);
@@ -334,15 +596,13 @@
       state.products.filter(function (product) { return product.active !== false; }).length
     );
 
-    document.getElementById("dashboard-summary-list").innerHTML = [
-      summaryItem("Cidade", state.establishment?.city || "—"),
-      summaryItem("Pedidos cadastrados", String(state.orders.length)),
-      summaryItem("Categorias", String(state.categories.length)),
-      summaryItem("Tickets abertos", String(
-        state.tickets.filter(function (ticket) {
-          return !["fechado", "resolvido", "closed"].includes(String(ticket.status || "").toLowerCase());
-        }).length
-      ))
+    document.getElementById("quick-actions-grid").innerHTML = [
+      quickActionButton("Novo produto", "products", true),
+      quickActionButton("Nova categoria", "categories", true),
+      quickActionButton("Ver pedidos", "orders", true),
+      quickActionButton("Abrir suporte", "support", hasFeature("ticket_support")),
+      quickActionButton("Gerenciar mesas", "tables", hasFeature("table_qr_code")),
+      quickActionButton("Financeiro", "finance", true)
     ].join("");
 
     document.getElementById("dashboard-feature-list").innerHTML = state.features.length
@@ -352,7 +612,7 @@
               <div class="pro-list-main">
                 <div class="pro-list-content">
                   <strong>${humanizeFeature(feature.feature_key)}</strong>
-                  <span>Disponível no seu plano atual.</span>
+                  <span>Liberado no plano ${getPlanLabel()}.</span>
                 </div>
                 <span class="pro-status-badge success">Ativo</span>
               </div>
@@ -364,21 +624,33 @@
     document.getElementById("dashboard-recent-orders").innerHTML = state.orders.length
       ? state.orders.slice(0, 6).map(function (order) {
           return `
-            <article class="pro-list-card">
-              <div class="pro-list-main">
-                <div class="pro-list-content">
+            <article class="pro-store-row">
+              <div class="pro-store-row-left">
+                <div class="pro-avatar">#</div>
+                <div class="pro-store-row-content">
                   <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
                   <span>${order.customer_name || "Cliente"} • ${formatDate(order.created_at)}</span>
                 </div>
-                <div class="pro-action-group">
-                  <span class="pro-status-badge info">${order.status || "pendente"}</span>
-                  <span class="pro-status-badge neutral">${formatMoney(order.total_amount || 0)}</span>
-                </div>
+              </div>
+              <div class="pro-store-row-right">
+                <span class="pro-status-badge ${getOrderStatusClass(order.status)}">${order.status || "pendente"}</span>
+                <strong>${formatMoney(order.total_amount || 0)}</strong>
               </div>
             </article>
           `;
         }).join("")
       : emptyState("Nenhum pedido cadastrado ainda.");
+
+    document.getElementById("dashboard-summary-list").innerHTML = [
+      summaryItem("Cidade", state.establishment?.city || "—"),
+      summaryItem("Pedidos cadastrados", String(state.orders.length)),
+      summaryItem("Categorias", String(state.categories.length)),
+      summaryItem("Tickets abertos", String(
+        state.tickets.filter(function (ticket) {
+          return !["fechado", "resolvido", "closed"].includes(String(ticket.status || "").toLowerCase());
+        }).length
+      ))
+    ].join("");
 
     const lowStock = state.products.filter(function (product) {
       return product.track_inventory !== false &&
@@ -392,7 +664,7 @@
               <div class="pro-list-main">
                 <div class="pro-list-content">
                   <strong>${product.name || "Produto"}</strong>
-                  <span>Estoque atual: ${Number(product.stock_quantity || 0)} • mínimo: ${Number(product.stock_min_quantity || 0)}</span>
+                  <span>Atual: ${Number(product.stock_quantity || 0)} • mínimo: ${Number(product.stock_min_quantity || 0)}</span>
                 </div>
                 <span class="pro-status-badge warning">Baixo</span>
               </div>
@@ -400,45 +672,120 @@
           `;
         }).join("")
       : emptyState("Nenhum item com estoque baixo.");
+
+    document.getElementById("dashboard-plan-summary").innerHTML = [
+      summaryItem("Plano atual", getPlanLabel()),
+      summaryItem("Comissão da plataforma", `${String(getCommissionPercent()).replace(".", ",")}%`),
+      summaryItem("Marca d’água", isWatermarkEnabled() ? "Ativada" : "Desativada"),
+      summaryItem("Suporte", hasFeature("support_24h") ? "24h" : "Ticket")
+    ].join("");
   }
 
-  function renderOrders(searchTerm) {
-    const term = String(searchTerm || "").trim().toLowerCase();
+ // =========================
+// Aba de Pedidos (PRO)
+// =========================
+function renderOrders(searchTerm) {
+  const term = String(searchTerm || "").trim().toLowerCase();
 
-    const items = state.orders.filter(function (order) {
-      if (!term) return true;
+  const filteredOrders = state.orders.filter(function (order) {
+    if (!term) return true;
 
-      const haystack = [
-        order.id,
-        order.customer_name,
-        order.status,
-        order.customer_phone
-      ].join(" ").toLowerCase();
+    const haystack = [
+      order.id,
+      order.customer_name,
+      order.status,
+      order.customer_phone
+    ].join(" ").toLowerCase();
 
-      return haystack.includes(term);
-    });
+    return haystack.includes(term);
+  });
 
-    document.getElementById("orders-table").innerHTML = items.length
-      ? items.map(function (order) {
-          return `
-            <article class="pro-store-row">
-              <div class="pro-store-row-left">
-                <div class="pro-avatar">#</div>
-                <div class="pro-store-row-content">
-                  <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
-                  <span>${order.customer_name || "Cliente"} • ${formatDate(order.created_at)}</span>
-                </div>
+  // 📊 KPIs DE PEDIDOS
+  const pending = filteredOrders.filter(o => ["pending", "pendente"].includes(String(o.status).toLowerCase())).length;
+  const preparing = filteredOrders.filter(o => ["preparing", "confirmed"].includes(String(o.status).toLowerCase())).length;
+  const completed = filteredOrders.filter(o => ["completed", "delivered"].includes(String(o.status).toLowerCase())).length;
+
+  const summaryHTML = `
+    <div class="orders-summary">
+      <div class="orders-summary-card warning">
+        <strong>${pending}</strong>
+        <span>Pendentes</span>
+      </div>
+      <div class="orders-summary-card info">
+        <strong>${preparing}</strong>
+        <span>Em preparo</span>
+      </div>
+      <div class="orders-summary-card success">
+        <strong>${completed}</strong>
+        <span>Concluídos</span>
+      </div>
+    </div>
+  `;
+
+  // 📦 LISTA DE PEDIDOS
+  const listHTML = filteredOrders.length
+    ? filteredOrders.map(function (order) {
+
+        const status = String(order.status || "pendente").toLowerCase();
+
+        return `
+          <article class="order-card">
+            
+            <div class="order-left">
+              <div class="order-avatar">#</div>
+
+              <div class="order-content">
+                <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
+                <span>${order.customer_name || "Cliente"} • ${formatDate(order.created_at)}</span>
+                <span class="order-price">${formatMoney(order.total_amount || 0)}</span>
               </div>
-              <div class="pro-store-row-right">
-                <span class="pro-status-badge info">${order.status || "pendente"}</span>
-                <strong>${formatMoney(order.total_amount || 0)}</strong>
-              </div>
-            </article>
-          `;
-        }).join("")
-      : emptyState("Nenhum pedido encontrado.");
-  }
+            </div>
 
+            <div class="order-right">
+
+              <span class="order-status ${getOrderStatusClass(status)}">
+                ${status}
+              </span>
+
+              <div class="order-actions">
+
+                ${status === "pending" ? `
+                  <button class="primary-button small"
+                    onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','confirmed')">
+                    Confirmar
+                  </button>
+                ` : ""}
+
+                ${["confirmed", "preparing"].includes(status) ? `
+                  <button class="ghost-button small"
+                    onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','preparing')">
+                    Preparar
+                  </button>
+                ` : ""}
+
+                ${status !== "completed" ? `
+                  <button class="ghost-button small success"
+                    onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','completed')">
+                    Concluir
+                  </button>
+                ` : ""}
+
+              </div>
+
+            </div>
+
+          </article>
+        `;
+      }).join("")
+    : emptyState("Nenhum pedido encontrado.");
+
+  document.getElementById("orders-table").innerHTML =
+    summaryHTML + `<div class="orders-list">${listHTML}</div>`;
+}
+
+  // =========================
+  // Aba de Cardápio / Produtos
+  // =========================
   function renderProducts() {
     document.getElementById("products-table").innerHTML = state.products.length
       ? state.products.map(function (product) {
@@ -455,6 +802,7 @@
                   <span>${category?.name || "Sem categoria"} • ${product.description || "Sem descrição"}</span>
                 </div>
               </div>
+
               <div class="pro-store-row-right">
                 <span class="pro-status-badge ${product.active === false ? "neutral" : "success"}">
                   ${product.active === false ? "Inativo" : "Ativo"}
@@ -467,6 +815,9 @@
       : emptyState("Nenhum produto cadastrado.");
   }
 
+  // =========================
+  // Aba de Categorias
+  // =========================
   function renderCategories() {
     document.getElementById("categories-table").innerHTML = state.categories.length
       ? state.categories.map(function (category) {
@@ -479,6 +830,7 @@
                   <span>${category.description || "Sem descrição"}</span>
                 </div>
               </div>
+
               <div class="pro-store-row-right">
                 <span class="pro-status-badge ${category.active === false ? "neutral" : "success"}">
                   ${category.active === false ? "Inativa" : "Ativa"}
@@ -490,9 +842,20 @@
       : emptyState("Nenhuma categoria cadastrada.");
   }
 
+  // =========================
+  // Aba de Estoque
+  // =========================
   function renderInventory() {
+    if (!hasFeature("inventory_management")) {
+      document.getElementById("inventory-table").innerHTML = lockedFeatureCard("Este recurso faz parte do plano Standard e superiores.");
+      document.getElementById("inventory-movements-list").innerHTML = "";
+      return;
+    }
+
     document.getElementById("inventory-table").innerHTML = state.products.length
       ? state.products.map(function (product) {
+          const low = Number(product.stock_quantity || 0) <= Number(product.stock_min_quantity || 0);
+
           return `
             <article class="pro-store-row">
               <div class="pro-store-row-left">
@@ -502,8 +865,9 @@
                   <span>Custo: ${formatMoney(product.cost_price || 0)} • Venda: ${formatMoney(product.sale_price || 0)}</span>
                 </div>
               </div>
+
               <div class="pro-store-row-right">
-                <span class="pro-status-badge ${Number(product.stock_quantity || 0) <= Number(product.stock_min_quantity || 0) ? "warning" : "success"}">
+                <span class="pro-status-badge ${low ? "warning" : "success"}">
                   Estoque ${Number(product.stock_quantity || 0)}
                 </span>
               </div>
@@ -529,18 +893,12 @@
       : emptyState("Nenhuma movimentação de estoque encontrada.");
   }
 
-  function renderLockedTables() {
-    document.getElementById("tables-table").innerHTML = `
-      <div class="locked-feature-card">
-        <h3>Recurso indisponível no seu plano</h3>
-        <p>O módulo de mesas fica disponível a partir do plano Premium.</p>
-      </div>
-    `;
-  }
-
+  // =========================
+  // Aba de Mesas
+  // =========================
   function renderTables() {
     if (!hasFeature("table_qr_code")) {
-      renderLockedTables();
+      document.getElementById("tables-table").innerHTML = lockedFeatureCard("O módulo de mesas fica disponível a partir do plano Premium.");
       return;
     }
 
@@ -555,6 +913,7 @@
                   <span>${table.qr_code_url || table.qr_code_value || "QR code não gerado"}</span>
                 </div>
               </div>
+
               <div class="pro-store-row-right">
                 <span class="pro-status-badge ${table.active === false ? "neutral" : "success"}">
                   ${table.active === false ? "Inativa" : "Ativa"}
@@ -566,6 +925,9 @@
       : emptyState("Nenhuma mesa cadastrada para a loja.");
   }
 
+  // =========================
+  // Aba de Financeiro
+  // =========================
   function renderFinance() {
     document.getElementById("finance-revenue").textContent = formatMoney(state.finance.grossRevenue);
     document.getElementById("finance-cost").textContent = formatMoney(state.finance.totalCost);
@@ -574,9 +936,9 @@
 
     const items = [
       summaryItem("Plano atual", getPlanLabel()),
-      summaryItem("Comissão estimada Dooki", formatMoney(state.finance.dookiFee)),
-      summaryItem("Marca d’água", state.plan?.watermark_enabled === false ? "Desativada" : "Ativada"),
-      summaryItem("Suporte", state.plan?.support_level || "ticket")
+      summaryItem("Comissão Dooki", `${String(getCommissionPercent()).replace(".", ",")}%`),
+      summaryItem("Marca d’água", isWatermarkEnabled() ? "Com Dooki" : "Sem marca"),
+      summaryItem("Suporte", hasFeature("support_24h") ? "24h" : "Ticket padrão")
     ];
 
     if (hasFeature("profit_analysis")) {
@@ -587,13 +949,24 @@
       items.push(summaryItem("Divisão de conta", "Liberada"));
     }
 
+    if (hasFeature("custom_packaging")) {
+      items.push(summaryItem("Embalagens Dooki", "Incluídas"));
+    }
+
     document.getElementById("finance-summary-list").innerHTML = items.join("");
   }
 
+  // =========================
+  // Aba de Suporte
+  // =========================
   function renderSupport() {
+    if (!hasFeature("ticket_support")) {
+      document.getElementById("support-tickets-table").innerHTML = lockedFeatureCard("O suporte por ticket não está disponível para este plano.");
+      return;
+    }
+
     document.getElementById("support-tickets-table").innerHTML = state.tickets.length
       ? state.tickets.map(function (ticket) {
-          const statusClass = getStatusClass(ticket.status);
           const priorityClass = getPriorityClass(ticket.priority);
 
           return `
@@ -605,7 +978,7 @@
                 </div>
                 <div class="pro-action-group">
                   <span class="pro-priority-badge ${priorityClass}">${ticket.priority || "Baixa"}</span>
-                  <span class="pro-status-badge ${statusClass}">${ticket.status || "aberto"}</span>
+                  <span class="pro-status-badge ${getTicketStatusClass(ticket.status)}">${ticket.status || "aberto"}</span>
                 </div>
               </div>
             </article>
@@ -614,6 +987,9 @@
       : emptyState("Nenhum ticket aberto pela loja.");
   }
 
+  // =========================
+  // Aba de Configurações
+  // =========================
   function fillSettingsForm() {
     document.getElementById("settings-name").value = state.establishment?.name || "";
     document.getElementById("settings-city").value = state.establishment?.city || "";
@@ -623,12 +999,21 @@
     document.getElementById("settings-banner-url").value = state.establishment?.banner_url || "";
   }
 
+  function quickActionButton(label, screen, enabled) {
+    return `
+      <button class="quick-action-card ${enabled ? "" : "locked"}" type="button" onclick="window.EstablishmentPanel.goTo('${screen}')">
+        <strong>${label}</strong>
+        <span>${enabled ? "Abrir módulo" : "Disponível em outro plano"}</span>
+      </button>
+    `;
+  }
+
   function summaryItem(label, value) {
     return `
-      <article class="pro-summary-item">
+      <div class="pro-summary-item">
         <span>${label}</span>
         <strong>${value}</strong>
-      </article>
+      </div>
     `;
   }
 
@@ -641,24 +1026,33 @@
     `;
   }
 
+  function lockedFeatureCard(message) {
+    return `
+      <div class="locked-feature-card">
+        <h3>Recurso indisponível no seu plano</h3>
+        <p>${message}</p>
+      </div>
+    `;
+  }
+
   function humanizeFeature(key) {
     const map = {
       digital_menu: "Cardápio digital",
-      delivery_orders: "Pedidos delivery",
+      delivery_orders: "Pedidos por delivery",
       establishment_panel: "Painel do estabelecimento",
       full_dashboard: "Dashboard completo",
       inventory_management: "Gestão de estoque",
-      ticket_support: "Suporte via ticket",
+      ticket_support: "Suporte por ticket",
       menu_qr_code: "QR do cardápio",
       table_qr_code: "QR por mesa",
       table_ordering: "Pedidos na mesa",
       profit_analysis: "Análise de gastos e ganhos",
       split_bill: "Divisão de conta",
-      group_orders: "Pedidos por grupo",
+      group_orders: "Pedidos interligados por grupo",
       support_24h: "Suporte 24h",
       custom_packaging: "Embalagens personalizadas",
-      table_qr_stands: "Suportes para QR",
-      dooki_watermark: "Marca Dooki"
+      table_qr_stands: "Suportes físicos QR",
+      dooki_watermark: "Marca d’água Dooki"
     };
 
     return map[key] || key;
@@ -676,18 +1070,24 @@
     return map[type] || type;
   }
 
-  function getStatusClass(status) {
+  function getOrderStatusClass(status) {
     const value = String(status || "").toLowerCase();
+    if (["completed", "delivered"].includes(value)) return "success";
+    if (["preparing", "confirmed"].includes(value)) return "info";
+    if (["pending", "pendente"].includes(value)) return "warning";
+    return "neutral";
+  }
 
-    if (["aberto", "open", "ativo"].includes(value)) return "warning";
-    if (["resolvido", "fechado", "closed", "done"].includes(value)) return "success";
-    if (["em andamento", "andamento", "progress"].includes(value)) return "info";
+  function getTicketStatusClass(status) {
+    const value = String(status || "").toLowerCase();
+    if (["aberto", "open"].includes(value)) return "warning";
+    if (["resolvido", "fechado", "closed"].includes(value)) return "success";
+    if (["andamento", "em andamento", "progress"].includes(value)) return "info";
     return "neutral";
   }
 
   function getPriorityClass(priority) {
     const value = String(priority || "").toLowerCase();
-
     if (["crítica", "critica", "alta", "high", "critical"].includes(value)) return "danger";
     if (["média", "media", "medium"].includes(value)) return "warning";
     return "neutral";
@@ -868,4 +1268,41 @@
       alert(error.message || "Não foi possível salvar as configurações.");
     }
   }
+
+  async function updateOrderStatus(orderId, status) {
+    const client = getClient();
+    const payload = { status: status };
+
+    if (status === "completed") {
+      payload.completed_at = new Date().toISOString();
+    }
+
+    try {
+      const { error } = await client
+        .from("orders")
+        .update(payload)
+        .eq("id", orderId)
+        .eq("establishment_id", state.membership.establishment_id);
+
+      if (error) throw error;
+
+      await loadAllData();
+      renderOrders(document.getElementById("orders-search").value || "");
+      renderDashboard();
+      renderFinance();
+      alert("Status do pedido atualizado.");
+    } catch (error) {
+      console.error("Erro ao atualizar pedido:", error);
+      alert(error.message || "Não foi possível atualizar o pedido.");
+    }
+  }
+
+  function goTo(screen) {
+    openScreen(screen);
+  }
+
+  window.EstablishmentPanel = {
+    goTo,
+    updateOrderStatus
+  };
 })();

@@ -14,7 +14,11 @@
   <main class="minimal-login-wrapper">
     <section class="minimal-login-modal establishment-login-modal">
       <div class="minimal-login-header">
-        <img class="minimal-login-logo" src="../assets/images/logo-dooki.png" alt="Dooki">
+        <img
+          class="minimal-login-logo"
+          src="../_refs/assets/images/logo-dooki.png"
+          alt="Dooki"
+        >
         <span class="panel-kicker">Painel do estabelecimento</span>
       </div>
 
@@ -53,6 +57,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../shared/supabase-client.js"></script>
   <script src="./establishment-auth.js"></script>
+
   <script>
     (function () {
       const form = document.getElementById("establishment-login-form");
@@ -76,6 +81,7 @@
 
       async function tryAutoRedirect() {
         try {
+          if (!window.EstablishmentAuth) return;
           const context = await window.EstablishmentAuth.getCurrentContext();
           if (context?.user && context?.membership) {
             window.location.href = "./establishment.html";
@@ -91,6 +97,10 @@
         setLoading(true);
 
         try {
+          if (!window.EstablishmentAuth) {
+            throw new Error("Supabase não configurado.");
+          }
+
           const email = document.getElementById("email").value.trim().toLowerCase();
           const password = document.getElementById("password").value;
 

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Login Admin - Dooki</title>
+
+  <link rel="stylesheet" href="../styles/styles.css">
+</head>
+
+<body class="login-page">
+
+<div class="login-card">
+  <img src="../assets/images/logo-dooki.png" class="logo">
+
+  <h2>Login Admin</h2>
+
+  <form id="loginForm">
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Senha" required>
+    <button type="submit">Entrar</button>
+  </form>
+
+  <p id="error"></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../shared/supabase-client.js"></script>
+
+<script>
+const supabase = window.supabaseClient
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault()
+
+  const email = document.getElementById('email').value
+  const password = document.getElementById('password').value
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  })
+
+  if (error) {
+    document.getElementById('error').innerText = 'Login inválido'
+  } else {
+    window.location.href = '../admin/admin.html'
+  }
+})
+</script>
+
+</body>
+</html>

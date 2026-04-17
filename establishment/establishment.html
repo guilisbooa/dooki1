@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dooki Empresas | Painel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles/styles.css">
+  <link rel="stylesheet" href="../styles/establishment.css">
+</head>
+<body class="admin-app-body establishment-app-body">
+  <div class="admin-app establishment-app">
+    <aside class="admin-sidebar establishment-sidebar" id="establishment-sidebar">
+      <div class="sidebar-top">
+        <img class="sidebar-logo" src="../assets/images/logo-dooki.png" alt="Dooki">
+        <div class="admin-chip">Dooki Empresas</div>
+        <div>
+          <h2 id="sidebar-store-name">Minha Loja</h2>
+          <p class="sidebar-copy" id="sidebar-store-copy">
+            Operação prática para pedidos, cardápio, estoque e atendimento.
+          </p>
+        </div>
+      </div>
+
+      <nav class="admin-nav establishment-nav">
+        <button class="admin-nav-item active" data-screen="dashboard">Central da loja</button>
+        <button class="admin-nav-item" data-screen="orders">Pedidos</button>
+        <button class="admin-nav-item" data-screen="products">Cardápio</button>
+        <button class="admin-nav-item" data-screen="categories">Categorias</button>
+        <button class="admin-nav-item" data-screen="inventory" data-feature="inventory_management">Estoque</button>
+        <button class="admin-nav-item" data-screen="tables" data-feature="table_qr_code">Mesas</button>
+        <button class="admin-nav-item" data-screen="finance">Financeiro</button>
+        <button class="admin-nav-item" data-screen="support" data-feature="ticket_support">Suporte</button>
+        <button class="admin-nav-item" data-screen="settings">Configurações</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <strong id="sidebar-user-name">Responsável</strong>
+          <span id="sidebar-user-email">loja@dooki.com</span>
+        </div>
+        <button class="ghost-button sidebar-button" type="button" id="establishment-logout">Sair</button>
+      </div>
+    </aside>
+
+    <main class="admin-content establishment-content">
+      <header class="admin-topbar compact-topbar">
+        <div>
+          <button class="sidebar-toggle" type="button" id="sidebar-toggle">Menu</button>
+          <span class="panel-kicker">Painel do estabelecimento</span>
+          <h1 id="screen-title">Central da loja</h1>
+          <p class="panel-copy" id="screen-copy">
+            Tudo o que sua operação precisa no dia a dia, com foco em praticidade.
+          </p>
+        </div>
+
+        <div class="topbar-status establishment-topbar-status">
+          <span class="status-pill" id="current-plan-pill">Plano ativo</span>
+          <span class="status-pill alt" id="watermark-pill">Marca Dooki</span>
+        </div>
+      </header>
+
+      <section class="admin-screen active" data-panel="dashboard">
+        <div class="stats-grid admin-stats">
+          <article class="panel stat-card">
+            <span>Pedidos concluídos</span>
+            <strong id="kpi-orders-completed">0</strong>
+          </article>
+          <article class="panel stat-card">
+            <span>Receita</span>
+            <strong id="kpi-gross-revenue">R$ 0,00</strong>
+          </article>
+          <article class="panel stat-card">
+            <span>Comissão Dooki</span>
+            <strong id="kpi-dooki-fee">R$ 0,00</strong>
+          </article>
+          <article class="panel stat-card">
+            <span>Produtos ativos</span>
+            <strong id="kpi-products-active">0</strong>
+          </article>
+        </div>
+
+        <div class="content-grid two-large">
+          <article class="panel panel-gold">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Ações rápidas</span>
+                <h3>Operação do dia</h3>
+              </div>
+            </div>
+            <div class="quick-actions-grid" id="quick-actions-grid"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Seu plano</span>
+                <h3>Recursos liberados</h3>
+              </div>
+            </div>
+            <div class="list-stack" id="dashboard-feature-list"></div>
+          </article>
+        </div>
+
+        <div class="content-grid two-large">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Pedidos recentes</span>
+                <h3>Últimas movimentações</h3>
+              </div>
+            </div>
+            <div class="table-list" id="dashboard-recent-orders"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Resumo</span>
+                <h3>Visão prática da operação</h3>
+              </div>
+            </div>
+            <div class="summary-list" id="dashboard-summary-list"></div>
+          </article>
+        </div>
+
+        <div class="content-grid two-large">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Atenção</span>
+                <h3>Itens com estoque baixo</h3>
+              </div>
+            </div>
+            <div class="list-stack" id="dashboard-low-stock"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Plano e marca</span>
+                <h3>Configuração comercial</h3>
+              </div>
+            </div>
+            <div class="summary-list" id="dashboard-plan-summary"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="admin-screen" data-panel="orders">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <span class="panel-kicker">Operação</span>
+              <h3>Pedidos da loja</h3>
+            </div>
+          </div>
+
+          <div class="toolbar-row">
+            <input class="input" type="search" id="orders-search" placeholder="Buscar por cliente, status ou ID">
+          </div>
+
+          <div class="table-list" id="orders-table"></div>
+        </article>
+      </section>
+
+      <section class="admin-screen" data-panel="products">
+        <div class="content-grid two-large">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Cardápio</span>
+                <h3>Produtos cadastrados</h3>
+              </div>
+            </div>
+            <div class="table-list" id="products-table"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Cadastro rápido</span>
+                <h3>Novo produto</h3>
+              </div>
+            </div>
+
+            <form class="form-grid admin-form" id="product-form">
+              <label class="field">
+                <span>Nome do produto</span>
+                <input class="input" name="name" required>
+              </label>
+
+              <label class="field">
+                <span>Categoria</span>
+                <select class="input" name="category_id" id="product-category-select">
+                  <option value="">Sem categoria</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Preço de venda</span>
+                <input class="input" name="sale_price" type="number" min="0" step="0.01" required>
+              </label>
+
+              <label class="field">
+                <span>Custo</span>
+                <input class="input" name="cost_price" type="number" min="0" step="0.01">
+              </label>
+
+              <label class="field">
+                <span>Estoque atual</span>
+                <input class="input" name="stock_quantity" type="number" min="0" step="0.001">
+              </label>
+
+              <label class="field">
+                <span>Estoque mínimo</span>
+                <input class="input" name="stock_min_quantity" type="number" min="0" step="0.001">
+              </label>
+
+              <label class="field full-span">
+                <span>Descrição</span>
+                <textarea class="input" name="description" rows="4"></textarea>
+              </label>
+
+              <div class="modal-actions full-span">
+                <button class="primary-button" type="submit">Cadastrar produto</button>
+              </div>
+            </form>
+          </article>
+        </div>
+      </section>
+
+      <section class="admin-screen" data-panel="categories">
+        <div class="content-grid two-large">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Organização</span>
+                <h3>Categorias da loja</h3>
+              </div>
+            </div>
+            <div class="table-list" id="categories-table"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Nova categoria</span>
+                <h3>Organize melhor o cardápio</h3>
+              </div>
+            </div>
+
+            <form class="form-grid admin-form" id="category-form">
+              <label class="field full-span">
+                <span>Nome da categoria</span>
+                <input class="input" name="name" required>
+              </label>
+
+              <label class="field full-span">
+                <span>Descrição</span>
+                <textarea class="input" name="description" rows="4"></textarea>
+              </label>
+
+              <div class="modal-actions full-span">
+                <button class="primary-button" type="submit">Cadastrar categoria</button>
+              </div>
+            </form>
+          </article>
+        </div>
+      </section>
+
+      <section class="admin-screen" data-panel="inventory">
+        <div class="content-grid two-large">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Estoque</span>
+                <h3>Visão por produto</h3>
+              </div>
+            </div>
+            <div class="table-list" id="inventory-table"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Movimentações</span>
+                <h3>Últimos ajustes</h3>
+              </div>
+            </div>
+            <div class="list-stack" id="inventory-movements-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="admin-screen" data-panel="tables">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <span class="panel-kicker">Atendimento em mesa</span>
+              <h3>Mesas e QR codes</h3>
+            </div>
+          </div>
+
+          <div class="content-grid two-large">
+            <div>
+              <div class="table-list" id="tables-table"></div>
+            </div>
+
+            <div>
+              <form class="form-grid admin-form" id="table-form">
+                <label class="field">
+                  <span>Número da mesa</span>
+                  <input class="input" name="table_number" required>
+                </label>
+
+                <label class="field">
+                  <span>Lugares</span>
+                  <input class="input" name="seats" type="number" min="1" step="1">
+                </label>
+
+                <label class="field full-span">
+                  <span>Valor do QR</span>
+                  <input class="input" name="qr_code_value" placeholder="mesa-01">
+                </label>
+
+                <label class="field full-span">
+                  <span>URL do QR</span>
+                  <input class="input" name="qr_code_url" placeholder="https://...">
+                </label>
+
+                <div class="modal-actions full-span">
+                  <button class="primary-button" type="submit">Cadastrar mesa</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="admin-screen" data-panel="finance">
+        <div class="stats-grid admin-stats">
+          <article class="panel stat-card">
+            <span>Receita bruta</span>
+            <strong id="finance-revenue">R$ 0,00</strong>
+          </article>
+          <article class="panel stat-card">
+            <span>Custo estimado</span>
+            <strong id="finance-cost">R$ 0,00</strong>
+          </article>
+          <article class="panel stat-card">
+            <span>Lucro antes da Dooki</span>
+            <strong id="finance-profit-before">R$ 0,00</strong>
+          </article>
+          <article class="panel stat-card">
+            <span>Lucro após Dooki</span>
+            <strong id="finance-profit-after">R$ 0,00</strong>
+          </article>
+        </div>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <span class="panel-kicker">Resumo financeiro</span>
+              <h3>Consolidação da operação</h3>
+            </div>
+          </div>
+          <div class="summary-list" id="finance-summary-list"></div>
+        </article>
+      </section>
+
+      <section class="admin-screen" data-panel="support">
+        <div class="content-grid two-large">
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Suporte</span>
+                <h3>Tickets da loja</h3>
+              </div>
+            </div>
+            <div class="table-list" id="support-tickets-table"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Abrir chamado</span>
+                <h3>Novo ticket</h3>
+              </div>
+            </div>
+
+            <form class="form-grid admin-form" id="support-form">
+              <label class="field full-span">
+                <span>Assunto</span>
+                <input class="input" name="subject" required>
+              </label>
+
+              <label class="field">
+                <span>Prioridade</span>
+                <select class="input" name="priority">
+                  <option value="Baixa">Baixa</option>
+                  <option value="Média">Média</option>
+                  <option value="Alta">Alta</option>
+                  <option value="Crítica">Crítica</option>
+                </select>
+              </label>
+
+              <label class="field full-span">
+                <span>Mensagem inicial</span>
+                <textarea class="input" name="message" rows="5" required></textarea>
+              </label>
+
+              <div class="modal-actions full-span">
+                <button class="primary-button" type="submit">Abrir ticket</button>
+              </div>
+            </form>
+          </article>
+        </div>
+      </section>
+
+      <section class="admin-screen" data-panel="settings">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <span class="panel-kicker">Configurações</span>
+              <h3>Dados do estabelecimento</h3>
+            </div>
+          </div>
+
+          <form class="form-grid admin-form" id="settings-form">
+            <label class="field">
+              <span>Nome da loja</span>
+              <input class="input" name="name" id="settings-name">
+            </label>
+
+            <label class="field">
+              <span>Cidade</span>
+              <input class="input" name="city" id="settings-city">
+            </label>
+
+            <label class="field">
+              <span>Email</span>
+              <input class="input" name="email" id="settings-email">
+            </label>
+
+            <label class="field">
+              <span>WhatsApp</span>
+              <input class="input" name="whatsapp" id="settings-whatsapp">
+            </label>
+
+            <label class="field full-span">
+              <span>URL da logo</span>
+              <input class="input" name="logo_url" id="settings-logo-url">
+            </label>
+
+            <label class="field full-span">
+              <span>URL do banner</span>
+              <input class="input" name="banner_url" id="settings-banner-url">
+            </label>
+
+            <div class="modal-actions full-span">
+              <button class="primary-button" type="submit">Salvar alterações</button>
+            </div>
+          </form>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../shared/supabase-client.js"></script>
+  <script src="./establishment-auth.js"></script>
+  <script src="./establishment-app.js"></script>
+</body>
+</html>

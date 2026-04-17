@@ -2,51 +2,98 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Login Admin - Dooki</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dooki Admin | Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../styles/styles.css">
+  <link rel="stylesheet" href="../styles/admin.css">
 </head>
+<body class="admin-login-body">
+  <main class="admin-login-shell">
+    <section class="admin-login-card">
+      <div class="admin-login-brand">
+        <img src="../_refs/assets/images/logo-dooki.png" alt="Dooki" class="admin-login-logo">
+        <span class="admin-login-chip">Acesso administrativo</span>
+      </div>
 
-<body class="login-page">
+      <div class="admin-login-copy">
+        <h1>Entrar no admin</h1>
+        <p>
+          Acesse o painel central da Dooki para acompanhar estabelecimentos, planos, pagamentos e suporte.
+        </p>
+      </div>
 
-<div class="login-card">
-  <img src="../assets/images/logo-dooki.png" class="logo">
+      <form id="loginForm" class="admin-login-form">
+        <label class="field">
+          <span>Email</span>
+          <input class="input" type="email" id="email" placeholder="admin@dooki.com" required>
+        </label>
 
-  <h2>Login Admin</h2>
+        <label class="field">
+          <span>Senha</span>
+          <input class="input" type="password" id="password" placeholder="Sua senha" required>
+        </label>
 
-  <form id="loginForm">
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="password" placeholder="Senha" required>
-    <button type="submit">Entrar</button>
-  </form>
+        <p id="error" class="admin-login-error" hidden></p>
 
-  <p id="error"></p>
-</div>
+        <button type="submit" class="primary-button full-width-button" id="loginButton">
+          Entrar no painel
+        </button>
+      </form>
+    </section>
+  </main>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../shared/supabase-client.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../shared/supabase-client.js"></script>
 
-<script>
-const supabase = window.supabaseClient
+  <script>
+    const supabase = window.supabaseClient;
+    const form = document.getElementById("loginForm");
+    const errorEl = document.getElementById("error");
+    const button = document.getElementById("loginButton");
 
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault()
+    function showError(message) {
+      errorEl.hidden = false;
+      errorEl.textContent = message;
+    }
 
-  const email = document.getElementById('email').value
-  const password = document.getElementById('password').value
+    function hideError() {
+      errorEl.hidden = true;
+      errorEl.textContent = "";
+    }
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  })
+    function setLoading(isLoading) {
+      button.disabled = isLoading;
+      button.textContent = isLoading ? "Entrando..." : "Entrar no painel";
+    }
 
-  if (error) {
-    document.getElementById('error').innerText = 'Login inválido'
-  } else {
-    window.location.href = '../admin/admin.html'
-  }
-})
-</script>
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      hideError();
+      setLoading(true);
 
+      try {
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        window.location.href = "../admin/admin.html";
+      } catch (error) {
+        console.error("Erro no login admin:", error);
+        showError("Login inválido ou sem permissão de administrador.");
+        setLoading(false);
+      }
+    });
+  </script>
 </body>
 </html>

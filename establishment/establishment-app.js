@@ -433,6 +433,10 @@
     return 0;
   }
 
+   function getPlanKey() {
+    return getPlanName().toLowerCase();
+  }
+
   function getCommissionPercent() {
     const raw = state.plan?.commission_percent ?? state.establishment?.current_commission_percent;
     if (raw != null && raw !== "") return Number(raw || 0);
@@ -451,6 +455,12 @@
     if (rule.minPlan === "premium") return "Premium";
     if (rule.minPlan === "enterprise") return "Enterprise";
     return "Upgrade";
+  }
+
+  function hasFeature(featureKey) {
+    return state.features.some(function (feature) {
+      return feature.feature_key === featureKey && feature.enabled;
+    });
   }
 
   function formatMoney(value) {

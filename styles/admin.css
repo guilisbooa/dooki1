@@ -1,6 +1,6 @@
 :root {
   --admin-bg: #f7f4ed;
-  --admin-surface: rgba(255, 255, 255, 0.88);
+  --admin-surface: rgba(255, 255, 255, 0.9);
   --admin-white: #ffffff;
   --admin-border: rgba(15, 23, 42, 0.08);
   --admin-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
@@ -29,6 +29,178 @@
 * {
   box-sizing: border-box;
 }
+
+/* =========================
+   ADMIN LOGIN
+========================= */
+
+body.admin-login-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Manrope", sans-serif;
+  color: var(--admin-text);
+  background:
+    radial-gradient(circle at top left, rgba(218, 165, 32, 0.12), transparent 22%),
+    radial-gradient(circle at bottom right, rgba(15, 23, 42, 0.06), transparent 28%),
+    var(--admin-bg);
+}
+
+.admin-login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+}
+
+.admin-login-card {
+  width: min(520px, 100%);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--admin-border);
+  border-radius: 30px;
+  box-shadow: var(--admin-shadow);
+  padding: 32px;
+  display: grid;
+  gap: 22px;
+  backdrop-filter: blur(10px);
+}
+
+.admin-login-brand {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.admin-login-logo {
+  width: 120px;
+  max-width: 120px;
+  height: auto;
+}
+
+.admin-login-kicker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: var(--admin-primary-soft);
+  color: #7a5b00;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.admin-login-copy {
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
+.admin-login-copy h1 {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.admin-login-copy p {
+  margin: 0;
+  color: var(--admin-text-soft);
+  line-height: 1.7;
+}
+
+.admin-login-form {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-login-field {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-login-field span {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+
+.admin-login-input {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: #fff;
+  padding: 14px 16px;
+  outline: none;
+  font-size: 0.96rem;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-login-input:focus {
+  border-color: rgba(218, 165, 32, 0.5);
+  box-shadow: 0 0 0 4px rgba(218, 165, 32, 0.12);
+}
+
+.admin-login-error {
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #be123c;
+  font-size: 0.92rem;
+}
+
+.admin-login-submit {
+  width: 100%;
+  min-height: 50px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-dark));
+  color: #1f1f1f;
+  font-weight: 800;
+  font-family: "Manrope", sans-serif;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(218, 165, 32, 0.24);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-login-submit:hover {
+  transform: translateY(-1px);
+}
+
+.admin-login-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.admin-login-note {
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.04);
+  display: grid;
+  gap: 6px;
+  text-align: center;
+}
+
+.admin-login-note strong {
+  color: var(--admin-text);
+}
+
+.admin-login-note span {
+  color: var(--admin-text-soft);
+  line-height: 1.6;
+}
+
+.admin-login-note code {
+  background: rgba(15, 23, 42, 0.06);
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-family: inherit;
+}
+
+/* =========================
+   ADMIN APP
+========================= */
 
 body.admin-app-body {
   margin: 0;

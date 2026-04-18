@@ -1087,3 +1087,36 @@ textarea.input {
     padding: 16px;
   }
 }
+
+.pro-action-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ghost-button.small {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(27, 39, 60, 0.12);
+  background: #fff;
+  color: #1b273c;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.ghost-button.small:hover {
+  transform: translateY(-1px);
+  border-color: rgba(27, 39, 60, 0.24);
+}
+
+.ghost-button.small.danger {
+  color: #b42318;
+  border-color: rgba(180, 35, 24, 0.22);
+}
+
+.ghost-button.small.danger:hover {
+  border-color: rgba(180, 35, 24, 0.36);
+}

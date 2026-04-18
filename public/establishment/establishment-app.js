@@ -880,32 +880,54 @@
       : emptyState("Nenhum produto cadastrado.");
   }
 
-  function renderCategories() {
-    const table = document.getElementById("categories-table");
-    if (!table) return;
+ function renderCategories() {
+  const table = document.getElementById("categories-table");
+  if (!table) return;
 
-    table.innerHTML = state.categories.length
-      ? state.categories.map(function (category) {
-          return `
-            <article class="pro-store-row">
-              <div class="pro-store-row-left">
-                <div class="pro-avatar">${(category.name || "C").charAt(0).toUpperCase()}</div>
-                <div class="pro-store-row-content">
-                  <strong>${category.name || "Categoria"}</strong>
-                  <span>${category.description || "Sem descrição"}</span>
-                </div>
-              </div>
+  const categories = [...state.categories].sort(function (a, b) {
+    return String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+  });
 
-              <div class="pro-store-row-right">
-                <span class="pro-status-badge ${category.active === false ? "neutral" : "success"}">
-                  ${category.active === false ? "Inativa" : "Ativa"}
-                </span>
+  table.innerHTML = categories.length
+    ? categories.map(function (category) {
+        return `
+          <article class="pro-store-row">
+            <div class="pro-store-row-left">
+              <div class="pro-avatar">${(category.name || "C").charAt(0).toUpperCase()}</div>
+              <div class="pro-store-row-content">
+                <strong>${category.name || "Categoria"}</strong>
+                <span>${category.description || "Sem descrição"}</span>
               </div>
-            </article>
-          `;
-        }).join("")
-      : emptyState("Nenhuma categoria cadastrada.");
-  }
+            </div>
+
+            <div class="pro-store-row-right">
+              <span class="pro-status-badge ${category.active === false ? "neutral" : "success"}">
+                ${category.active === false ? "Inativa" : "Ativa"}
+              </span>
+
+              <div class="pro-action-group">
+                <button
+                  type="button"
+                  class="ghost-button small"
+                  onclick="window.EstablishmentPanel.editCategory('${category.id}')"
+                >
+                  Editar
+                </button>
+
+                <button
+                  type="button"
+                  class="ghost-button small danger"
+                  onclick="window.EstablishmentPanel.deleteCategory('${category.id}')"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("")
+    : emptyState("Nenhuma categoria cadastrada.");
+}
 
   function renderInventory() {
     const inventoryTable = document.getElementById("inventory-table");
@@ -1203,35 +1225,192 @@
     }
   }
 
-  async function handleCreateCategory(event) {
-    event.preventDefault();
+ async function handleCreateCategory(event) {
+  event.preventDefault();
 
-    const client = getClient();
-    const formData = new FormData(event.target);
+  const client = getClient();
+  const form = event.target;
+  const formData = new FormData(form);
 
-    const payload = {
-      establishment_id: state.membership.establishment_id,
-      name: String(formData.get("name") || "").trim(),
-      description: String(formData.get("description") || "").trim(),
-      active: true
-    };
+  const editingId = form.dataset.editingId || null;
 
-    try {
-      const { error } = await client.from("categories").insert([payload]);
-      if (error) throw error;
+  const payload = {
+    establishment_id: state.membership.establishment_id,
+    name: String(formData.get("name") || "").trim(),
+    description: String(formData.get("description") || "").trim(),
+    active: true
+  };
 
-      event.target.reset();
-      await loadAllData();
-      populateCategorySelect();
-      renderCategories();
-      renderProducts();
-      renderDashboard();
-      alert("Categoria cadastrada com sucesso.");
-    } catch (error) {
-      console.error("Erro ao cadastrar categoria:", error);
-      alert(error.message || "Não foi possível cadastrar a categoria.");
-    }
+  if (!payload.name) {
+    alert("Informe o nome da categoria.");
+    return;
   }
+
+  try {
+    let error = null;
+
+    if (editingId) {
+      const response = await client
+        .from("categories")
+        .update({
+          name: payload.name,
+          description: payload.description
+        })
+        .eq("id", editingId)
+        .eq("establishment_id", state.membership.establishment_id);
+
+      error = response.error || null;
+    } else {
+      const response = await client
+        .from("categories")
+        .insert([payload])
+        .select();
+
+      error = response.error || null;
+
+      if (!error && response.data?.length) {
+        state.categories = [response.data[0], ...state.categories];
+      }
+    }
+
+    if (error) {
+      if (error.message && error.message.includes("categories_establishment_id_name_key")) {
+        throw new Error("Já existe uma categoria com esse nome na sua loja.");
+      }
+      throw error;
+    }
+
+    form.reset();
+    delete form.dataset.editingId;
+    resetCategoryFormMode();
+
+    await loadAllData();
+    populateCategorySelect();
+    renderCategories();
+    renderProducts();
+    renderDashboard();
+
+    alert(editingId ? "Categoria atualizada com sucesso." : "Categoria cadastrada com sucesso.");
+  } catch (error) {
+    console.error("Erro ao salvar categoria:", error);
+    alert(error.message || "Não foi possível salvar a categoria.");
+  }
+}
+
+function resetCategoryFormMode() {
+  const form = document.getElementById("category-form");
+  if (!form) return;
+
+  delete form.dataset.editingId;
+
+  const submitButton = form.querySelector('button[type="submit"]');
+  if (submitButton) {
+    submitButton.textContent = "Cadastrar categoria";
+  }
+
+  let cancelButton = document.getElementById("category-cancel-edit");
+  if (cancelButton) {
+    cancelButton.remove();
+  }
+}
+
+function ensureCategoryCancelButton() {
+  const form = document.getElementById("category-form");
+  if (!form) return;
+
+  let cancelButton = document.getElementById("category-cancel-edit");
+  if (cancelButton) return cancelButton;
+
+  const submitButton = form.querySelector('button[type="submit"]');
+  if (!submitButton) return null;
+
+  cancelButton = document.createElement("button");
+  cancelButton.type = "button";
+  cancelButton.id = "category-cancel-edit";
+  cancelButton.className = "ghost-button";
+  cancelButton.textContent = "Cancelar edição";
+  cancelButton.style.marginTop = "12px";
+
+  cancelButton.addEventListener("click", function () {
+    form.reset();
+    resetCategoryFormMode();
+  });
+
+  submitButton.insertAdjacentElement("afterend", cancelButton);
+  return cancelButton;
+}
+
+function editCategory(categoryId) {
+  const category = state.categories.find(function (item) {
+    return item.id === categoryId;
+  });
+
+  if (!category) {
+    alert("Categoria não encontrada.");
+    return;
+  }
+
+  const form = document.getElementById("category-form");
+  if (!form) return;
+
+  const nameInput = form.querySelector('[name="name"]');
+  const descriptionInput = form.querySelector('[name="description"]');
+  const submitButton = form.querySelector('button[type="submit"]');
+
+  if (nameInput) nameInput.value = category.name || "";
+  if (descriptionInput) descriptionInput.value = category.description || "";
+
+  form.dataset.editingId = category.id;
+
+  if (submitButton) {
+    submitButton.textContent = "Salvar categoria";
+  }
+
+  ensureCategoryCancelButton();
+  form.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function deleteCategory(categoryId) {
+  const category = state.categories.find(function (item) {
+    return item.id === categoryId;
+  });
+
+  if (!category) {
+    alert("Categoria não encontrada.");
+    return;
+  }
+
+  const confirmed = window.confirm(`Deseja excluir a categoria "${category.name}"?`);
+  if (!confirmed) return;
+
+  const client = getClient();
+
+  try {
+    const { error } = await client
+      .from("categories")
+      .delete()
+      .eq("id", categoryId)
+      .eq("establishment_id", state.membership.establishment_id);
+
+    if (error) throw error;
+
+    state.categories = state.categories.filter(function (item) {
+      return item.id !== categoryId;
+    });
+
+    await loadAllData();
+    populateCategorySelect();
+    renderCategories();
+    renderProducts();
+    renderDashboard();
+    resetCategoryFormMode();
+
+    alert("Categoria excluída com sucesso.");
+  } catch (error) {
+    console.error("Erro ao excluir categoria:", error);
+    alert(error.message || "Não foi possível excluir a categoria.");
+  }
+}
 
   async function handleCreateTable(event) {
     event.preventDefault();
@@ -1378,7 +1557,9 @@
   }
 
   window.EstablishmentPanel = {
-    goTo,
-    updateOrderStatus
-  };
+  goTo,
+  updateOrderStatus,
+  editCategory,
+  deleteCategory
+};
 })();

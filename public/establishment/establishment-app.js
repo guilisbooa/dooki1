@@ -139,6 +139,49 @@
     }
   };
 
+    const FEATURE_UPGRADE_RULES = {
+    inventory_management: {
+      minPlan: "standard",
+      label: "Gestão de estoque"
+    },
+    ticket_support: {
+      minPlan: "standard",
+      label: "Suporte por ticket"
+    },
+    table_qr_code: {
+      minPlan: "premium",
+      label: "QR code por mesa"
+    },
+    table_ordering: {
+      minPlan: "premium",
+      label: "Pedidos por mesa"
+    },
+    profit_analysis: {
+      minPlan: "premium",
+      label: "Análise de gastos e ganhos"
+    },
+    split_bill: {
+      minPlan: "enterprise",
+      label: "Divisão de conta"
+    },
+    group_orders: {
+      minPlan: "enterprise",
+      label: "Pedidos interligados por grupo"
+    },
+    support_24h: {
+      minPlan: "enterprise",
+      label: "Suporte 24h"
+    },
+    custom_packaging: {
+      minPlan: "enterprise",
+      label: "Embalagens personalizadas"
+    },
+    table_qr_stands: {
+      minPlan: "enterprise",
+      label: "Suportes físicos de QR"
+    }
+  };
+
   document.addEventListener("DOMContentLoaded", async function () {
     try {
       const context = await window.EstablishmentAuth.requireAuth();
@@ -210,7 +253,54 @@
     }
   }
 
-    function bindBaseEvents() {
+    function getUpgradeMessage(featureKey) {
+    const rule = FEATURE_UPGRADE_RULES[featureKey];
+
+    if (!rule) {
+      return `Faça upgrade do plano para liberar este recurso. Seu plano atual: ${getPlanLabel()}.`;
+    }
+
+    const minPlanLabel =
+      rule.minPlan === "premium"
+        ? "Premium"
+        : rule.minPlan === "enterprise"
+          ? "Enterprise"
+          : "Standard";
+
+    return `${rule.label} disponível a partir do plano ${minPlanLabel}. Seu plano atual: ${getPlanLabel()}.`;
+  }
+
+  function ensureLockedTooltip() {
+    let tooltip = document.getElementById("locked-tooltip");
+
+    if (!tooltip) {
+      tooltip = document.createElement("div");
+      tooltip.id = "locked-tooltip";
+      tooltip.className = "locked-tooltip";
+      document.body.appendChild(tooltip);
+    }
+
+    return tooltip;
+  }
+
+  function showLockedTooltip(message, target) {
+    const tooltip = ensureLockedTooltip();
+    tooltip.textContent = message;
+
+    const rect = target.getBoundingClientRect();
+    tooltip.style.left = `${rect.right + 12}px`;
+    tooltip.style.top = `${rect.top}px`;
+    tooltip.classList.add("visible");
+  }
+
+  function hideLockedTooltip() {
+    const tooltip = document.getElementById("locked-tooltip");
+    if (tooltip) {
+      tooltip.classList.remove("visible");
+    }
+  }
+
+      function bindBaseEvents() {
     document.getElementById("establishment-logout").addEventListener("click", async function () {
       try {
         await window.EstablishmentAuth.signOut();
@@ -426,6 +516,17 @@
     );
   }
 
+  function getPlanKey() {
+    return getPlanName().toLowerCase();
+  }
+
+  function getPlanLevel(planKey) {
+    if (planKey === "standard") return 1;
+    if (planKey === "premium") return 2;
+    if (planKey === "enterprise") return 3;
+    return 0;
+  }
+
   function getPlanLevel(planKey) {
     if (planKey === "standard") return 1;
     if (planKey === "premium") return 2;
@@ -446,6 +547,21 @@
     if (planKey === "premium") return 1.5;
     if (planKey === "enterprise") return 1;
     return 0;
+  }
+
+    function hasFeature(featureKey) {
+    return state.features.some(function (feature) {
+      return feature.feature_key === featureKey && feature.enabled;
+    });
+  }
+
+  function getUpgradeBadgeText(featureKey) {
+    const rule = FEATURE_UPGRADE_RULES[featureKey];
+    if (!rule) return "Upgrade";
+
+    if (rule.minPlan === "premium") return "Premium";
+    if (rule.minPlan === "enterprise") return "Enterprise";
+    return "Upgrade";
   }
 
   function getUpgradeBadgeText(featureKey) {
@@ -507,7 +623,7 @@
       : "Sem marca d’água";
   }
 
-    function renderSidebar() {
+  function renderSidebar() {
     document.querySelectorAll("[data-feature]").forEach(function (button) {
       const featureKey = button.dataset.feature;
       const locked = !hasFeature(featureKey);
@@ -572,22 +688,46 @@
     // =========================
     // Aba de Estoque
     // =========================
-    if (screen === "inventory") renderInventory();
+       if (screen === "inventory") {
+      if (!hasFeature("inventory_management")) {
+        document.querySelector('[data-panel="inventory"]').innerHTML = lockedFeatureCard(getUpgradeMessage("inventory_management"));
+        return;
+      }
+      renderInventory();
+    }
 
     // =========================
     // Aba de Mesas
     // =========================
-    if (screen === "tables") renderTables();
+        if (screen === "tables") {
+      if (!hasFeature("table_qr_code")) {
+        document.querySelector('[data-panel="tables"]').innerHTML = lockedFeatureCard(getUpgradeMessage("table_qr_code"));
+        return;
+      }
+      renderTables();
+    }
 
     // =========================
     // Aba de Financeiro
     // =========================
-    if (screen === "finance") renderFinance();
+        if (screen === "finance") {
+      if (!hasFeature("profit_analysis") && getPlanKey() === "standard") {
+        document.querySelector('[data-panel="finance"]').innerHTML = lockedFeatureCard(getUpgradeMessage("profit_analysis"));
+        return;
+      }
+      renderFinance();
+    }
 
     // =========================
     // Aba de Suporte
     // =========================
-    if (screen === "support") renderSupport();
+        if (screen === "support") {
+      if (!hasFeature("ticket_support")) {
+        document.querySelector('[data-panel="support"]').innerHTML = lockedFeatureCard(getUpgradeMessage("ticket_support"));
+        return;
+      }
+      renderSupport();
+    }
 
     // =========================
     // Aba de Configurações

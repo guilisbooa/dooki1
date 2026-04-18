@@ -96,50 +96,7 @@
     ]
   };
 
-    const FEATURE_UPGRADE_RULES = {
-    inventory_management: {
-      minPlan: "standard",
-      label: "Gestão de estoque"
-    },
-    ticket_support: {
-      minPlan: "standard",
-      label: "Suporte por ticket"
-    },
-    table_qr_code: {
-      minPlan: "premium",
-      label: "QR code por mesa"
-    },
-    table_ordering: {
-      minPlan: "premium",
-      label: "Pedidos por mesa"
-    },
-    profit_analysis: {
-      minPlan: "premium",
-      label: "Análise de gastos e ganhos"
-    },
-    split_bill: {
-      minPlan: "enterprise",
-      label: "Divisão de conta"
-    },
-    group_orders: {
-      minPlan: "enterprise",
-      label: "Pedidos interligados por grupo"
-    },
-    support_24h: {
-      minPlan: "enterprise",
-      label: "Suporte 24h"
-    },
-    custom_packaging: {
-      minPlan: "enterprise",
-      label: "Embalagens personalizadas"
-    },
-    table_qr_stands: {
-      minPlan: "enterprise",
-      label: "Suportes físicos de QR"
-    }
-  };
-
-    const FEATURE_UPGRADE_RULES = {
+  const FEATURE_UPGRADE_RULES = {
     inventory_management: {
       minPlan: "standard",
       label: "Gestão de estoque"
@@ -192,10 +149,11 @@
 
       bindBaseEvents();
       await bootstrap();
+      openScreen("dashboard");
     } catch (error) {
       console.error("Erro ao iniciar painel do estabelecimento:", error);
       alert(error.message || "Não foi possível carregar o painel.");
-      window.location.href = "./establishment-login.html";
+      window.location.href = "/establishment/establishment-login.html";
     }
   });
 
@@ -206,7 +164,58 @@
     return window.supabaseClient;
   }
 
-    function getUpgradeMessage(featureKey) {
+  function getPlanName() {
+    return String(
+      state.plan?.plan_name ||
+      state.plan?.plan_display_name ||
+      state.establishment?.plan ||
+      state.establishment?.current_plan_name ||
+      "Standard"
+    );
+  }
+
+  function getPlanKey() {
+    return getPlanName().toLowerCase();
+  }
+
+  function getPlanLevel(planKey) {
+    if (planKey === "standard") return 1;
+    if (planKey === "premium") return 2;
+    if (planKey === "enterprise") return 3;
+    return 0;
+  }
+
+  function getPlanLabel() {
+    return state.plan?.plan_display_name || state.plan?.plan_name || state.establishment?.plan || "Standard";
+  }
+
+  function getCommissionPercent() {
+    const raw = state.plan?.commission_percent ?? state.establishment?.current_commission_percent;
+    if (raw != null && raw !== "") return Number(raw || 0);
+
+    const planKey = getPlanKey();
+    if (planKey === "standard") return 2;
+    if (planKey === "premium") return 1.5;
+    if (planKey === "enterprise") return 1;
+    return 0;
+  }
+
+  function hasFeature(featureKey) {
+    return state.features.some(function (feature) {
+      return feature.feature_key === featureKey && feature.enabled;
+    });
+  }
+
+  function getUpgradeBadgeText(featureKey) {
+    const rule = FEATURE_UPGRADE_RULES[featureKey];
+    if (!rule) return "Upgrade";
+
+    if (rule.minPlan === "premium") return "Premium";
+    if (rule.minPlan === "enterprise") return "Enterprise";
+    return "Upgrade";
+  }
+
+  function getUpgradeMessage(featureKey) {
     const rule = FEATURE_UPGRADE_RULES[featureKey];
 
     if (!rule) {
@@ -253,67 +262,56 @@
     }
   }
 
-    function getUpgradeMessage(featureKey) {
-    const rule = FEATURE_UPGRADE_RULES[featureKey];
-
-    if (!rule) {
-      return `Faça upgrade do plano para liberar este recurso. Seu plano atual: ${getPlanLabel()}.`;
-    }
-
-    const minPlanLabel =
-      rule.minPlan === "premium"
-        ? "Premium"
-        : rule.minPlan === "enterprise"
-          ? "Enterprise"
-          : "Standard";
-
-    return `${rule.label} disponível a partir do plano ${minPlanLabel}. Seu plano atual: ${getPlanLabel()}.`;
+  function formatMoney(value) {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    }).format(Number(value || 0));
   }
 
-  function ensureLockedTooltip() {
-    let tooltip = document.getElementById("locked-tooltip");
+  function formatDate(value) {
+    if (!value) return "—";
 
-    if (!tooltip) {
-      tooltip = document.createElement("div");
-      tooltip.id = "locked-tooltip";
-      tooltip.className = "locked-tooltip";
-      document.body.appendChild(tooltip);
-    }
-
-    return tooltip;
-  }
-
-  function showLockedTooltip(message, target) {
-    const tooltip = ensureLockedTooltip();
-    tooltip.textContent = message;
-
-    const rect = target.getBoundingClientRect();
-    tooltip.style.left = `${rect.right + 12}px`;
-    tooltip.style.top = `${rect.top}px`;
-    tooltip.classList.add("visible");
-  }
-
-  function hideLockedTooltip() {
-    const tooltip = document.getElementById("locked-tooltip");
-    if (tooltip) {
-      tooltip.classList.remove("visible");
+    try {
+      return new Date(value).toLocaleString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch {
+      return "—";
     }
   }
 
-      function bindBaseEvents() {
-    document.getElementById("establishment-logout").addEventListener("click", async function () {
-      try {
-        await window.EstablishmentAuth.signOut();
-      } catch (error) {
-        console.error("Erro ao sair:", error);
-      } finally {
-        window.location.href = "./establishment-login.html";
-      }
-    });
+  function isWatermarkEnabled() {
+    if (state.plan?.watermark_enabled != null) {
+      return state.plan.watermark_enabled !== false;
+    }
+    return getPlanKey() !== "enterprise";
+  }
 
-    document.getElementById("sidebar-toggle").addEventListener("click", function () {
-      document.getElementById("establishment-sidebar").classList.toggle("sidebar-open");
-    });
+  function bindBaseEvents() {
+    const logoutButton = document.getElementById("establishment-logout");
+    if (logoutButton) {
+      logoutButton.addEventListener("click", async function () {
+        try {
+          await window.EstablishmentAuth.signOut();
+        } catch (error) {
+          console.error("Erro ao sair:", error);
+        } finally {
+          window.location.href = "/establishment/establishment-login.html";
+        }
+      });
+    }
+
+    const toggleButton = document.getElementById("sidebar-toggle");
+    if (toggleButton) {
+      toggleButton.addEventListener("click", function () {
+        document.getElementById("establishment-sidebar")?.classList.toggle("sidebar-open");
+      });
+    }
 
     document.querySelectorAll("[data-screen]").forEach(function (button) {
       button.addEventListener("click", function () {
@@ -340,15 +338,27 @@
       });
     });
 
-    document.getElementById("product-form").addEventListener("submit", handleCreateProduct);
-    document.getElementById("category-form").addEventListener("submit", handleCreateCategory);
-    document.getElementById("support-form").addEventListener("submit", handleCreateTicket);
-    document.getElementById("settings-form").addEventListener("submit", handleSaveSettings);
-    document.getElementById("table-form").addEventListener("submit", handleCreateTable);
+    const productForm = document.getElementById("product-form");
+    if (productForm) productForm.addEventListener("submit", handleCreateProduct);
 
-    document.getElementById("orders-search").addEventListener("input", function () {
-      renderOrders(this.value || "");
-    });
+    const categoryForm = document.getElementById("category-form");
+    if (categoryForm) categoryForm.addEventListener("submit", handleCreateCategory);
+
+    const supportForm = document.getElementById("support-form");
+    if (supportForm) supportForm.addEventListener("submit", handleCreateTicket);
+
+    const settingsForm = document.getElementById("settings-form");
+    if (settingsForm) settingsForm.addEventListener("submit", handleSaveSettings);
+
+    const tableForm = document.getElementById("table-form");
+    if (tableForm) tableForm.addEventListener("submit", handleCreateTable);
+
+    const ordersSearch = document.getElementById("orders-search");
+    if (ordersSearch) {
+      ordersSearch.addEventListener("input", function () {
+        renderOrders(this.value || "");
+      });
+    }
   }
 
   async function bootstrap() {
@@ -506,121 +516,33 @@
     };
   }
 
-  function getPlanName() {
-    return String(
-      state.plan?.plan_name ||
-      state.plan?.plan_display_name ||
-      state.establishment?.plan ||
-      state.establishment?.current_plan_name ||
-      "Standard"
-    );
-  }
-
-  function getPlanKey() {
-    return getPlanName().toLowerCase();
-  }
-
-  function getPlanLevel(planKey) {
-    if (planKey === "standard") return 1;
-    if (planKey === "premium") return 2;
-    if (planKey === "enterprise") return 3;
-    return 0;
-  }
-
-  function getPlanLevel(planKey) {
-    if (planKey === "standard") return 1;
-    if (planKey === "premium") return 2;
-    if (planKey === "enterprise") return 3;
-    return 0;
-  }
-
-   function getPlanKey() {
-    return getPlanName().toLowerCase();
-  }
-
-  function getCommissionPercent() {
-    const raw = state.plan?.commission_percent ?? state.establishment?.current_commission_percent;
-    if (raw != null && raw !== "") return Number(raw || 0);
-
-    const planKey = getPlanKey();
-    if (planKey === "standard") return 2;
-    if (planKey === "premium") return 1.5;
-    if (planKey === "enterprise") return 1;
-    return 0;
-  }
-
-    function hasFeature(featureKey) {
-    return state.features.some(function (feature) {
-      return feature.feature_key === featureKey && feature.enabled;
-    });
-  }
-
-  function getUpgradeBadgeText(featureKey) {
-    const rule = FEATURE_UPGRADE_RULES[featureKey];
-    if (!rule) return "Upgrade";
-
-    if (rule.minPlan === "premium") return "Premium";
-    if (rule.minPlan === "enterprise") return "Enterprise";
-    return "Upgrade";
-  }
-
-  function getUpgradeBadgeText(featureKey) {
-    const rule = FEATURE_UPGRADE_RULES[featureKey];
-    if (!rule) return "Upgrade";
-
-    if (rule.minPlan === "premium") return "Premium";
-    if (rule.minPlan === "enterprise") return "Enterprise";
-    return "Upgrade";
-  }
-
-  function hasFeature(featureKey) {
-    return state.features.some(function (feature) {
-      return feature.feature_key === featureKey && feature.enabled;
-    });
-  }
-
-  function formatMoney(value) {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    }).format(Number(value || 0));
-  }
-
-  function formatDate(value) {
-    if (!value) return "—";
-
-    try {
-      return new Date(value).toLocaleString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    } catch {
-      return "—";
-    }
-  }
-
-  function getPlanLabel() {
-    return state.plan?.plan_display_name || state.plan?.plan_name || state.establishment?.plan || "Standard";
-  }
-
-  function isWatermarkEnabled() {
-    if (state.plan?.watermark_enabled != null) {
-      return state.plan.watermark_enabled !== false;
-    }
-    return getPlanKey() !== "enterprise";
-  }
-
   function renderHeader() {
-    document.getElementById("sidebar-store-name").textContent = state.establishment?.name || "Minha Loja";
-    document.getElementById("sidebar-user-name").textContent = state.establishment?.name || "Responsável";
-    document.getElementById("sidebar-user-email").textContent = state.user?.email || "—";
-    document.getElementById("current-plan-pill").textContent = `Plano ${getPlanLabel()}`;
-    document.getElementById("watermark-pill").textContent = isWatermarkEnabled()
-      ? "Com marca Dooki"
-      : "Sem marca d’água";
+    const storeName = state.establishment?.name || "Minha Loja";
+    const userEmail = state.user?.email || "—";
+
+    const sidebarStoreName = document.getElementById("sidebar-store-name");
+    if (sidebarStoreName) sidebarStoreName.textContent = storeName;
+
+    const sidebarUserName = document.getElementById("sidebar-user-name");
+    if (sidebarUserName) sidebarUserName.textContent = storeName;
+
+    const sidebarUserEmail = document.getElementById("sidebar-user-email");
+    if (sidebarUserEmail) sidebarUserEmail.textContent = userEmail;
+
+    const planPill = document.getElementById("current-plan-pill");
+    if (planPill) planPill.textContent = `Plano ${getPlanLabel()}`;
+
+    const watermarkPill = document.getElementById("watermark-pill");
+    if (watermarkPill) {
+      watermarkPill.textContent = isWatermarkEnabled()
+        ? "Com marca Dooki"
+        : "Sem marca d’água";
+    }
+
+    document.querySelectorAll('[data-establishment-logo]').forEach(function (img) {
+      img.src = "/assets/logo-dooki.png";
+      img.alt = "Dooki";
+    });
   }
 
   function renderSidebar() {
@@ -645,6 +567,8 @@
 
   function populateCategorySelect() {
     const select = document.getElementById("product-category-select");
+    if (!select) return;
+
     select.innerHTML =
       `<option value="">Sem categoria</option>` +
       state.categories.map(function (category) {
@@ -662,282 +586,273 @@
     });
 
     const meta = screenMeta[screen] || screenMeta.dashboard;
-    document.getElementById("screen-title").textContent = meta.title;
-    document.getElementById("screen-copy").textContent = meta.copy;
+    const screenTitle = document.getElementById("screen-title");
+    const screenCopy = document.getElementById("screen-copy");
 
-    // =========================
-    // Aba Central da Loja
-    // =========================
+    if (screenTitle) screenTitle.textContent = meta.title;
+    if (screenCopy) screenCopy.textContent = meta.copy;
+
     if (screen === "dashboard") renderDashboard();
-
-    // =========================
-    // Aba de Pedidos
-    // =========================
     if (screen === "orders") renderOrders();
-
-    // =========================
-    // Aba de Cardápio / Produtos
-    // =========================
     if (screen === "products") renderProducts();
-
-    // =========================
-    // Aba de Categorias
-    // =========================
     if (screen === "categories") renderCategories();
 
-    // =========================
-    // Aba de Estoque
-    // =========================
-       if (screen === "inventory") {
+    if (screen === "inventory") {
+      const panel = document.querySelector('[data-panel="inventory"]');
       if (!hasFeature("inventory_management")) {
-        document.querySelector('[data-panel="inventory"]').innerHTML = lockedFeatureCard(getUpgradeMessage("inventory_management"));
+        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("inventory_management"));
         return;
       }
       renderInventory();
     }
 
-    // =========================
-    // Aba de Mesas
-    // =========================
-        if (screen === "tables") {
+    if (screen === "tables") {
+      const panel = document.querySelector('[data-panel="tables"]');
       if (!hasFeature("table_qr_code")) {
-        document.querySelector('[data-panel="tables"]').innerHTML = lockedFeatureCard(getUpgradeMessage("table_qr_code"));
+        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("table_qr_code"));
         return;
       }
       renderTables();
     }
 
-    // =========================
-    // Aba de Financeiro
-    // =========================
-        if (screen === "finance") {
+    if (screen === "finance") {
+      const panel = document.querySelector('[data-panel="finance"]');
       if (!hasFeature("profit_analysis") && getPlanKey() === "standard") {
-        document.querySelector('[data-panel="finance"]').innerHTML = lockedFeatureCard(getUpgradeMessage("profit_analysis"));
+        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("profit_analysis"));
         return;
       }
       renderFinance();
     }
 
-    // =========================
-    // Aba de Suporte
-    // =========================
-        if (screen === "support") {
+    if (screen === "support") {
+      const panel = document.querySelector('[data-panel="support"]');
       if (!hasFeature("ticket_support")) {
-        document.querySelector('[data-panel="support"]').innerHTML = lockedFeatureCard(getUpgradeMessage("ticket_support"));
+        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("ticket_support"));
         return;
       }
       renderSupport();
     }
 
-    // =========================
-    // Aba de Configurações
-    // =========================
     if (screen === "settings") fillSettingsForm();
   }
 
-  // =========================
-  // Aba Central da Loja
-  // =========================
   function renderDashboard() {
-    document.getElementById("kpi-orders-completed").textContent = String(state.finance.completedOrders);
-    document.getElementById("kpi-gross-revenue").textContent = formatMoney(state.finance.grossRevenue);
-    document.getElementById("kpi-dooki-fee").textContent = formatMoney(state.finance.dookiFee);
-    document.getElementById("kpi-products-active").textContent = String(
-      state.products.filter(function (product) { return product.active !== false; }).length
-    );
+    const completedOrdersEl = document.getElementById("kpi-orders-completed");
+    if (completedOrdersEl) completedOrdersEl.textContent = String(state.finance.completedOrders);
 
-    document.getElementById("quick-actions-grid").innerHTML = [
-      quickActionButton("Novo produto", "products", true),
-      quickActionButton("Nova categoria", "categories", true),
-      quickActionButton("Ver pedidos", "orders", true),
-      quickActionButton("Abrir suporte", "support", hasFeature("ticket_support")),
-      quickActionButton("Gerenciar mesas", "tables", hasFeature("table_qr_code")),
-      quickActionButton("Financeiro", "finance", true)
-    ].join("");
+    const grossRevenueEl = document.getElementById("kpi-gross-revenue");
+    if (grossRevenueEl) grossRevenueEl.textContent = formatMoney(state.finance.grossRevenue);
 
-    document.getElementById("dashboard-feature-list").innerHTML = state.features.length
-      ? state.features.filter(function (feature) { return feature.enabled; }).map(function (feature) {
-          return `
-            <article class="pro-list-card">
-              <div class="pro-list-main">
-                <div class="pro-list-content">
-                  <strong>${humanizeFeature(feature.feature_key)}</strong>
-                  <span>Liberado no plano ${getPlanLabel()}.</span>
+    const dookiFeeEl = document.getElementById("kpi-dooki-fee");
+    if (dookiFeeEl) dookiFeeEl.textContent = formatMoney(state.finance.dookiFee);
+
+    const productsActiveEl = document.getElementById("kpi-products-active");
+    if (productsActiveEl) {
+      productsActiveEl.textContent = String(
+        state.products.filter(function (product) { return product.active !== false; }).length
+      );
+    }
+
+    const quickActionsGrid = document.getElementById("quick-actions-grid");
+    if (quickActionsGrid) {
+      quickActionsGrid.innerHTML = [
+        quickActionButton("Novo produto", "products", true),
+        quickActionButton("Nova categoria", "categories", true),
+        quickActionButton("Ver pedidos", "orders", true),
+        quickActionButton("Abrir suporte", "support", hasFeature("ticket_support")),
+        quickActionButton("Gerenciar mesas", "tables", hasFeature("table_qr_code")),
+        quickActionButton("Financeiro", "finance", true)
+      ].join("");
+    }
+
+    const featureList = document.getElementById("dashboard-feature-list");
+    if (featureList) {
+      featureList.innerHTML = state.features.length
+        ? state.features.filter(function (feature) { return feature.enabled; }).map(function (feature) {
+            return `
+              <article class="pro-list-card">
+                <div class="pro-list-main">
+                  <div class="pro-list-content">
+                    <strong>${humanizeFeature(feature.feature_key)}</strong>
+                    <span>Liberado no plano ${getPlanLabel()}.</span>
+                  </div>
+                  <span class="pro-status-badge success">Ativo</span>
                 </div>
-                <span class="pro-status-badge success">Ativo</span>
-              </div>
-            </article>
-          `;
-        }).join("")
-      : emptyState("Nenhum recurso ativo encontrado.");
+              </article>
+            `;
+          }).join("")
+        : emptyState("Nenhum recurso ativo encontrado.");
+    }
 
-    document.getElementById("dashboard-recent-orders").innerHTML = state.orders.length
-      ? state.orders.slice(0, 6).map(function (order) {
-          return `
-            <article class="pro-store-row">
-              <div class="pro-store-row-left">
-                <div class="pro-avatar">#</div>
-                <div class="pro-store-row-content">
-                  <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
-                  <span>${order.customer_name || "Cliente"} • ${formatDate(order.created_at)}</span>
+    const recentOrders = document.getElementById("dashboard-recent-orders");
+    if (recentOrders) {
+      recentOrders.innerHTML = state.orders.length
+        ? state.orders.slice(0, 6).map(function (order) {
+            return `
+              <article class="pro-store-row">
+                <div class="pro-store-row-left">
+                  <div class="pro-avatar">#</div>
+                  <div class="pro-store-row-content">
+                    <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
+                    <span>${order.customer_name || "Cliente"} • ${formatDate(order.created_at)}</span>
+                  </div>
                 </div>
-              </div>
-              <div class="pro-store-row-right">
-                <span class="pro-status-badge ${getOrderStatusClass(order.status)}">${order.status || "pendente"}</span>
-                <strong>${formatMoney(order.total_amount || 0)}</strong>
-              </div>
-            </article>
-          `;
-        }).join("")
-      : emptyState("Nenhum pedido cadastrado ainda.");
+                <div class="pro-store-row-right">
+                  <span class="pro-status-badge ${getOrderStatusClass(order.status)}">${order.status || "pendente"}</span>
+                  <strong>${formatMoney(order.total_amount || 0)}</strong>
+                </div>
+              </article>
+            `;
+          }).join("")
+        : emptyState("Nenhum pedido cadastrado ainda.");
+    }
 
-    document.getElementById("dashboard-summary-list").innerHTML = [
-      summaryItem("Cidade", state.establishment?.city || "—"),
-      summaryItem("Pedidos cadastrados", String(state.orders.length)),
-      summaryItem("Categorias", String(state.categories.length)),
-      summaryItem("Tickets abertos", String(
-        state.tickets.filter(function (ticket) {
-          return !["fechado", "resolvido", "closed"].includes(String(ticket.status || "").toLowerCase());
-        }).length
-      ))
-    ].join("");
+    const summaryList = document.getElementById("dashboard-summary-list");
+    if (summaryList) {
+      summaryList.innerHTML = [
+        summaryItem("Cidade", state.establishment?.city || "—"),
+        summaryItem("Pedidos cadastrados", String(state.orders.length)),
+        summaryItem("Categorias", String(state.categories.length)),
+        summaryItem("Tickets abertos", String(
+          state.tickets.filter(function (ticket) {
+            return !["fechado", "resolvido", "closed"].includes(String(ticket.status || "").toLowerCase());
+          }).length
+        ))
+      ].join("");
+    }
 
     const lowStock = state.products.filter(function (product) {
       return product.track_inventory !== false &&
         Number(product.stock_quantity || 0) <= Number(product.stock_min_quantity || 0);
     });
 
-    document.getElementById("dashboard-low-stock").innerHTML = lowStock.length
-      ? lowStock.slice(0, 6).map(function (product) {
-          return `
-            <article class="pro-list-card">
-              <div class="pro-list-main">
-                <div class="pro-list-content">
-                  <strong>${product.name || "Produto"}</strong>
-                  <span>Atual: ${Number(product.stock_quantity || 0)} • mínimo: ${Number(product.stock_min_quantity || 0)}</span>
+    const lowStockContainer = document.getElementById("dashboard-low-stock");
+    if (lowStockContainer) {
+      lowStockContainer.innerHTML = lowStock.length
+        ? lowStock.slice(0, 6).map(function (product) {
+            return `
+              <article class="pro-list-card">
+                <div class="pro-list-main">
+                  <div class="pro-list-content">
+                    <strong>${product.name || "Produto"}</strong>
+                    <span>Atual: ${Number(product.stock_quantity || 0)} • mínimo: ${Number(product.stock_min_quantity || 0)}</span>
+                  </div>
+                  <span class="pro-status-badge warning">Baixo</span>
                 </div>
-                <span class="pro-status-badge warning">Baixo</span>
+              </article>
+            `;
+          }).join("")
+        : emptyState("Nenhum item com estoque baixo.");
+    }
+
+    const planSummary = document.getElementById("dashboard-plan-summary");
+    if (planSummary) {
+      planSummary.innerHTML = [
+        summaryItem("Plano atual", getPlanLabel()),
+        summaryItem("Comissão da plataforma", `${String(getCommissionPercent()).replace(".", ",")}%`),
+        summaryItem("Marca d’água", isWatermarkEnabled() ? "Ativada" : "Desativada"),
+        summaryItem("Suporte", hasFeature("support_24h") ? "24h" : "Ticket")
+      ].join("");
+    }
+  }
+
+  function renderOrders(searchTerm) {
+    const table = document.getElementById("orders-table");
+    if (!table) return;
+
+    const term = String(searchTerm || "").trim().toLowerCase();
+
+    const filteredOrders = state.orders.filter(function (order) {
+      if (!term) return true;
+
+      const haystack = [
+        order.id,
+        order.customer_name,
+        order.status,
+        order.customer_phone
+      ].join(" ").toLowerCase();
+
+      return haystack.includes(term);
+    });
+
+    const pending = filteredOrders.filter(o => ["pending", "pendente"].includes(String(o.status).toLowerCase())).length;
+    const preparing = filteredOrders.filter(o => ["preparing", "confirmed"].includes(String(o.status).toLowerCase())).length;
+    const completed = filteredOrders.filter(o => ["completed", "delivered"].includes(String(o.status).toLowerCase())).length;
+
+    const summaryHTML = `
+      <div class="orders-summary">
+        <div class="orders-summary-card warning">
+          <strong>${pending}</strong>
+          <span>Pendentes</span>
+        </div>
+        <div class="orders-summary-card info">
+          <strong>${preparing}</strong>
+          <span>Em preparo</span>
+        </div>
+        <div class="orders-summary-card success">
+          <strong>${completed}</strong>
+          <span>Concluídos</span>
+        </div>
+      </div>
+    `;
+
+    const listHTML = filteredOrders.length
+      ? filteredOrders.map(function (order) {
+          const status = String(order.status || "pendente").toLowerCase();
+
+          return `
+            <article class="order-card">
+              <div class="order-left">
+                <div class="order-avatar">#</div>
+
+                <div class="order-content">
+                  <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
+                  <span>${order.customer_name || "Cliente"} • ${formatDate(order.created_at)}</span>
+                  <span class="order-price">${formatMoney(order.total_amount || 0)}</span>
+                </div>
+              </div>
+
+              <div class="order-right">
+                <span class="order-status ${getOrderStatusClass(status)}">
+                  ${status}
+                </span>
+
+                <div class="order-actions">
+                  ${status === "pending" ? `
+                    <button class="primary-button small"
+                      onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','confirmed')">
+                      Confirmar
+                    </button>
+                  ` : ""}
+
+                  ${["confirmed", "preparing"].includes(status) ? `
+                    <button class="ghost-button small"
+                      onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','preparing')">
+                      Preparar
+                    </button>
+                  ` : ""}
+
+                  ${status !== "completed" ? `
+                    <button class="ghost-button small success"
+                      onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','completed')">
+                      Concluir
+                    </button>
+                  ` : ""}
+                </div>
               </div>
             </article>
           `;
         }).join("")
-      : emptyState("Nenhum item com estoque baixo.");
+      : emptyState("Nenhum pedido encontrado.");
 
-    document.getElementById("dashboard-plan-summary").innerHTML = [
-      summaryItem("Plano atual", getPlanLabel()),
-      summaryItem("Comissão da plataforma", `${String(getCommissionPercent()).replace(".", ",")}%`),
-      summaryItem("Marca d’água", isWatermarkEnabled() ? "Ativada" : "Desativada"),
-      summaryItem("Suporte", hasFeature("support_24h") ? "24h" : "Ticket")
-    ].join("");
+    table.innerHTML = summaryHTML + `<div class="orders-list">${listHTML}</div>`;
   }
 
- // =========================
-// Aba de Pedidos (PRO)
-// =========================
-function renderOrders(searchTerm) {
-  const term = String(searchTerm || "").trim().toLowerCase();
-
-  const filteredOrders = state.orders.filter(function (order) {
-    if (!term) return true;
-
-    const haystack = [
-      order.id,
-      order.customer_name,
-      order.status,
-      order.customer_phone
-    ].join(" ").toLowerCase();
-
-    return haystack.includes(term);
-  });
-
-  // 📊 KPIs DE PEDIDOS
-  const pending = filteredOrders.filter(o => ["pending", "pendente"].includes(String(o.status).toLowerCase())).length;
-  const preparing = filteredOrders.filter(o => ["preparing", "confirmed"].includes(String(o.status).toLowerCase())).length;
-  const completed = filteredOrders.filter(o => ["completed", "delivered"].includes(String(o.status).toLowerCase())).length;
-
-  const summaryHTML = `
-    <div class="orders-summary">
-      <div class="orders-summary-card warning">
-        <strong>${pending}</strong>
-        <span>Pendentes</span>
-      </div>
-      <div class="orders-summary-card info">
-        <strong>${preparing}</strong>
-        <span>Em preparo</span>
-      </div>
-      <div class="orders-summary-card success">
-        <strong>${completed}</strong>
-        <span>Concluídos</span>
-      </div>
-    </div>
-  `;
-
-  // 📦 LISTA DE PEDIDOS
-  const listHTML = filteredOrders.length
-    ? filteredOrders.map(function (order) {
-
-        const status = String(order.status || "pendente").toLowerCase();
-
-        return `
-          <article class="order-card">
-            
-            <div class="order-left">
-              <div class="order-avatar">#</div>
-
-              <div class="order-content">
-                <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
-                <span>${order.customer_name || "Cliente"} • ${formatDate(order.created_at)}</span>
-                <span class="order-price">${formatMoney(order.total_amount || 0)}</span>
-              </div>
-            </div>
-
-            <div class="order-right">
-
-              <span class="order-status ${getOrderStatusClass(status)}">
-                ${status}
-              </span>
-
-              <div class="order-actions">
-
-                ${status === "pending" ? `
-                  <button class="primary-button small"
-                    onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','confirmed')">
-                    Confirmar
-                  </button>
-                ` : ""}
-
-                ${["confirmed", "preparing"].includes(status) ? `
-                  <button class="ghost-button small"
-                    onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','preparing')">
-                    Preparar
-                  </button>
-                ` : ""}
-
-                ${status !== "completed" ? `
-                  <button class="ghost-button small success"
-                    onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','completed')">
-                    Concluir
-                  </button>
-                ` : ""}
-
-              </div>
-
-            </div>
-
-          </article>
-        `;
-      }).join("")
-    : emptyState("Nenhum pedido encontrado.");
-
-  document.getElementById("orders-table").innerHTML =
-    summaryHTML + `<div class="orders-list">${listHTML}</div>`;
-}
-
-  // =========================
-  // Aba de Cardápio / Produtos
-  // =========================
   function renderProducts() {
-    document.getElementById("products-table").innerHTML = state.products.length
+    const table = document.getElementById("products-table");
+    if (!table) return;
+
+    table.innerHTML = state.products.length
       ? state.products.map(function (product) {
           const category = state.categories.find(function (item) {
             return item.id === product.category_id;
@@ -965,11 +880,11 @@ function renderOrders(searchTerm) {
       : emptyState("Nenhum produto cadastrado.");
   }
 
-  // =========================
-  // Aba de Categorias
-  // =========================
   function renderCategories() {
-    document.getElementById("categories-table").innerHTML = state.categories.length
+    const table = document.getElementById("categories-table");
+    if (!table) return;
+
+    table.innerHTML = state.categories.length
       ? state.categories.map(function (category) {
           return `
             <article class="pro-store-row">
@@ -992,17 +907,18 @@ function renderOrders(searchTerm) {
       : emptyState("Nenhuma categoria cadastrada.");
   }
 
-  // =========================
-  // Aba de Estoque
-  // =========================
   function renderInventory() {
+    const inventoryTable = document.getElementById("inventory-table");
+    const movementsList = document.getElementById("inventory-movements-list");
+    if (!inventoryTable || !movementsList) return;
+
     if (!hasFeature("inventory_management")) {
-      document.getElementById("inventory-table").innerHTML = lockedFeatureCard("Este recurso faz parte do plano Standard e superiores.");
-      document.getElementById("inventory-movements-list").innerHTML = "";
+      inventoryTable.innerHTML = lockedFeatureCard("Este recurso faz parte do plano Standard e superiores.");
+      movementsList.innerHTML = "";
       return;
     }
 
-    document.getElementById("inventory-table").innerHTML = state.products.length
+    inventoryTable.innerHTML = state.products.length
       ? state.products.map(function (product) {
           const low = Number(product.stock_quantity || 0) <= Number(product.stock_min_quantity || 0);
 
@@ -1026,7 +942,7 @@ function renderOrders(searchTerm) {
         }).join("")
       : emptyState("Sem produtos para controle de estoque.");
 
-    document.getElementById("inventory-movements-list").innerHTML = state.inventoryMovements.length
+    movementsList.innerHTML = state.inventoryMovements.length
       ? state.inventoryMovements.slice(0, 8).map(function (movement) {
           return `
             <article class="pro-list-card">
@@ -1043,16 +959,16 @@ function renderOrders(searchTerm) {
       : emptyState("Nenhuma movimentação de estoque encontrada.");
   }
 
-  // =========================
-  // Aba de Mesas
-  // =========================
   function renderTables() {
+    const tablesTable = document.getElementById("tables-table");
+    if (!tablesTable) return;
+
     if (!hasFeature("table_qr_code")) {
-      document.getElementById("tables-table").innerHTML = lockedFeatureCard("O módulo de mesas fica disponível a partir do plano Premium.");
+      tablesTable.innerHTML = lockedFeatureCard("O módulo de mesas fica disponível a partir do plano Premium.");
       return;
     }
 
-    document.getElementById("tables-table").innerHTML = state.tables.length
+    tablesTable.innerHTML = state.tables.length
       ? state.tables.map(function (table) {
           return `
             <article class="pro-store-row">
@@ -1075,47 +991,52 @@ function renderOrders(searchTerm) {
       : emptyState("Nenhuma mesa cadastrada para a loja.");
   }
 
-  // =========================
-  // Aba de Financeiro
-  // =========================
   function renderFinance() {
-    document.getElementById("finance-revenue").textContent = formatMoney(state.finance.grossRevenue);
-    document.getElementById("finance-cost").textContent = formatMoney(state.finance.totalCost);
-    document.getElementById("finance-profit-before").textContent = formatMoney(state.finance.profitBefore);
-    document.getElementById("finance-profit-after").textContent = formatMoney(state.finance.profitAfter);
+    const revenue = document.getElementById("finance-revenue");
+    const cost = document.getElementById("finance-cost");
+    const profitBefore = document.getElementById("finance-profit-before");
+    const profitAfter = document.getElementById("finance-profit-after");
+    const summary = document.getElementById("finance-summary-list");
 
-    const items = [
-      summaryItem("Plano atual", getPlanLabel()),
-      summaryItem("Comissão Dooki", `${String(getCommissionPercent()).replace(".", ",")}%`),
-      summaryItem("Marca d’água", isWatermarkEnabled() ? "Com Dooki" : "Sem marca"),
-      summaryItem("Suporte", hasFeature("support_24h") ? "24h" : "Ticket padrão")
-    ];
+    if (revenue) revenue.textContent = formatMoney(state.finance.grossRevenue);
+    if (cost) cost.textContent = formatMoney(state.finance.totalCost);
+    if (profitBefore) profitBefore.textContent = formatMoney(state.finance.profitBefore);
+    if (profitAfter) profitAfter.textContent = formatMoney(state.finance.profitAfter);
 
-    if (hasFeature("profit_analysis")) {
-      items.push(summaryItem("Análise de gastos/ganhos", "Liberada"));
+    if (summary) {
+      const items = [
+        summaryItem("Plano atual", getPlanLabel()),
+        summaryItem("Comissão Dooki", `${String(getCommissionPercent()).replace(".", ",")}%`),
+        summaryItem("Marca d’água", isWatermarkEnabled() ? "Com Dooki" : "Sem marca"),
+        summaryItem("Suporte", hasFeature("support_24h") ? "24h" : "Ticket padrão")
+      ];
+
+      if (hasFeature("profit_analysis")) {
+        items.push(summaryItem("Análise de gastos/ganhos", "Liberada"));
+      }
+
+      if (hasFeature("split_bill")) {
+        items.push(summaryItem("Divisão de conta", "Liberada"));
+      }
+
+      if (hasFeature("custom_packaging")) {
+        items.push(summaryItem("Embalagens Dooki", "Incluídas"));
+      }
+
+      summary.innerHTML = items.join("");
     }
-
-    if (hasFeature("split_bill")) {
-      items.push(summaryItem("Divisão de conta", "Liberada"));
-    }
-
-    if (hasFeature("custom_packaging")) {
-      items.push(summaryItem("Embalagens Dooki", "Incluídas"));
-    }
-
-    document.getElementById("finance-summary-list").innerHTML = items.join("");
   }
 
-  // =========================
-  // Aba de Suporte
-  // =========================
   function renderSupport() {
+    const table = document.getElementById("support-tickets-table");
+    if (!table) return;
+
     if (!hasFeature("ticket_support")) {
-      document.getElementById("support-tickets-table").innerHTML = lockedFeatureCard("O suporte por ticket não está disponível para este plano.");
+      table.innerHTML = lockedFeatureCard("O suporte por ticket não está disponível para este plano.");
       return;
     }
 
-    document.getElementById("support-tickets-table").innerHTML = state.tickets.length
+    table.innerHTML = state.tickets.length
       ? state.tickets.map(function (ticket) {
           const priorityClass = getPriorityClass(ticket.priority);
 
@@ -1137,16 +1058,20 @@ function renderOrders(searchTerm) {
       : emptyState("Nenhum ticket aberto pela loja.");
   }
 
-  // =========================
-  // Aba de Configurações
-  // =========================
   function fillSettingsForm() {
-    document.getElementById("settings-name").value = state.establishment?.name || "";
-    document.getElementById("settings-city").value = state.establishment?.city || "";
-    document.getElementById("settings-email").value = state.establishment?.email || "";
-    document.getElementById("settings-whatsapp").value = state.establishment?.whatsapp || "";
-    document.getElementById("settings-logo-url").value = state.establishment?.logo_url || "";
-    document.getElementById("settings-banner-url").value = state.establishment?.banner_url || "";
+    const settingsName = document.getElementById("settings-name");
+    const settingsCity = document.getElementById("settings-city");
+    const settingsEmail = document.getElementById("settings-email");
+    const settingsWhatsapp = document.getElementById("settings-whatsapp");
+    const settingsLogoUrl = document.getElementById("settings-logo-url");
+    const settingsBannerUrl = document.getElementById("settings-banner-url");
+
+    if (settingsName) settingsName.value = state.establishment?.name || "";
+    if (settingsCity) settingsCity.value = state.establishment?.city || "";
+    if (settingsEmail) settingsEmail.value = state.establishment?.email || "";
+    if (settingsWhatsapp) settingsWhatsapp.value = state.establishment?.whatsapp || "";
+    if (settingsLogoUrl) settingsLogoUrl.value = state.establishment?.logo_url || "";
+    if (settingsBannerUrl) settingsBannerUrl.value = state.establishment?.banner_url || "";
   }
 
   function quickActionButton(label, screen, enabled) {
@@ -1437,7 +1362,8 @@ function renderOrders(searchTerm) {
       if (error) throw error;
 
       await loadAllData();
-      renderOrders(document.getElementById("orders-search").value || "");
+      const ordersSearch = document.getElementById("orders-search");
+      renderOrders(ordersSearch ? ordersSearch.value || "" : "");
       renderDashboard();
       renderFinance();
       alert("Status do pedido atualizado.");

@@ -81,7 +81,7 @@
 
     if (!context.user || !context.membership) {
       localStorage.removeItem("dooki-establishment-session");
-      window.location.href = "./establishment-login.html";
+      window.location.href = "/establishment/establishment-login.html";
       return null;
     }
 

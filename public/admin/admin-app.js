@@ -71,20 +71,26 @@ async function loadAdminSession() {
   const user = data?.user;
 
   if (error || !user) {
-    window.location.href = "../public/login.html";
+    window.location.href = "/login.html";
     return false;
   }
 
-  const { data: profile } = await supabase
-    .from("admin_profiles")
-    .select("*")
-    .eq("id", user.id)
-    .eq("is_active", true)
-    .single();
+  const { data: profile, error: profileError } = await supabase
+  .from("admin_profiles")
+  .select("*")
+  .eq("id", user.id)
+  .eq("is_active", true)
+  .maybeSingle();
+
+  if (profileError || !profile) {
+  alert("Sem permissão para acessar o admin.");
+  window.location.href = "/login.html";
+  return false;
+  }
 
   if (!profile) {
     alert("Sem permissão para acessar o admin.");
-    window.location.href = "../public/login.html";
+    window.location.href = "/login.html";
     return false;
   }
 
@@ -103,7 +109,7 @@ function renderAdminInfo() {
 
 async function logoutAdmin() {
   await window.supabaseClient.auth.signOut();
-  window.location.href = "../public/login.html";
+  window.location.href = "/login.html";
 }
 
 // =============================

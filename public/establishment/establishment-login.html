@@ -2,67 +2,118 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Login Estabelecimento</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dooki Empresas | Login</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="/styles/styles.css">
+  <link rel="stylesheet" href="/styles/establishment.css">
 </head>
+<body class="establishment-login-body">
+  <main class="minimal-login-wrapper">
+    <section class="minimal-login-modal establishment-login-modal">
+      <div class="minimal-login-header">
+        <img class="minimal-login-logo" src="/assets/logo-dooki.png" alt="Dooki">
+        <span class="panel-kicker">Painel do estabelecimento</span>
+      </div>
 
-<body>
+      <div class="minimal-login-content">
+        <h1>Entrar na sua operação</h1>
+        <p class="panel-copy">
+          Acesse pedidos, cardápio, estoque, financeiro e suporte do seu estabelecimento.
+        </p>
 
-<h2>Login Estabelecimento</h2>
+        <form id="establishment-login-form" class="minimal-login-form">
+          <label class="field">
+            <span>Email</span>
+            <input class="input" id="email" name="email" type="email" placeholder="contato@sualoja.com" required>
+          </label>
 
-<form id="loginForm">
-  <input type="email" id="email" placeholder="Email" required>
-  <input type="password" id="password" placeholder="Senha" required>
-  <button type="submit">Entrar</button>
-</form>
+          <label class="field">
+            <span>Senha</span>
+            <input class="input" id="password" name="password" type="password" placeholder="Sua senha" required>
+          </label>
 
-<p id="error"></p>
+          <div class="error-box" id="login-error" hidden></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/shared/supabase-client.js"></script>
+          <button class="primary-button full-width-button" type="submit" id="login-button">
+            Entrar no painel
+          </button>
+        </form>
 
-<script>
-  const sb = window.supabaseClient;
+        <div class="login-support-note">
+          <span>Dica</span>
+          <p>Seu usuário precisa estar vinculado a um estabelecimento ativo no sistema Dooki.</p>
+        </div>
+      </div>
+    </section>
+  </main>
 
-  const form = document.getElementById("loginForm");
-  const error = document.getElementById("error");
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/shared/supabase-client.js"></script>
+  <script src="/establishment/establishment-auth.js"></script>
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  <script>
+    (function () {
+      const form = document.getElementById("establishment-login-form");
+      const errorBox = document.getElementById("login-error");
+      const button = document.getElementById("login-button");
 
-    error.innerText = "";
+      function setLoading(isLoading) {
+        button.disabled = isLoading;
+        button.textContent = isLoading ? "Entrando..." : "Entrar no painel";
+      }
 
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+      function showError(message) {
+        errorBox.hidden = false;
+        errorBox.textContent = message;
+      }
 
-    const { data, error: loginError } = await sb.auth.signInWithPassword({
-      email,
-      password
-    });
+      function hideError() {
+        errorBox.hidden = true;
+        errorBox.textContent = "";
+      }
 
-    if (loginError) {
-      error.innerText = "Login inválido";
-      return;
-    }
+      async function tryAutoRedirect() {
+        try {
+          if (!window.EstablishmentAuth) return;
+          const context = await window.EstablishmentAuth.getCurrentContext();
+          if (context?.user && context?.membership) {
+            window.location.href = "/establishment/establishment.html";
+          }
+        } catch (error) {
+          console.warn("Falha no auto redirect do estabelecimento.", error);
+        }
+      }
 
-    // valida vínculo com estabelecimento
-    const { data: user } = await sb
-      .from("establishment_users")
-      .select("*")
-      .eq("auth_user_id", data.user.id)
-      .eq("active", true)
-      .maybeSingle();
+      form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        hideError();
+        setLoading(true);
 
-    if (!user) {
-      error.innerText = "Sem vínculo com estabelecimento";
-      await sb.auth.signOut();
-      return;
-    }
+        try {
+          const email = document.getElementById("email").value.trim().toLowerCase();
+          const password = document.getElementById("password").value;
 
-    window.location.href = "/establishment/establishment.html";
-  });
-</script>
+          const result = await window.EstablishmentAuth.signIn(email, password);
 
+          if (!result?.membership) {
+            throw new Error("Seu usuário não está vinculado a um estabelecimento ativo.");
+          }
+
+          window.location.href = "/establishment/establishment.html";
+        } catch (error) {
+          console.error("Erro no login do estabelecimento:", error);
+          showError(error.message || "Não foi possível entrar no painel.");
+          setLoading(false);
+        }
+      });
+
+      tryAutoRedirect();
+    })();
+  </script>
 </body>
 </html>

@@ -21,32 +21,391 @@
   <header class="landing-header">
     <div class="landing-container landing-header-row">
       <a class="landing-brand" href="/" aria-label="Dooki">
-        <img src="/assets/logo-dooki.png">
+        <img src="/assets/logo-dooki.png" alt="Dooki" class="landing-brand-logo">
         <span class="landing-brand-text">Dooki</span>
       </a>
 
       <nav class="landing-nav">
         <a href="#beneficios">Benefícios</a>
-        <a href="#planos">Planos</a>
         <a href="#funcionalidades">Funcionalidades</a>
+        <a href="#planos">Planos</a>
         <a href="#como-funciona">Como funciona</a>
       </nav>
 
       <div class="landing-header-actions">
-        <a class="landing-link-button" href="/public/login.html">Administrador</a>
-        <a class="landing-primary-button" href="/establishment/establishment-login.html">Entrar como estabelecimento</a>
+        <a class="landing-link-button" href="/login.html">Administrador</a>
+        <a class="landing-primary-button" href="/establishment/establishment-login.html">
+          Entrar como estabelecimento
+        </a>
       </div>
     </div>
   </header>
 
   <main>
-    <!-- mantenha o restante do seu conteúdo exatamente como já está -->
+    <section class="hero-section">
+      <div class="landing-container hero-grid">
+        <div class="hero-copy">
+          <span class="hero-kicker">A plataforma certa para crescer no delivery</span>
+
+          <h1>
+            Venda mais, organize sua operação e tenha controle real do seu
+            estabelecimento com a <span>Dooki</span>
+          </h1>
+
+          <p>
+            A Dooki foi criada para ajudar estabelecimentos a centralizar pedidos,
+            cardápio digital, gestão de estoque, atendimento em mesa com QR Code,
+            financeiro e suporte em um só lugar.
+          </p>
+
+          <div class="hero-actions">
+            <a class="landing-primary-button large" href="/establishment/establishment-login.html">
+              Entrar como estabelecimento
+            </a>
+            <a class="landing-secondary-button large" href="/login.html">
+              Entrar como administrador
+            </a>
+          </div>
+
+          <div class="hero-metrics">
+            <article class="hero-metric-card">
+              <strong>3 planos</strong>
+              <span>Standard, Premium e Enterprise</span>
+            </article>
+
+            <article class="hero-metric-card">
+              <strong>QR Code</strong>
+              <span>Cardápio digital e pedidos na mesa</span>
+            </article>
+
+            <article class="hero-metric-card">
+              <strong>Gestão</strong>
+              <span>Pedidos, estoque, suporte e financeiro</span>
+            </article>
+          </div>
+        </div>
+
+        <div class="hero-panel">
+          <div class="hero-panel-top">
+            <div class="hero-badge">Painel Dooki</div>
+            <span class="hero-status">Operação em tempo real</span>
+          </div>
+
+          <div class="hero-dashboard-card">
+            <div class="hero-dashboard-head">
+              <div>
+                <span class="section-kicker small-kicker">Resumo da loja</span>
+                <h3>Visão rápida da operação</h3>
+              </div>
+            </div>
+
+            <div class="hero-dashboard-stats">
+              <div class="hero-stat-box">
+                <span>Pedidos</span>
+                <strong>128</strong>
+              </div>
+              <div class="hero-stat-box">
+                <span>Receita</span>
+                <strong>R$ 8.420</strong>
+              </div>
+              <div class="hero-stat-box">
+                <span>Mesas</span>
+                <strong>12</strong>
+              </div>
+              <div class="hero-stat-box">
+                <span>Suporte</span>
+                <strong>Ativo</strong>
+              </div>
+            </div>
+
+            <div class="hero-feature-list">
+              <div class="hero-feature-item">
+                <strong>Cardápio digital</strong>
+                <span>Compartilhe por link e QR Code</span>
+              </div>
+
+              <div class="hero-feature-item">
+                <strong>Pedidos na mesa</strong>
+                <span>Disponível nos planos Premium e Enterprise</span>
+              </div>
+
+              <div class="hero-feature-item">
+                <strong>Divisão de conta</strong>
+                <span>Exclusivo no Enterprise</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="proof-section">
+      <div class="landing-container proof-grid">
+        <article class="proof-card">
+          <strong>Menos atrito</strong>
+          <span>Seu cliente acessa o cardápio e faz pedidos com mais facilidade.</span>
+        </article>
+
+        <article class="proof-card">
+          <strong>Mais controle</strong>
+          <span>Você acompanha pedidos, produtos, estoque e financeiro em um único painel.</span>
+        </article>
+
+        <article class="proof-card">
+          <strong>Mais profissionalismo</strong>
+          <span>Seu estabelecimento opera com mais organização e presença digital.</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="content-section" id="beneficios">
+      <div class="landing-container">
+        <div class="section-heading center">
+          <span class="section-kicker">Benefícios para o seu estabelecimento</span>
+          <h2>O que a Dooki proporciona no dia a dia</h2>
+          <p>
+            A plataforma foi pensada para resolver a operação real do estabelecimento,
+            desde o recebimento do pedido até o controle de lucro, estoque e atendimento.
+          </p>
+        </div>
+
+        <div class="benefits-grid">
+          <article class="benefit-card">
+            <div class="benefit-icon">01</div>
+            <h3>Cardápio digital profissional</h3>
+            <p>
+              Tenha um link próprio para compartilhar com clientes e um cardápio moderno
+              para pedidos via delivery.
+            </p>
+          </article>
+
+          <article class="benefit-card">
+            <div class="benefit-icon">02</div>
+            <h3>Painel de gestão centralizado</h3>
+            <p>
+              Acompanhe pedidos, produtos, categorias, estoque, financeiro e suporte
+              sem depender de vários sistemas.
+            </p>
+          </article>
+
+          <article class="benefit-card">
+            <div class="benefit-icon">03</div>
+            <h3>Operação em mesa com QR Code</h3>
+            <p>
+              Nos planos avançados, o cliente pode abrir o cardápio direto pela mesa
+              e realizar o pedido identificado.
+            </p>
+          </article>
+
+          <article class="benefit-card">
+            <div class="benefit-icon">04</div>
+            <h3>Controle de estoque</h3>
+            <p>
+              Saiba o que está saindo mais, acompanhe estoque mínimo e visualize
+              movimentações com mais clareza.
+            </p>
+          </article>
+
+          <article class="benefit-card">
+            <div class="benefit-icon">05</div>
+            <h3>Visão financeira da operação</h3>
+            <p>
+              Analise receita, custos, comissão da plataforma e lucro estimado do estabelecimento.
+            </p>
+          </article>
+
+          <article class="benefit-card">
+            <div class="benefit-icon">06</div>
+            <h3>Suporte e crescimento</h3>
+            <p>
+              A Dooki oferece suporte para sua operação evoluir com mais segurança,
+              organização e escalabilidade.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section alt-section" id="funcionalidades">
+      <div class="landing-container">
+        <div class="section-heading">
+          <span class="section-kicker">Funcionalidades</span>
+          <h2>Uma plataforma preparada para diferentes tipos de operação</h2>
+          <p>
+            A Dooki atende desde o estabelecimento que quer vender por delivery
+            até operações com atendimento por mesa e recursos avançados.
+          </p>
+        </div>
+
+        <div class="features-showcase">
+          <div class="feature-showcase-card">
+            <h3>Para delivery</h3>
+            <ul>
+              <li>Cardápio digital por link</li>
+              <li>Pedidos direto pela plataforma</li>
+              <li>QR Code do cardápio</li>
+              <li>Painel do estabelecimento</li>
+              <li>Controle de produtos e categorias</li>
+            </ul>
+          </div>
+
+          <div class="feature-showcase-card">
+            <h3>Para atendimento em mesa</h3>
+            <ul>
+              <li>QR Code por mesa</li>
+              <li>Identificação de mesa e cliente</li>
+              <li>Pedidos feitos direto pelo cliente</li>
+              <li>Mais agilidade no salão</li>
+              <li>Organização da operação</li>
+            </ul>
+          </div>
+
+          <div class="feature-showcase-card">
+            <h3>Para operação avançada</h3>
+            <ul>
+              <li>Divisão de conta por pessoa</li>
+              <li>Pedidos interligados na mesa</li>
+              <li>Suporte 24h</li>
+              <li>Sem marca d’água</li>
+              <li>Estrutura Enterprise</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section" id="como-funciona">
+      <div class="landing-container">
+        <div class="section-heading center">
+          <span class="section-kicker">Como funciona</span>
+          <h2>Um fluxo simples para começar a operar</h2>
+        </div>
+
+        <div class="steps-grid">
+          <article class="step-card">
+            <span class="step-number">1</span>
+            <h3>Cadastro do estabelecimento</h3>
+            <p>
+              Seu estabelecimento é configurado na plataforma com plano,
+              dados e identidade visual.
+            </p>
+          </article>
+
+          <article class="step-card">
+            <span class="step-number">2</span>
+            <h3>Configuração do cardápio</h3>
+            <p>
+              Cadastre categorias, produtos, preços, estoque e recursos
+              disponíveis no seu plano.
+            </p>
+          </article>
+
+          <article class="step-card">
+            <span class="step-number">3</span>
+            <h3>Recebimento dos pedidos</h3>
+            <p>
+              Os clientes fazem pedidos pelo cardápio digital, delivery ou QR Code de mesa.
+            </p>
+          </article>
+
+          <article class="step-card">
+            <span class="step-number">4</span>
+            <h3>Gestão e crescimento</h3>
+            <p>
+              Acompanhe operação, suporte, financeiro e desempenho
+              em tempo real pelo painel.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section alt-section" id="planos">
+      <div class="landing-container">
+        <div class="section-heading center">
+          <span class="section-kicker">Planos Dooki</span>
+          <h2>Escolha o modelo que mais combina com a sua operação</h2>
+          <p>
+            A Dooki trabalha com três planos pensados para acompanhar o crescimento
+            do seu estabelecimento.
+          </p>
+        </div>
+
+        <div class="pricing-grid">
+          <article class="pricing-card">
+            <span class="pricing-label">Standard</span>
+            <h3>Ideal para delivery</h3>
+            <ul>
+              <li>Cardápio digital</li>
+              <li>Painel do estabelecimento</li>
+              <li>Dashboard completo</li>
+              <li>Gestão de estoque</li>
+              <li>Suporte por ticket</li>
+              <li>QR Code do cardápio</li>
+              <li>Marca d’água Dooki</li>
+              <li>2% da receita pela plataforma</li>
+            </ul>
+          </article>
+
+          <article class="pricing-card featured">
+            <span class="pricing-label">Premium</span>
+            <h3>Mais controle da operação</h3>
+            <ul>
+              <li>Tudo do Standard</li>
+              <li>QR Code por mesa</li>
+              <li>Pedido na mesa com identificação</li>
+              <li>Análise de gastos e ganhos</li>
+              <li>Melhor experiência no salão</li>
+              <li>Marca d’água Dooki</li>
+              <li>1,5% da receita pela plataforma</li>
+            </ul>
+          </article>
+
+          <article class="pricing-card">
+            <span class="pricing-label">Enterprise</span>
+            <h3>Operação avançada</h3>
+            <ul>
+              <li>Tudo do Premium</li>
+              <li>Suporte 24h</li>
+              <li>Divisão de conta por pessoa</li>
+              <li>Pedidos interligados por grupo</li>
+              <li>Sem marca d’água</li>
+              <li>Embalagens personalizadas</li>
+              <li>Suportes QR para mesas</li>
+              <li>1% da receita pela plataforma</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-section">
+      <div class="landing-container cta-shell">
+        <div>
+          <span class="section-kicker">Pronto para começar?</span>
+          <h2>Leve sua operação para um nível mais profissional com a Dooki</h2>
+          <p>
+            Tenha uma plataforma pensada para estabelecimentos que querem vender mais,
+            organizar a operação e crescer com mais estrutura.
+          </p>
+        </div>
+
+        <div class="cta-actions">
+          <a class="landing-primary-button large" href="/establishment/establishment-login.html">
+            Entrar como estabelecimento
+          </a>
+          <a class="landing-secondary-button large" href="/login.html">
+            Entrar como administrador
+          </a>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="landing-footer">
     <div class="landing-container landing-footer-row">
       <div class="landing-footer-brand">
-        <img src="/public/assets/logo-dooki.png" alt="Dooki">
+        <img src="/assets/logo-dooki.png" alt="Dooki">
         <div>
           <strong>Dooki</strong>
           <span>Plataforma para estabelecimentos</span>
@@ -55,7 +414,7 @@
 
       <div class="landing-footer-links">
         <a href="/establishment/establishment-login.html">Estabelecimento</a>
-        <a href="/public/login.html">Administrador</a>
+        <a href="/login.html">Administrador</a>
       </div>
     </div>
   </footer>

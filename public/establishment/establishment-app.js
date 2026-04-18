@@ -848,7 +848,7 @@
     table.innerHTML = summaryHTML + `<div class="orders-list">${listHTML}</div>`;
   }
 
-  function renderProducts() {
+ function renderProducts() {
   const table = document.getElementById("products-table");
   if (!table) return;
 
@@ -904,7 +904,7 @@
     : emptyState("Nenhum produto cadastrado.");
 }
 
- function renderCategories() {
+function renderCategories() {
   const table = document.getElementById("categories-table");
   if (!table) return;
 

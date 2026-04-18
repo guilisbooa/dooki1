@@ -250,9 +250,9 @@ textarea.input {
 
 .primary-button.small,
 .ghost-button.small {
-  min-height: 34px;
-  padding: 7px 10px;
-  font-size: 0.78rem;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 0.82rem;
   border-radius: 999px;
 }
 
@@ -616,7 +616,6 @@ textarea.input {
 ========================= */
 
 .pro-list-card,
-.pro-store-row,
 .pro-support-card {
   background: #fff;
   border-radius: 18px;
@@ -625,23 +624,31 @@ textarea.input {
   padding: 16px;
 }
 
-.pro-list-main,
-.pro-support-main,
 .pro-store-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 20px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+}
+
+.pro-list-main,
+.pro-support-main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 18px;
-  padding: 20px 22px;
-  border: 1px solid rgba(27, 39, 60, 0.08);
-  border-radius: 24px;
-  background: #fff;
 }
 
 .pro-store-row-left {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex: 1;
   min-width: 0;
 }
 
@@ -657,16 +664,18 @@ textarea.input {
   justify-content: center;
   font-weight: 800;
   font-size: 1.2rem;
+  flex-shrink: 0;
 }
 
 .pro-store-row-content {
-  min-width: 0;
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .pro-store-row-content strong {
   display: block;
-  margin-bottom: 6px;
+  margin: 0 0 6px;
   font-size: 1.05rem;
   color: #1b273c;
   line-height: 1.2;
@@ -675,51 +684,62 @@ textarea.input {
 .pro-store-row-content span {
   display: block;
   color: #667085;
-  line-height: 1.45;
+  line-height: 1.5;
   white-space: normal;
   word-break: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .pro-store-row-right {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 12px;
   flex-shrink: 0;
+  min-width: fit-content;
 }
 
 .pro-store-row-right > strong {
-  min-width: 90px;
+  min-width: 92px;
   text-align: right;
   font-size: 1.05rem;
   color: #1b273c;
   white-space: nowrap;
 }
 
-.pro-status-badge {
+.pro-status-badge,
+.order-status {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.pro-store-row .pro-status-badge {
   min-width: 88px;
   height: 40px;
   padding: 0 16px;
-  border-radius: 999px;
-  font-weight: 700;
   font-size: 0.95rem;
-  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .pro-action-group {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: nowrap;
   flex-shrink: 0;
 }
 
 .ghost-button.small {
-  min-width: 110px;
-  height: 42px;
+  min-width: 108px;
+  height: 40px;
   padding: 0 16px;
   border-radius: 999px;
   border: 1px solid rgba(27, 39, 60, 0.12);
@@ -745,45 +765,9 @@ textarea.input {
   border-color: rgba(180, 35, 24, 0.36);
 }
 
-@media (max-width: 900px) {
-  .pro-store-row {
-    grid-template-columns: 1fr;
-    align-items: flex-start;
-  }
-
-  .pro-store-row-right {
-    width: 100%;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    margin-top: 8px;
-  }
-
-  .pro-action-group {
-    flex-wrap: wrap;
-  }
-
-  .pro-store-row-right > strong {
-    text-align: left;
-    min-width: auto;
-  }
-}
 /* =========================
    BADGES
 ========================= */
-
-.pro-status-badge,
-.order-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-transform: capitalize;
-  white-space: nowrap;
-}
 
 .pro-status-badge.success,
 .order-status.success {
@@ -1114,15 +1098,15 @@ textarea.input {
   }
 
   .establishment-sidebar {
-  position: fixed;
-  inset: 0 auto 0 0;
-  width: min(320px, 88vw);
-  transform: translateX(-100%);
-  transition: transform 0.24s ease;
-  z-index: 50;
-  height: 100vh;
-  overflow-y: auto;
-}
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(320px, 88vw);
+    transform: translateX(-100%);
+    transition: transform 0.24s ease;
+    z-index: 50;
+    height: 100vh;
+    overflow-y: auto;
+  }
 
   .establishment-sidebar.sidebar-open {
     transform: translateX(0);
@@ -1137,6 +1121,28 @@ textarea.input {
   .establishment-content {
     padding: 18px;
   }
+
+  .pro-store-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pro-store-row-right {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    padding-left: 72px;
+  }
+
+  .pro-action-group {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .pro-store-row-right > strong {
+    text-align: left;
+    min-width: auto;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1147,14 +1153,11 @@ textarea.input {
 
   .pro-list-main,
   .pro-support-main,
-  .pro-store-row,
   .order-card {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     align-items: flex-start;
   }
 
-  .pro-store-row-right,
-  .pro-action-group,
   .order-right {
     width: 100%;
     justify-content: flex-start;
@@ -1172,35 +1175,20 @@ textarea.input {
   }
 }
 
-.pro-action-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
+@media (max-width: 640px) {
+  .pro-store-row-left {
+    align-items: flex-start;
+  }
 
-.ghost-button.small {
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(27, 39, 60, 0.12);
-  background: #fff;
-  color: #1b273c;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
+  .pro-store-row-right {
+    padding-left: 0;
+  }
 
-.ghost-button.small:hover {
-  transform: translateY(-1px);
-  border-color: rgba(27, 39, 60, 0.24);
-}
+  .pro-action-group {
+    width: 100%;
+  }
 
-.ghost-button.small.danger {
-  color: #b42318;
-  border-color: rgba(180, 35, 24, 0.22);
-}
-
-.ghost-button.small.danger:hover {
-  border-color: rgba(180, 35, 24, 0.36);
+  .ghost-button.small {
+    min-width: 96px;
+  }
 }

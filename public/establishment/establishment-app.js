@@ -668,20 +668,30 @@
     const featureList = document.getElementById("dashboard-feature-list");
     if (featureList) {
       featureList.innerHTML = state.features.length
-        ? state.features.filter(function (feature) { return feature.enabled; }).map(function (feature) {
-            return `
-              <article class="pro-list-card">
-                <div class="pro-list-main">
-                  <div class="pro-list-content">
-                    <strong>${humanizeFeature(feature.feature_key)}</strong>
-                    <span>Liberado no plano ${getPlanLabel()}.</span>
-                  </div>
-                  <span class="pro-status-badge success">Ativo</span>
-                </div>
-              </article>
-            `;
-          }).join("")
-        : emptyState("Nenhum recurso ativo encontrado.");
+  ? state.features
+      .filter(function (feature) {
+        if (!feature.enabled) return false;
+
+        if (feature.feature_key === "dooki_watermark") {
+          return getPlanKey() === "enterprise";
+        }
+
+        return true;
+      })
+      .map(function (feature) {
+        return `
+          <article class="pro-list-card">
+            <div class="pro-list-main">
+              <div class="pro-list-content">
+                <strong>${humanizeFeature(feature.feature_key)}</strong>
+                <span>Liberado no plano ${getPlanLabel()}.</span>
+              </div>
+              <span class="pro-status-badge success">Ativo</span>
+            </div>
+          </article>
+        `;
+      }).join("")
+  : emptyState("Nenhum recurso ativo encontrado.");
     }
 
     const recentOrders = document.getElementById("dashboard-recent-orders");

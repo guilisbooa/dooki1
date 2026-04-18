@@ -849,36 +849,58 @@
   }
 
   function renderProducts() {
-    const table = document.getElementById("products-table");
-    if (!table) return;
+  const table = document.getElementById("products-table");
+  if (!table) return;
 
-    table.innerHTML = state.products.length
-      ? state.products.map(function (product) {
-          const category = state.categories.find(function (item) {
-            return item.id === product.category_id;
-          });
+  const products = [...state.products].sort(function (a, b) {
+    return String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+  });
 
-          return `
-            <article class="pro-store-row">
-              <div class="pro-store-row-left">
-                <div class="pro-avatar">${(product.name || "P").charAt(0).toUpperCase()}</div>
-                <div class="pro-store-row-content">
-                  <strong>${product.name || "Produto"}</strong>
-                  <span>${category?.name || "Sem categoria"} • ${product.description || "Sem descrição"}</span>
-                </div>
+  table.innerHTML = products.length
+    ? products.map(function (product) {
+        const category = state.categories.find(function (item) {
+          return item.id === product.category_id;
+        });
+
+        return `
+          <article class="pro-store-row">
+            <div class="pro-store-row-left">
+              <div class="pro-avatar">${(product.name || "P").charAt(0).toUpperCase()}</div>
+              <div class="pro-store-row-content">
+                <strong>${product.name || "Produto"}</strong>
+                <span>${category?.name || "Sem categoria"} • ${product.description || "Sem descrição"}</span>
               </div>
+            </div>
 
-              <div class="pro-store-row-right">
-                <span class="pro-status-badge ${product.active === false ? "neutral" : "success"}">
-                  ${product.active === false ? "Inativo" : "Ativo"}
-                </span>
-                <strong>${formatMoney(product.sale_price || 0)}</strong>
+            <div class="pro-store-row-right">
+              <span class="pro-status-badge ${product.active === false ? "neutral" : "success"}">
+                ${product.active === false ? "Inativo" : "Ativo"}
+              </span>
+              <strong>${formatMoney(product.sale_price || 0)}</strong>
+
+              <div class="pro-action-group">
+                <button
+                  type="button"
+                  class="ghost-button small"
+                  onclick="window.EstablishmentPanel.editProduct('${product.id}')"
+                >
+                  Editar
+                </button>
+
+                <button
+                  type="button"
+                  class="ghost-button small danger"
+                  onclick="window.EstablishmentPanel.deleteProduct('${product.id}')"
+                >
+                  Excluir
+                </button>
               </div>
-            </article>
-          `;
-        }).join("")
-      : emptyState("Nenhum produto cadastrado.");
-  }
+            </div>
+          </article>
+        `;
+      }).join("")
+    : emptyState("Nenhum produto cadastrado.");
+}
 
  function renderCategories() {
   const table = document.getElementById("categories-table");
@@ -1191,39 +1213,207 @@
   }
 
   async function handleCreateProduct(event) {
-    event.preventDefault();
+  event.preventDefault();
 
-    const client = getClient();
-    const formData = new FormData(event.target);
+  const client = getClient();
+  const form = event.target;
+  const formData = new FormData(form);
+  const editingId = form.dataset.editingId || null;
 
-    const payload = {
-      establishment_id: state.membership.establishment_id,
-      name: String(formData.get("name") || "").trim(),
-      category_id: formData.get("category_id") || null,
-      description: String(formData.get("description") || "").trim(),
-      sale_price: Number(formData.get("sale_price") || 0),
-      cost_price: Number(formData.get("cost_price") || 0),
-      stock_quantity: Number(formData.get("stock_quantity") || 0),
-      stock_min_quantity: Number(formData.get("stock_min_quantity") || 0),
-      active: true
-    };
+  const payload = {
+    establishment_id: state.membership.establishment_id,
+    name: String(formData.get("name") || "").trim(),
+    category_id: formData.get("category_id") || null,
+    description: String(formData.get("description") || "").trim(),
+    sale_price: Number(formData.get("sale_price") || 0),
+    cost_price: Number(formData.get("cost_price") || 0),
+    stock_quantity: Number(formData.get("stock_quantity") || 0),
+    stock_min_quantity: Number(formData.get("stock_min_quantity") || 0),
+    active: true
+  };
 
-    try {
-      const { error } = await client.from("products").insert([payload]);
-      if (error) throw error;
-
-      event.target.reset();
-      await loadAllData();
-      populateCategorySelect();
-      renderProducts();
-      renderDashboard();
-      renderInventory();
-      alert("Produto cadastrado com sucesso.");
-    } catch (error) {
-      console.error("Erro ao cadastrar produto:", error);
-      alert(error.message || "Não foi possível cadastrar o produto.");
-    }
+  if (!payload.name) {
+    alert("Informe o nome do produto.");
+    return;
   }
+
+  try {
+    let error = null;
+
+    if (editingId) {
+      const response = await client
+        .from("products")
+        .update({
+          name: payload.name,
+          category_id: payload.category_id,
+          description: payload.description,
+          sale_price: payload.sale_price,
+          cost_price: payload.cost_price,
+          stock_quantity: payload.stock_quantity,
+          stock_min_quantity: payload.stock_min_quantity
+        })
+        .eq("id", editingId)
+        .eq("establishment_id", state.membership.establishment_id);
+
+      error = response.error || null;
+    } else {
+      const response = await client
+        .from("products")
+        .insert([payload])
+        .select();
+
+      error = response.error || null;
+
+      if (!error && response.data?.length) {
+        state.products = [response.data[0], ...state.products];
+      }
+    }
+
+    if (error) {
+      throw error;
+    }
+
+    form.reset();
+    delete form.dataset.editingId;
+    resetProductFormMode();
+
+    await loadAllData();
+    populateCategorySelect();
+    renderProducts();
+    renderDashboard();
+    renderInventory();
+
+    alert(editingId ? "Produto atualizado com sucesso." : "Produto cadastrado com sucesso.");
+  } catch (error) {
+    console.error("Erro ao salvar produto:", error);
+    alert(error.message || "Não foi possível salvar o produto.");
+  }
+}
+
+function resetProductFormMode() {
+  const form = document.getElementById("product-form");
+  if (!form) return;
+
+  delete form.dataset.editingId;
+
+  const submitButton = form.querySelector('button[type="submit"]');
+  if (submitButton) {
+    submitButton.textContent = "Cadastrar produto";
+  }
+
+  const cancelButton = document.getElementById("product-cancel-edit");
+  if (cancelButton) {
+    cancelButton.remove();
+  }
+}
+
+function ensureProductCancelButton() {
+  const form = document.getElementById("product-form");
+  if (!form) return null;
+
+  let cancelButton = document.getElementById("product-cancel-edit");
+  if (cancelButton) return cancelButton;
+
+  const submitButton = form.querySelector('button[type="submit"]');
+  if (!submitButton) return null;
+
+  cancelButton = document.createElement("button");
+  cancelButton.type = "button";
+  cancelButton.id = "product-cancel-edit";
+  cancelButton.className = "ghost-button";
+  cancelButton.textContent = "Cancelar edição";
+  cancelButton.style.marginTop = "12px";
+
+  cancelButton.addEventListener("click", function () {
+    form.reset();
+    resetProductFormMode();
+  });
+
+  submitButton.insertAdjacentElement("afterend", cancelButton);
+  return cancelButton;
+}
+
+function editProduct(productId) {
+  const product = state.products.find(function (item) {
+    return item.id === productId;
+  });
+
+  if (!product) {
+    alert("Produto não encontrado.");
+    return;
+  }
+
+  const form = document.getElementById("product-form");
+  if (!form) return;
+
+  const nameInput = form.querySelector('[name="name"]');
+  const categoryInput = form.querySelector('[name="category_id"]');
+  const salePriceInput = form.querySelector('[name="sale_price"]');
+  const costPriceInput = form.querySelector('[name="cost_price"]');
+  const stockQuantityInput = form.querySelector('[name="stock_quantity"]');
+  const stockMinQuantityInput = form.querySelector('[name="stock_min_quantity"]');
+  const descriptionInput = form.querySelector('[name="description"]');
+  const submitButton = form.querySelector('button[type="submit"]');
+
+  if (nameInput) nameInput.value = product.name || "";
+  if (categoryInput) categoryInput.value = product.category_id || "";
+  if (salePriceInput) salePriceInput.value = product.sale_price ?? 0;
+  if (costPriceInput) costPriceInput.value = product.cost_price ?? 0;
+  if (stockQuantityInput) stockQuantityInput.value = product.stock_quantity ?? 0;
+  if (stockMinQuantityInput) stockMinQuantityInput.value = product.stock_min_quantity ?? 0;
+  if (descriptionInput) descriptionInput.value = product.description || "";
+
+  form.dataset.editingId = product.id;
+
+  if (submitButton) {
+    submitButton.textContent = "Salvar produto";
+  }
+
+  ensureProductCancelButton();
+  form.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function deleteProduct(productId) {
+  const product = state.products.find(function (item) {
+    return item.id === productId;
+  });
+
+  if (!product) {
+    alert("Produto não encontrado.");
+    return;
+  }
+
+  const confirmed = window.confirm(`Deseja excluir o produto "${product.name}"?`);
+  if (!confirmed) return;
+
+  const client = getClient();
+
+  try {
+    const { error } = await client
+      .from("products")
+      .delete()
+      .eq("id", productId)
+      .eq("establishment_id", state.membership.establishment_id);
+
+    if (error) throw error;
+
+    state.products = state.products.filter(function (item) {
+      return item.id !== productId;
+    });
+
+    await loadAllData();
+    populateCategorySelect();
+    renderProducts();
+    renderDashboard();
+    renderInventory();
+    resetProductFormMode();
+
+    alert("Produto excluído com sucesso.");
+  } catch (error) {
+    console.error("Erro ao excluir produto:", error);
+    alert(error.message || "Não foi possível excluir o produto.");
+  }
+}
 
  async function handleCreateCategory(event) {
   event.preventDefault();
@@ -1560,6 +1750,8 @@ async function deleteCategory(categoryId) {
   goTo,
   updateOrderStatus,
   editCategory,
-  deleteCategory
+  deleteCategory,
+  editProduct,
+  deleteProduct
 };
 })();

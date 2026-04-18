@@ -5,126 +5,72 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dooki Admin | Login</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="../styles/styles.css">
-  <link rel="stylesheet" href="../styles/admin.css">
+  <link rel="stylesheet" href="/styles/styles.css">
+  <link rel="stylesheet" href="/styles/admin.css">
 </head>
+
 <body class="admin-login-body">
   <main class="admin-login-shell">
     <section class="admin-login-card">
-      <div class="admin-login-brand">
-        <img src="../_refs/assets/images/logo-dooki.png" alt="Dooki" class="admin-login-logo">
-        <span class="admin-login-kicker">Acesso administrativo</span>
-      </div>
 
-      <div class="admin-login-copy">
-        <h1>Entrar no admin</h1>
-        <p>
-          Acesse o painel central da Dooki para acompanhar estabelecimentos, planos,
-          pagamentos e suporte.
-        </p>
-      </div>
+      <img src="/assets/logo-dooki.png" class="admin-login-logo">
 
-      <form id="loginForm" class="admin-login-form">
-        <label class="admin-login-field">
-          <span>Email</span>
-          <input type="email" id="email" class="admin-login-input" placeholder="admin@dooki.com" required>
-        </label>
+      <h1>Login Admin</h1>
 
-        <label class="admin-login-field">
-          <span>Senha</span>
-          <input type="password" id="password" class="admin-login-input" placeholder="Sua senha" required>
-        </label>
-
-        <div id="error" class="admin-login-error" hidden></div>
-
-        <button type="submit" id="loginButton" class="admin-login-submit">
-          Entrar no painel
-        </button>
+      <form id="loginForm">
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Senha" required>
+        <button type="submit">Entrar</button>
       </form>
 
-      <div class="admin-login-note">
-        <strong>Aviso</strong>
-        <span>Somente usuários com perfil ativo em <code>admin_profiles</code> podem acessar.</span>
-      </div>
+      <p id="error"></p>
+
     </section>
   </main>
 
- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../shared/supabase-client.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/shared/supabase-client.js"></script>
 
-<script>
-  const sb = window.supabaseClient;
-  const form = document.getElementById("loginForm");
-  const errorBox = document.getElementById("error");
-  const loginButton = document.getElementById("loginButton");
+  <script>
+    const sb = window.supabaseClient;
 
-  function setLoading(isLoading) {
-    loginButton.disabled = isLoading;
-    loginButton.textContent = isLoading ? "Entrando..." : "Entrar no painel";
-  }
+    const form = document.getElementById("loginForm");
+    const error = document.getElementById("error");
 
-  function showError(message) {
-    errorBox.hidden = false;
-    errorBox.textContent = message;
-  }
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-  function hideError() {
-    errorBox.hidden = true;
-    errorBox.textContent = "";
-  }
+      error.innerText = "";
 
-  async function validateAdminAccess(userId) {
-    const { data, error } = await sb
-      .from("admin_profiles")
-      .select("id, name, email, is_active")
-      .eq("id", userId)
-      .eq("is_active", true)
-      .maybeSingle();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
 
-    if (error) throw error;
-    return data || null;
-  }
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    hideError();
-    setLoading(true);
-
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-
-    try {
-      const { data, error } = await sb.auth.signInWithPassword({
+      const { data, error: loginError } = await sb.auth.signInWithPassword({
         email,
         password
       });
 
-      if (error || !data?.user) {
-        showError("Email ou senha inválidos.");
-        setLoading(false);
+      if (loginError) {
+        error.innerText = "Email ou senha inválidos";
         return;
       }
 
-      const adminProfile = await validateAdminAccess(data.user.id);
+      // valida admin
+      const { data: admin } = await sb
+        .from("admin_profiles")
+        .select("*")
+        .eq("id", data.user.id)
+        .eq("is_active", true)
+        .maybeSingle();
 
-      if (!adminProfile) {
+      if (!admin) {
+        error.innerText = "Sem acesso admin";
         await sb.auth.signOut();
-        showError("Sem acesso administrativo.");
-        setLoading(false);
         return;
       }
 
-      window.location.href = "../admin/admin.html";
-    } catch (err) {
-      console.error(err);
-      showError("Erro ao fazer login.");
-      setLoading(false);
-    }
-  });
-</script>
+      window.location.href = "/admin/admin.html";
+    });
+  </script>
 </body>
 </html>

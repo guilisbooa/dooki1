@@ -6,11 +6,26 @@
     return window.supabaseClient;
   }
 
-  async function getUser() {
+  async function getSession() {
     const client = getClient();
-    const { data, error } = await client.auth.getUser();
-    if (error) throw error;
-    return data?.user || null;
+    const { data, error } = await client.auth.getSession();
+
+    if (error) {
+      console.error("Erro ao obter sessão:", error);
+      return null;
+    }
+
+    return data?.session || null;
+  }
+
+  async function getUser() {
+    const session = await getSession();
+
+    if (!session?.user) {
+      return null;
+    }
+
+    return session.user;
   }
 
   async function getMembershipByUserId(userId) {
@@ -23,7 +38,11 @@
       .eq("active", true)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Erro ao buscar vínculo do estabelecimento:", error);
+      throw error;
+    }
+
     return data || null;
   }
 
@@ -48,7 +67,8 @@
 
     if (error) throw error;
 
-    const user = data?.user || null;
+    const user = data?.user || data?.session?.user || null;
+
     if (!user) {
       throw new Error("Usuário não encontrado.");
     }
@@ -60,12 +80,15 @@
       throw new Error("Seu usuário não está vinculado a um estabelecimento ativo.");
     }
 
-    localStorage.setItem("dooki-establishment-session", JSON.stringify({
-      userId: user.id,
-      email: user.email,
-      establishmentId: membership.establishment_id,
-      role: membership.role || "owner"
-    }));
+    localStorage.setItem(
+      "dooki-establishment-session",
+      JSON.stringify({
+        userId: user.id,
+        email: user.email,
+        establishmentId: membership.establishment_id,
+        role: membership.role || "owner"
+      })
+    );
 
     return { user, membership };
   }
@@ -89,6 +112,7 @@
   }
 
   window.EstablishmentAuth = {
+    getSession,
     getUser,
     getMembershipByUserId,
     getCurrentContext,

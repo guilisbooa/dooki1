@@ -873,29 +873,30 @@
             </div>
 
             <div class="pro-store-row-right">
-              <span class="pro-status-badge ${product.active === false ? "neutral" : "success"}">
-                ${product.active === false ? "Inativo" : "Ativo"}
-              </span>
-              <strong>${formatMoney(product.sale_price || 0)}</strong>
+        <span class="pro-status-badge ${product.active === false ? "neutral" : "success"}">
+        ${product.active === false ? "Inativo" : "Ativo"}
+        </span>
 
-              <div class="pro-action-group">
-                <button
-                  type="button"
-                  class="ghost-button small"
-                  onclick="window.EstablishmentPanel.editProduct('${product.id}')"
-                >
-                  Editar
-                </button>
+        <strong>${formatMoney(product.sale_price || 0)}</strong>
 
-                <button
-                  type="button"
-                  class="ghost-button small danger"
-                  onclick="window.EstablishmentPanel.deleteProduct('${product.id}')"
-                >
-                  Excluir
-                </button>
-              </div>
-            </div>
+        <div class="pro-action-group">
+        <button
+        type="button"
+        class="ghost-button small"
+        onclick="window.EstablishmentPanel.editProduct('${product.id}')"
+        >
+        Editar
+        </button>
+
+    <button
+      type="button"
+      class="ghost-button small danger"
+      onclick="window.EstablishmentPanel.deleteProduct('${product.id}')"
+    >
+      Excluir
+    </button>
+  </div>
+</div>
           </article>
         `;
       }).join("")

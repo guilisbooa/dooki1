@@ -866,6 +866,7 @@
           <article class="pro-store-row">
             <div class="pro-store-row-left">
               <div class="pro-avatar">${(product.name || "P").charAt(0).toUpperCase()}</div>
+
               <div class="pro-store-row-content">
                 <strong>${product.name || "Produto"}</strong>
                 <span>${category?.name || "Sem categoria"} • ${product.description || "Sem descrição"}</span>
@@ -873,30 +874,30 @@
             </div>
 
             <div class="pro-store-row-right">
-        <span class="pro-status-badge ${product.active === false ? "neutral" : "success"}">
-        ${product.active === false ? "Inativo" : "Ativo"}
-        </span>
+              <span class="pro-status-badge ${product.active === false ? "neutral" : "success"}">
+                ${product.active === false ? "Inativo" : "Ativo"}
+              </span>
 
-        <strong>${formatMoney(product.sale_price || 0)}</strong>
+              <strong>${formatMoney(product.sale_price || 0)}</strong>
 
-        <div class="pro-action-group">
-        <button
-        type="button"
-        class="ghost-button small"
-        onclick="window.EstablishmentPanel.editProduct('${product.id}')"
-        >
-        Editar
-        </button>
+              <div class="pro-action-group">
+                <button
+                  type="button"
+                  class="ghost-button small"
+                  onclick="window.EstablishmentPanel.editProduct('${product.id}')"
+                >
+                  Editar
+                </button>
 
-    <button
-      type="button"
-      class="ghost-button small danger"
-      onclick="window.EstablishmentPanel.deleteProduct('${product.id}')"
-    >
-      Excluir
-    </button>
-  </div>
-</div>
+                <button
+                  type="button"
+                  class="ghost-button small danger"
+                  onclick="window.EstablishmentPanel.deleteProduct('${product.id}')"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
           </article>
         `;
       }).join("")
@@ -917,6 +918,7 @@
           <article class="pro-store-row">
             <div class="pro-store-row-left">
               <div class="pro-avatar">${(category.name || "C").charAt(0).toUpperCase()}</div>
+
               <div class="pro-store-row-content">
                 <strong>${category.name || "Categoria"}</strong>
                 <span>${category.description || "Sem descrição"}</span>
@@ -924,28 +926,28 @@
             </div>
 
             <div class="pro-store-row-right">
-  <span class="pro-status-badge ${category.active === false ? "neutral" : "success"}">
-    ${category.active === false ? "Inativa" : "Ativa"}
-  </span>
+              <span class="pro-status-badge ${category.active === false ? "neutral" : "success"}">
+                ${category.active === false ? "Inativa" : "Ativa"}
+              </span>
 
-  <div class="pro-action-group">
-    <button
-      type="button"
-      class="ghost-button small"
-      onclick="window.EstablishmentPanel.editCategory('${category.id}')"
-    >
-      Editar
-    </button>
+              <div class="pro-action-group">
+                <button
+                  type="button"
+                  class="ghost-button small"
+                  onclick="window.EstablishmentPanel.editCategory('${category.id}')"
+                >
+                  Editar
+                </button>
 
-    <button
-      type="button"
-      class="ghost-button small danger"
-      onclick="window.EstablishmentPanel.deleteCategory('${category.id}')"
-    >
-      Excluir
-    </button>
-  </div>
-</div>
+                <button
+                  type="button"
+                  class="ghost-button small danger"
+                  onclick="window.EstablishmentPanel.deleteCategory('${category.id}')"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
           </article>
         `;
       }).join("")

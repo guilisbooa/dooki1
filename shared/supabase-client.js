@@ -3,9 +3,12 @@
   const SUPABASE_ANON_KEY = 'sb_publishable_OcPB-sa5X56hJoCLfttj_Q_V1vEsHjy';
 
   if (!window.supabase) {
-    console.error("Biblioteca do Supabase não carregada.");
+    console.error("Supabase JS não carregado.");
     return;
   }
+
+  // NÃO cria variável supabase
+  // só cria o client global
 
   window.supabaseClient = window.supabase.createClient(
     SUPABASE_URL,

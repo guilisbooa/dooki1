@@ -924,28 +924,28 @@
             </div>
 
             <div class="pro-store-row-right">
-              <span class="pro-status-badge ${category.active === false ? "neutral" : "success"}">
-                ${category.active === false ? "Inativa" : "Ativa"}
-              </span>
+  <span class="pro-status-badge ${category.active === false ? "neutral" : "success"}">
+    ${category.active === false ? "Inativa" : "Ativa"}
+  </span>
 
-              <div class="pro-action-group">
-                <button
-                  type="button"
-                  class="ghost-button small"
-                  onclick="window.EstablishmentPanel.editCategory('${category.id}')"
-                >
-                  Editar
-                </button>
+  <div class="pro-action-group">
+    <button
+      type="button"
+      class="ghost-button small"
+      onclick="window.EstablishmentPanel.editCategory('${category.id}')"
+    >
+      Editar
+    </button>
 
-                <button
-                  type="button"
-                  class="ghost-button small danger"
-                  onclick="window.EstablishmentPanel.deleteCategory('${category.id}')"
-                >
-                  Excluir
-                </button>
-              </div>
-            </div>
+    <button
+      type="button"
+      class="ghost-button small danger"
+      onclick="window.EstablishmentPanel.deleteCategory('${category.id}')"
+    >
+      Excluir
+    </button>
+  </div>
+</div>
           </article>
         `;
       }).join("")

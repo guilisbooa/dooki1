@@ -1159,26 +1159,26 @@ function renderCategories() {
 
   function humanizeFeature(key) {
     const map = {
-      digital_menu: "Cardápio digital",
-      delivery_orders: "Pedidos por delivery",
-      establishment_panel: "Painel do estabelecimento",
-      full_dashboard: "Dashboard completo",
-      inventory_management: "Gestão de estoque",
-      ticket_support: "Suporte por ticket",
-      menu_qr_code: "QR do cardápio",
-      table_qr_code: "QR por mesa",
-      table_ordering: "Pedidos na mesa",
-      profit_analysis: "Análise de gastos e ganhos",
-      split_bill: "Divisão de conta",
-      group_orders: "Pedidos interligados por grupo",
-      support_24h: "Suporte 24h",
-      custom_packaging: "Embalagens personalizadas",
-      table_qr_stands: "Suportes físicos QR",
-      dooki_watermark: "Marca d’água Dooki"
-    };
+    digital_menu: "Cardápio digital",
+    delivery_orders: "Pedidos por delivery",
+    establishment_panel: "Painel do estabelecimento",
+    full_dashboard: "Dashboard completo",
+    inventory_management: "Gestão de estoque",
+    ticket_support: "Suporte por ticket",
+    menu_qr_code: "QR do cardápio",
+    table_qr_code: "QR por mesa",
+    table_ordering: "Pedidos na mesa",
+    profit_analysis: "Análise de gastos e ganhos",
+    split_bill: "Divisão de conta",
+    group_orders: "Pedidos interligados por grupo",
+    support_24h: "Suporte 24h",
+    custom_packaging: "Embalagens personalizadas",
+    table_qr_stands: "Suportes físicos QR",
+    dooki_watermark: "Remoção da marca d’água da Dooki"
+  };
 
-    return map[key] || key;
-  }
+  return map[key] || key;
+}
 
   function humanizeMovement(type) {
     const map = {

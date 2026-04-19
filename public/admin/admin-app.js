@@ -131,29 +131,73 @@ const api = {
     return data;
   },
 
-  async getStoreCategories(storeId) {
+async getStoreCategories(storeId) {
     if (!storeId) return [];
 
-    if (window.DookiData?.getCategoriesByEstablishment) {
-      return window.DookiData.getCategoriesByEstablishment(storeId);
-    }
+    try {
+      if (window.DookiData?.getCategoriesByEstablishment) {
+        const result = await window.DookiData.getCategoriesByEstablishment(storeId);
+        if (Array.isArray(result) && result.length) {
+          return result.map(normalizeCategoryRecord);
+        }
+      }
 
-    if (window.DookiData?.getStoreCategories) {
-      return window.DookiData.getStoreCategories(storeId);
-    }
+      if (window.DookiData?.getStoreCategories) {
+        const result = await window.DookiData.getStoreCategories(storeId);
+        if (Array.isArray(result) && result.length) {
+          return result.map(normalizeCategoryRecord);
+        }
+      }
 
-    const { data, error } = await window.supabaseClient
-      .from("product_categories")
-      .select("*")
-      .eq("establishment_id", storeId)
-      .order("created_at", { ascending: false });
+      if (window.DookiData?.getCategories) {
+        const result = await window.DookiData.getCategories();
+        if (Array.isArray(result) && result.length) {
+          return result
+            .filter((item) =>
+              String(item.establishment_id || item.store_id || item.restaurant_id || "") === String(storeId)
+            )
+            .map(normalizeCategoryRecord);
+        }
+      }
 
-    if (error) {
+      const queries = [
+        window.supabaseClient
+          .from("product_categories")
+          .select("*")
+          .eq("establishment_id", storeId)
+          .order("created_at", { ascending: false }),
+
+        window.supabaseClient
+          .from("product_categories")
+          .select("*")
+          .eq("store_id", storeId)
+          .order("created_at", { ascending: false }),
+
+        window.supabaseClient
+          .from("categories")
+          .select("*")
+          .eq("establishment_id", storeId)
+          .order("created_at", { ascending: false }),
+
+        window.supabaseClient
+          .from("categories")
+          .select("*")
+          .eq("store_id", storeId)
+          .order("created_at", { ascending: false })
+      ];
+
+      for (const query of queries) {
+        const { data, error } = await query;
+        if (!error && Array.isArray(data) && data.length) {
+          return data.map(normalizeCategoryRecord);
+        }
+      }
+
+      return [];
+    } catch (error) {
       console.error("Erro ao buscar categorias:", error);
       return [];
     }
-
-    return data || [];
   },
 
   async createCategory(payload) {
@@ -201,29 +245,73 @@ const api = {
     return true;
   },
 
-  async getStoreProducts(storeId) {
+   async getStoreProducts(storeId) {
     if (!storeId) return [];
 
-    if (window.DookiData?.getProductsByEstablishment) {
-      return window.DookiData.getProductsByEstablishment(storeId);
-    }
+    try {
+      if (window.DookiData?.getProductsByEstablishment) {
+        const result = await window.DookiData.getProductsByEstablishment(storeId);
+        if (Array.isArray(result) && result.length) {
+          return result.map(normalizeProductRecord);
+        }
+      }
 
-    if (window.DookiData?.getStoreProducts) {
-      return window.DookiData.getStoreProducts(storeId);
-    }
+      if (window.DookiData?.getStoreProducts) {
+        const result = await window.DookiData.getStoreProducts(storeId);
+        if (Array.isArray(result) && result.length) {
+          return result.map(normalizeProductRecord);
+        }
+      }
 
-    const { data, error } = await window.supabaseClient
-      .from("products")
-      .select("*")
-      .eq("establishment_id", storeId)
-      .order("created_at", { ascending: false });
+      if (window.DookiData?.getProducts) {
+        const result = await window.DookiData.getProducts();
+        if (Array.isArray(result) && result.length) {
+          return result
+            .filter((item) =>
+              String(item.establishment_id || item.store_id || item.restaurant_id || "") === String(storeId)
+            )
+            .map(normalizeProductRecord);
+        }
+      }
 
-    if (error) {
+      const queries = [
+        window.supabaseClient
+          .from("products")
+          .select("*")
+          .eq("establishment_id", storeId)
+          .order("created_at", { ascending: false }),
+
+        window.supabaseClient
+          .from("products")
+          .select("*")
+          .eq("store_id", storeId)
+          .order("created_at", { ascending: false }),
+
+        window.supabaseClient
+          .from("store_products")
+          .select("*")
+          .eq("establishment_id", storeId)
+          .order("created_at", { ascending: false }),
+
+        window.supabaseClient
+          .from("store_products")
+          .select("*")
+          .eq("store_id", storeId)
+          .order("created_at", { ascending: false })
+      ];
+
+      for (const query of queries) {
+        const { data, error } = await query;
+        if (!error && Array.isArray(data) && data.length) {
+          return data.map(normalizeProductRecord);
+        }
+      }
+
+      return [];
+    } catch (error) {
       console.error("Erro ao buscar produtos:", error);
       return [];
     }
-
-    return data || [];
   },
 
   async createProduct(payload) {
@@ -388,6 +476,9 @@ async function refreshSelectedStoreResources() {
   if (!state.selectedStoreId) {
     state.selectedStoreCategories = [];
     state.selectedStoreProducts = [];
+    renderCategoriesList();
+    renderProductsList();
+    fillProductCategorySelect();
     return;
   }
 
@@ -397,13 +488,17 @@ async function refreshSelectedStoreResources() {
       api.getStoreProducts(state.selectedStoreId)
     ]);
 
-    state.selectedStoreCategories = categories || [];
-    state.selectedStoreProducts = products || [];
+    state.selectedStoreCategories = Array.isArray(categories) ? categories : [];
+    state.selectedStoreProducts = Array.isArray(products) ? products : [];
   } catch (error) {
     console.error("Erro ao atualizar dados da loja selecionada:", error);
     state.selectedStoreCategories = [];
     state.selectedStoreProducts = [];
   }
+
+  renderCategoriesList();
+  renderProductsList();
+  fillProductCategorySelect();
 }
 
 // =============================
@@ -576,6 +671,58 @@ function normalizeTextareaLines(text) {
     .map((item) => item.trim())
     .filter(Boolean)
     .join("\n");
+}
+
+function normalizeTextareaLines(text) {
+  return String(text || "")
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+function normalizeCategoryRecord(category) {
+  if (!category) return category;
+
+  return {
+    ...category,
+    id: category.id,
+    establishment_id: category.establishment_id || category.store_id || category.restaurant_id || null,
+    name: category.name || category.title || "Categoria",
+    description: category.description || category.details || ""
+  };
+}
+
+function normalizeProductRecord(product) {
+  if (!product) return product;
+
+  return {
+    ...product,
+    id: product.id,
+    establishment_id: product.establishment_id || product.store_id || product.restaurant_id || null,
+    category_id: product.category_id || product.product_category_id || null,
+    name: product.name || product.title || "Produto",
+    description: product.description || product.details || "",
+    sale_price:
+      product.sale_price ??
+      product.price ??
+      product.unit_price ??
+      0,
+    cost_price:
+      product.cost_price ??
+      product.cost ??
+      0,
+    stock_quantity:
+      product.stock_quantity ??
+      product.stock ??
+      product.quantity ??
+      0,
+    stock_min_quantity:
+      product.stock_min_quantity ??
+      product.minimum_stock ??
+      product.min_stock ??
+      0
+  };
 }
 
 // =============================
@@ -849,6 +996,7 @@ function renderStoreProfile() {
     resetProductForm();
     renderCategoriesList();
     renderProductsList();
+    fillProductCategorySelect();
     return;
   }
 

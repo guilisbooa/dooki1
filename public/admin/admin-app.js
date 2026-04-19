@@ -131,7 +131,7 @@ const api = {
     return data;
   },
 
-    async getStoreCategories(storeId) {
+ async getStoreCategories(storeId) {
     if (!storeId) return [];
 
     try {
@@ -153,46 +153,26 @@ const api = {
 
       if (window.DookiData?.getCategoriesByEstablishment) {
         const result = await window.DookiData.getCategoriesByEstablishment(storeId);
-        if (Array.isArray(result) && result.length) {
+        if (Array.isArray(result)) {
           return result.map(normalizeCategoryRecord);
         }
       }
 
       if (window.DookiData?.getStoreCategories) {
         const result = await window.DookiData.getStoreCategories(storeId);
-        if (Array.isArray(result) && result.length) {
+        if (Array.isArray(result)) {
           return result.map(normalizeCategoryRecord);
         }
       }
 
       if (window.DookiData?.getCategories) {
         const result = await window.DookiData.getCategories();
-        if (Array.isArray(result) && result.length) {
-          const filtered = result.filter((item) =>
-            String(item.establishment_id || item.store_id || item.restaurant_id || "") === String(storeId)
-          );
-
-          if (filtered.length) {
-            return filtered.map(normalizeCategoryRecord);
-          }
-        }
-      }
-
-      const safeQueries = [
-        { table: "product_categories", column: "establishment_id" },
-        { table: "product_categories", column: "store_id" },
-        { table: "categories", column: "establishment_id" },
-        { table: "categories", column: "store_id" }
-      ];
-
-      for (const item of safeQueries) {
-        const { data, error } = await window.supabaseClient
-          .from(item.table)
-          .select("*")
-          .eq(item.column, storeId);
-
-        if (!error && Array.isArray(data) && data.length) {
-          return data.map(normalizeCategoryRecord);
+        if (Array.isArray(result)) {
+          return result
+            .filter((item) =>
+              String(item.establishment_id || item.store_id || item.restaurant_id || "") === String(storeId)
+            )
+            .map(normalizeCategoryRecord);
         }
       }
 
@@ -270,46 +250,26 @@ const api = {
 
       if (window.DookiData?.getProductsByEstablishment) {
         const result = await window.DookiData.getProductsByEstablishment(storeId);
-        if (Array.isArray(result) && result.length) {
+        if (Array.isArray(result)) {
           return result.map(normalizeProductRecord);
         }
       }
 
       if (window.DookiData?.getStoreProducts) {
         const result = await window.DookiData.getStoreProducts(storeId);
-        if (Array.isArray(result) && result.length) {
+        if (Array.isArray(result)) {
           return result.map(normalizeProductRecord);
         }
       }
 
       if (window.DookiData?.getProducts) {
         const result = await window.DookiData.getProducts();
-        if (Array.isArray(result) && result.length) {
-          const filtered = result.filter((item) =>
-            String(item.establishment_id || item.store_id || item.restaurant_id || "") === String(storeId)
-          );
-
-          if (filtered.length) {
-            return filtered.map(normalizeProductRecord);
-          }
-        }
-      }
-
-      const safeQueries = [
-        { table: "products", column: "establishment_id" },
-        { table: "products", column: "store_id" },
-        { table: "store_products", column: "establishment_id" },
-        { table: "store_products", column: "store_id" }
-      ];
-
-      for (const item of safeQueries) {
-        const { data, error } = await window.supabaseClient
-          .from(item.table)
-          .select("*")
-          .eq(item.column, storeId);
-
-        if (!error && Array.isArray(data) && data.length) {
-          return data.map(normalizeProductRecord);
+        if (Array.isArray(result)) {
+          return result
+            .filter((item) =>
+              String(item.establishment_id || item.store_id || item.restaurant_id || "") === String(storeId)
+            )
+            .map(normalizeProductRecord);
         }
       }
 
@@ -684,7 +644,7 @@ function normalizeCategoryRecord(category) {
 
   return {
     ...category,
-    id: category.id || category.category_id || crypto.randomUUID(),
+    id: category.id || category.category_id || `cat-${Math.random().toString(36).slice(2)}`,
     establishment_id: category.establishment_id || category.store_id || category.restaurant_id || null,
     name: category.name || category.title || "Categoria",
     description: category.description || category.details || ""
@@ -696,7 +656,7 @@ function normalizeProductRecord(product) {
 
   return {
     ...product,
-    id: product.id || product.product_id || crypto.randomUUID(),
+    id: product.id || product.product_id || `prod-${Math.random().toString(36).slice(2)}`,
     establishment_id: product.establishment_id || product.store_id || product.restaurant_id || null,
     category_id: product.category_id || product.product_category_id || null,
     name: product.name || product.title || "Produto",

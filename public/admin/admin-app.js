@@ -131,10 +131,26 @@ const api = {
     return data;
   },
 
-  async getStoreCategories(storeId) {
+    async getStoreCategories(storeId) {
     if (!storeId) return [];
 
     try {
+      const store = state.snapshot.establishments.find(
+        (item) => String(item.id) === String(storeId)
+      );
+
+      if (store) {
+        const embeddedCategories = [
+          ...(Array.isArray(store.categories) ? store.categories : []),
+          ...(Array.isArray(store.product_categories) ? store.product_categories : []),
+          ...(Array.isArray(store.menu_categories) ? store.menu_categories : [])
+        ];
+
+        if (embeddedCategories.length) {
+          return embeddedCategories.map(normalizeCategoryRecord);
+        }
+      }
+
       if (window.DookiData?.getCategoriesByEstablishment) {
         const result = await window.DookiData.getCategoriesByEstablishment(storeId);
         if (Array.isArray(result) && result.length) {
@@ -152,42 +168,29 @@ const api = {
       if (window.DookiData?.getCategories) {
         const result = await window.DookiData.getCategories();
         if (Array.isArray(result) && result.length) {
-          return result
-            .filter((item) =>
-              String(item.establishment_id || item.store_id || item.restaurant_id || "") === String(storeId)
-            )
-            .map(normalizeCategoryRecord);
+          const filtered = result.filter((item) =>
+            String(item.establishment_id || item.store_id || item.restaurant_id || "") === String(storeId)
+          );
+
+          if (filtered.length) {
+            return filtered.map(normalizeCategoryRecord);
+          }
         }
       }
 
-      const queries = [
-        window.supabaseClient
-          .from("product_categories")
-          .select("*")
-          .eq("establishment_id", storeId)
-          .order("created_at", { ascending: false }),
-
-        window.supabaseClient
-          .from("product_categories")
-          .select("*")
-          .eq("store_id", storeId)
-          .order("created_at", { ascending: false }),
-
-        window.supabaseClient
-          .from("categories")
-          .select("*")
-          .eq("establishment_id", storeId)
-          .order("created_at", { ascending: false }),
-
-        window.supabaseClient
-          .from("categories")
-          .select("*")
-          .eq("store_id", storeId)
-          .order("created_at", { ascending: false })
+      const safeQueries = [
+        { table: "product_categories", column: "establishment_id" },
+        { table: "product_categories", column: "store_id" },
+        { table: "categories", column: "establishment_id" },
+        { table: "categories", column: "store_id" }
       ];
 
-      for (const query of queries) {
-        const { data, error } = await query;
+      for (const item of safeQueries) {
+        const { data, error } = await window.supabaseClient
+          .from(item.table)
+          .select("*")
+          .eq(item.column, storeId);
+
         if (!error && Array.isArray(data) && data.length) {
           return data.map(normalizeCategoryRecord);
         }
@@ -245,10 +248,26 @@ const api = {
     return true;
   },
 
-  async getStoreProducts(storeId) {
+ async getStoreProducts(storeId) {
     if (!storeId) return [];
 
     try {
+      const store = state.snapshot.establishments.find(
+        (item) => String(item.id) === String(storeId)
+      );
+
+      if (store) {
+        const embeddedProducts = [
+          ...(Array.isArray(store.products) ? store.products : []),
+          ...(Array.isArray(store.items) ? store.items : []),
+          ...(Array.isArray(store.menu_items) ? store.menu_items : [])
+        ];
+
+        if (embeddedProducts.length) {
+          return embeddedProducts.map(normalizeProductRecord);
+        }
+      }
+
       if (window.DookiData?.getProductsByEstablishment) {
         const result = await window.DookiData.getProductsByEstablishment(storeId);
         if (Array.isArray(result) && result.length) {
@@ -266,42 +285,29 @@ const api = {
       if (window.DookiData?.getProducts) {
         const result = await window.DookiData.getProducts();
         if (Array.isArray(result) && result.length) {
-          return result
-            .filter((item) =>
-              String(item.establishment_id || item.store_id || item.restaurant_id || "") === String(storeId)
-            )
-            .map(normalizeProductRecord);
+          const filtered = result.filter((item) =>
+            String(item.establishment_id || item.store_id || item.restaurant_id || "") === String(storeId)
+          );
+
+          if (filtered.length) {
+            return filtered.map(normalizeProductRecord);
+          }
         }
       }
 
-      const queries = [
-        window.supabaseClient
-          .from("products")
-          .select("*")
-          .eq("establishment_id", storeId)
-          .order("created_at", { ascending: false }),
-
-        window.supabaseClient
-          .from("products")
-          .select("*")
-          .eq("store_id", storeId)
-          .order("created_at", { ascending: false }),
-
-        window.supabaseClient
-          .from("store_products")
-          .select("*")
-          .eq("establishment_id", storeId)
-          .order("created_at", { ascending: false }),
-
-        window.supabaseClient
-          .from("store_products")
-          .select("*")
-          .eq("store_id", storeId)
-          .order("created_at", { ascending: false })
+      const safeQueries = [
+        { table: "products", column: "establishment_id" },
+        { table: "products", column: "store_id" },
+        { table: "store_products", column: "establishment_id" },
+        { table: "store_products", column: "store_id" }
       ];
 
-      for (const query of queries) {
-        const { data, error } = await query;
+      for (const item of safeQueries) {
+        const { data, error } = await window.supabaseClient
+          .from(item.table)
+          .select("*")
+          .eq(item.column, storeId);
+
         if (!error && Array.isArray(data) && data.length) {
           return data.map(normalizeProductRecord);
         }
@@ -678,7 +684,7 @@ function normalizeCategoryRecord(category) {
 
   return {
     ...category,
-    id: category.id,
+    id: category.id || category.category_id || crypto.randomUUID(),
     establishment_id: category.establishment_id || category.store_id || category.restaurant_id || null,
     name: category.name || category.title || "Categoria",
     description: category.description || category.details || ""
@@ -690,7 +696,7 @@ function normalizeProductRecord(product) {
 
   return {
     ...product,
-    id: product.id,
+    id: product.id || product.product_id || crypto.randomUUID(),
     establishment_id: product.establishment_id || product.store_id || product.restaurant_id || null,
     category_id: product.category_id || product.product_category_id || null,
     name: product.name || product.title || "Produto",

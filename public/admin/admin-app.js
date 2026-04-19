@@ -131,7 +131,7 @@ const api = {
     return data;
   },
 
-async getStoreCategories(storeId) {
+  async getStoreCategories(storeId) {
     if (!storeId) return [];
 
     try {
@@ -245,7 +245,7 @@ async getStoreCategories(storeId) {
     return true;
   },
 
-   async getStoreProducts(storeId) {
+  async getStoreProducts(storeId) {
     if (!storeId) return [];
 
     try {
@@ -673,14 +673,6 @@ function normalizeTextareaLines(text) {
     .join("\n");
 }
 
-function normalizeTextareaLines(text) {
-  return String(text || "")
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .join("\n");
-}
-
 function normalizeCategoryRecord(category) {
   if (!category) return category;
 
@@ -703,25 +695,10 @@ function normalizeProductRecord(product) {
     category_id: product.category_id || product.product_category_id || null,
     name: product.name || product.title || "Produto",
     description: product.description || product.details || "",
-    sale_price:
-      product.sale_price ??
-      product.price ??
-      product.unit_price ??
-      0,
-    cost_price:
-      product.cost_price ??
-      product.cost ??
-      0,
-    stock_quantity:
-      product.stock_quantity ??
-      product.stock ??
-      product.quantity ??
-      0,
-    stock_min_quantity:
-      product.stock_min_quantity ??
-      product.minimum_stock ??
-      product.min_stock ??
-      0
+    sale_price: product.sale_price ?? product.price ?? product.unit_price ?? 0,
+    cost_price: product.cost_price ?? product.cost ?? 0,
+    stock_quantity: product.stock_quantity ?? product.stock ?? product.quantity ?? 0,
+    stock_min_quantity: product.stock_min_quantity ?? product.minimum_stock ?? product.min_stock ?? 0
   };
 }
 
@@ -1489,8 +1466,7 @@ function renderProductsList() {
   }
 
   const categoriesById = new Map(
-  (state.selectedStoreCategories || []).map((
-        category) => [String(category.id), category])
+    (state.selectedStoreCategories || []).map((category) => [String(category.id), category])
   );
 
   const products = state.selectedStoreProducts || [];

@@ -624,7 +624,7 @@ function getPlanLabelFromStore(store) {
   if (!store) return "—";
 
   const planById = state.snapshot.plans.find((plan) => String(plan.id) === String(store.plan_id));
-  return planById?.name || store.plan_name || store.current_plan_name || store.plan || "—";
+  return planById?.name || store.plan || store.plan_name || "—";
 }
 
 function getSelectedStore() {
@@ -644,8 +644,8 @@ function normalizeCategoryRecord(category) {
 
   return {
     ...category,
-    id: category.id || category.category_id || `cat-${Math.random().toString(36).slice(2)}`,
-    establishment_id: category.establishment_id || category.store_id || category.restaurant_id || null,
+    id: sanitizeEntityId(category.id || category.category_id) || `cat-${Math.random().toString(36).slice(2)}`,
+    establishment_id: sanitizeForeignKey(category.establishment_id || category.store_id || category.restaurant_id),
     name: category.name || category.title || "Categoria",
     description: category.description || category.details || ""
   };
@@ -656,9 +656,9 @@ function normalizeProductRecord(product) {
 
   return {
     ...product,
-    id: product.id || product.product_id || `prod-${Math.random().toString(36).slice(2)}`,
-    establishment_id: product.establishment_id || product.store_id || product.restaurant_id || null,
-    category_id: product.category_id || product.product_category_id || null,
+    id: sanitizeEntityId(product.id || product.product_id) || `prod-${Math.random().toString(36).slice(2)}`,
+    establishment_id: sanitizeForeignKey(product.establishment_id || product.store_id || product.restaurant_id),
+    category_id: sanitizeForeignKey(product.category_id || product.product_category_id || product.menu_category_id),
     name: product.name || product.title || "Produto",
     description: product.description || product.details || "",
     sale_price: product.sale_price ?? product.price ?? product.unit_price ?? 0,
@@ -853,31 +853,22 @@ function renderStores() {
   const stores = getFilteredStores();
 
   container.innerHTML = stores.length
-    ? stores.map((store) => {
-        const logo = store.logo_url
-          ? `<img class="pro-store-thumb" src="${store.logo_url}" alt="${store.name || "Loja"}">`
-          : `<div class="pro-avatar">${String(store.name || "L").charAt(0).toUpperCase()}</div>`;
-
-        return `
-          <article class="pro-store-row ${String(store.id) === String(state.selectedStoreId) ? "is-selected" : ""}">
-            <div class="pro-store-row-left">
-              ${logo}
-              <div class="pro-store-row-content">
-                <strong>${store.name || "Loja"}</strong>
-                <span>${store.city || "Cidade"}</span>
-                <div class="pro-inline-meta">
-                  <span class="plan-pill">${getPlanLabelFromStore(store)}</span>
-                  <span class="pro-status-badge ${statusBadgeClass(store.status)}">${store.status || "—"}</span>
-                </div>
-              </div>
+    ? stores.map((store) => `
+        <article class="pro-store-row pro-store-row--premium">
+          <div class="pro-store-row-left pro-store-row-left--premium">
+            <div class="pro-avatar">${String(store.name || "L").charAt(0).toUpperCase()}</div>
+            <div class="pro-store-row-content">
+              <strong>${store.name || "Loja"}</strong>
+              <span>${store.city || "Cidade"} • ${getPlanLabelFromStore(store)}</span>
             </div>
+          </div>
 
-            <div class="pro-store-row-right">
-              <button class="ghost-button small" onclick="window.selectStore('${store.id}')">Gerenciar</button>
-            </div>
-          </article>
-        `;
-      }).join("")
+          <div class="pro-store-row-right">
+            <span class="pro-status-badge ${statusBadgeClass(store.status)}">${store.status || "—"}</span>
+            <button class="ghost-button small" onclick="window.selectStore('${store.id}')">Ver</button>
+          </div>
+        </article>
+      `).join("")
     : `<div class="pro-empty-state"><strong>Nenhum estabelecimento</strong><span>Nenhuma loja encontrada para este filtro.</span></div>`;
 
   renderStoreDetail();
@@ -896,29 +887,14 @@ function renderStoreDetail() {
   if (!container) return;
 
   const store = getSelectedStore();
-  const planLabel = getPlanLabelFromStore(store);
 
   container.innerHTML = store
     ? `
-      <article class="detail-card-box detail-card-box--rich">
-        <div class="store-glance-cover" style="background-image:url('${store.banner_url || ""}');">
-          <div class="store-glance-overlay"></div>
-          <div class="store-glance-top">
-            ${store.logo_url ? `<img class="store-glance-logo" src="${store.logo_url}" alt="${store.name || "Loja"}">` : `<div class="store-glance-logo fallback">${String(store.name || "L").charAt(0).toUpperCase()}</div>`}
-            <div>
-              <strong>${store.name}</strong>
-              <span>${store.city || "Cidade não informada"}</span>
-            </div>
-          </div>
-        </div>
-        <div class="store-glance-meta">
-          <span class="plan-pill">${planLabel}</span>
-          <span class="pro-status-badge ${statusBadgeClass(store.status)}">${store.status || "—"}</span>
-        </div>
-        <div class="summary-list compact">
-          ${summaryItem("Email", store.email || "Sem email")}
-          ${summaryItem("WhatsApp", store.phone || store.whatsapp || "Não informado")}
-        </div>
+      <article class="detail-card-box">
+        <strong>${store.name}</strong>
+        <span>${store.city || "Cidade não informada"}</span>
+        <span>${store.email || "Sem email"}</span>
+        <span>${getPlanLabelFromStore(store)}</span>
       </article>
     `
     : `
@@ -935,15 +911,13 @@ function populateStoreEditForm(store) {
 
   form.name.value = store.name || "";
   form.city.value = store.city || "";
+  form.plan_id.value = store.plan_id || "";
   form.status.value = store.status || "active";
   form.email.value = store.email || "";
-  form.phone.value = store.phone || store.whatsapp || "";
+  form.phone.value = store.phone || "";
   form.owner_name.value = store.owner_name || "";
   form.logo_url.value = store.logo_url || "";
   form.banner_url.value = store.banner_url || "";
-  if (form.plan_id) {
-    form.plan_id.value = store.plan_id || "";
-  }
 }
 
 function renderStoreProfile() {
@@ -982,8 +956,8 @@ function renderStoreProfile() {
     </article>
   `;
 
-  fillPlanSelects();
   populateStoreEditForm(store);
+  fillPlanSelects();
   renderCategoriesList();
   renderProductsList();
   fillProductCategorySelect();
@@ -1048,10 +1022,9 @@ async function handleStoreUpdate(event) {
   try {
     await api.updateEstablishment(store.id, payload);
     await refreshSnapshot();
-    const refreshedStore = getSelectedStore();
     renderAll();
     navigate("store-profile");
-    alert(`Estabelecimento atualizado com sucesso. Plano atual: ${getPlanLabelFromStore(refreshedStore || store)}.`);
+    alert("Estabelecimento atualizado com sucesso.");
   } catch (error) {
     console.error(error);
     alert(`Erro ao atualizar estabelecimento: ${error.message || "erro desconhecido"}`);
@@ -1170,8 +1143,8 @@ function renderPayments() {
 
   container.innerHTML = payments.length
     ? payments.map((payment) => `
-        <article class="pro-store-row">
-          <div class="pro-store-row-left">
+        <article class="pro-store-row pro-store-row--premium">
+          <div class="pro-store-row-left pro-store-row-left--premium">
             <div class="pro-avatar">R$</div>
             <div class="pro-store-row-content">
               <strong>${formatMoney(payment.amount || 0)}</strong>
@@ -1228,8 +1201,8 @@ function renderSupport() {
 
   container.innerHTML = tickets.length
     ? tickets.map((ticket) => `
-        <article class="pro-store-row">
-          <div class="pro-store-row-left">
+        <article class="pro-store-row pro-store-row--premium">
+          <div class="pro-store-row-left pro-store-row-left--premium">
             <div class="pro-avatar">S</div>
             <div class="pro-store-row-content">
               <strong>${ticket.subject || "Ticket"}</strong>
@@ -1344,8 +1317,8 @@ function renderCategoriesList() {
 
   container.innerHTML = categories.length
     ? categories.map((category) => `
-        <article class="pro-store-row">
-          <div class="pro-store-row-left">
+        <article class="pro-store-row pro-store-row--premium">
+          <div class="pro-store-row-left pro-store-row-left--premium">
             <div class="pro-avatar">C</div>
             <div class="pro-store-row-content">
               <strong>${category.name || "Categoria"}</strong>
@@ -1471,8 +1444,8 @@ function renderProductsList() {
           : "Sem categoria";
 
         return `
-          <article class="pro-store-row">
-            <div class="pro-store-row-left">
+          <article class="pro-store-row pro-store-row--premium">
+            <div class="pro-store-row-left pro-store-row-left--premium">
               <div class="pro-avatar">P</div>
               <div class="pro-store-row-content">
                 <strong>${product.name || "Produto"}</strong>
@@ -1513,11 +1486,18 @@ function resetProductForm() {
 }
 
 window.editAdminProduct = (id) => {
-  const product = state.selectedStoreProducts.find((item) => String(item.id) === String(id));
+  const safeId = sanitizeEntityId(id);
+  const product = state.selectedStoreProducts.find((item) => String(item.id) === String(safeId || id));
   const form = document.getElementById("admin-product-form");
   if (!product || !form) return;
 
-  state.editingProductId = product.id;
+  const productId = sanitizeEntityId(product.id);
+  if (!productId) {
+    alert("Erro: este produto está sem ID válido no painel admin.");
+    return;
+  }
+
+  state.editingProductId = productId;
 
   form.name.value = product.name || "";
   form.category_id.value = product.category_id || "";
@@ -1529,11 +1509,17 @@ window.editAdminProduct = (id) => {
 };
 
 window.deleteAdminProduct = async (id) => {
+  const safeId = sanitizeEntityId(id);
+  if (!safeId) {
+    alert("Erro: este produto está sem ID válido para exclusão.");
+    return;
+  }
+
   const confirmed = window.confirm("Deseja excluir este produto?");
   if (!confirmed) return;
 
   try {
-    await api.deleteProduct(id);
+    await api.deleteProduct(safeId);
     await refreshSelectedStoreResources();
     renderProductsList();
 
@@ -1560,7 +1546,7 @@ async function handleProductSubmit(event) {
 
   const payload = {
     establishment_id: state.selectedStoreId,
-    category_id: form.category_id.value || null,
+    category_id: sanitizeForeignKey(form.category_id.value),
     name: form.name.value.trim(),
     description: form.description.value.trim() || null,
     sale_price: Number(form.sale_price.value || 0),
@@ -1571,7 +1557,12 @@ async function handleProductSubmit(event) {
 
   try {
     if (state.editingProductId) {
-      await api.updateProduct(state.editingProductId, payload);
+      const safeEditingId = sanitizeEntityId(state.editingProductId);
+      if (!safeEditingId) {
+        alert("Erro: ID do produto não encontrado para edição.");
+        return;
+      }
+      await api.updateProduct(safeEditingId, payload);
       alert("Produto atualizado com sucesso.");
     } else {
       await api.createProduct(payload);

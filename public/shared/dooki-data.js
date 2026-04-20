@@ -6,11 +6,23 @@ function getSupabaseClient() {
   return window.supabaseClient || window.DookiSupabase?.client || null;
 }
 
+function sanitizeEntityId(value) {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  if (!normalized || normalized === 'undefined' || normalized === 'null') return null;
+  return normalized;
+}
+
+function sanitizeForeignKey(value) {
+  const normalized = sanitizeEntityId(value);
+  return normalized || null;
+}
+
 function normalizeStore(row) {
   if (!row) return null;
 
   return {
-    id: row.id,
+    id: sanitizeEntityId(row.id) || null,
     name: row.name || row.store_name || "Sem nome",
     city: row.city || row.store_city || "-",
     status: row.status || "active",
@@ -132,8 +144,8 @@ function normalizeCategory(row) {
   if (!row) return null;
 
   return {
-    id: row.id,
-    establishment_id: row.establishment_id || row.store_id || row.restaurant_id || null,
+    id: sanitizeEntityId(row.id || row.category_id) || null,
+    establishment_id: sanitizeForeignKey(row.establishment_id || row.store_id || row.restaurant_id),
     name: row.name || row.title || 'Categoria',
     description: row.description || row.details || '',
     active: row.active ?? row.is_active ?? true,
@@ -146,9 +158,9 @@ function normalizeProduct(row) {
   if (!row) return null;
 
   return {
-    id: row.id,
-    establishment_id: row.establishment_id || row.store_id || row.restaurant_id || null,
-    category_id: row.category_id || row.product_category_id || row.menu_category_id || null,
+    id: sanitizeEntityId(row.id || row.product_id) || null,
+    establishment_id: sanitizeForeignKey(row.establishment_id || row.store_id || row.restaurant_id),
+    category_id: sanitizeForeignKey(row.category_id || row.product_category_id || row.menu_category_id),
     name: row.name || row.title || 'Produto',
     description: row.description || row.details || '',
     sale_price: Number(row.sale_price ?? row.price ?? row.unit_price ?? 0),
@@ -266,7 +278,7 @@ async function createProduct(payload) {
 
   const preparedPayload = {
     establishment_id: payload.establishment_id,
-    category_id: payload.category_id || null,
+    category_id: sanitizeForeignKey(payload.category_id),
     name: payload.name || 'Novo produto',
     description: payload.description || '',
     sale_price: Number(payload.sale_price ?? payload.price ?? 0),
@@ -301,11 +313,13 @@ async function createProduct(payload) {
 }
 
 async function updateProduct(productId, payload, establishmentId) {
+  const safeProductId = sanitizeEntityId(productId);
+  if (!safeProductId) throw new Error('Produto sem ID válido.');
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase não configurado.');
 
   const preparedPayload = {
-    ...(payload.category_id !== undefined ? { category_id: payload.category_id || null } : {}),
+    ...(payload.category_id !== undefined ? { category_id: sanitizeForeignKey(payload.category_id) } : {}),
     ...(payload.name !== undefined ? { name: payload.name } : {}),
     ...(payload.description !== undefined ? { description: payload.description } : {}),
     ...(payload.sale_price !== undefined ? { sale_price: Number(payload.sale_price || 0) } : {}),
@@ -318,7 +332,7 @@ async function updateProduct(productId, payload, establishmentId) {
     ...(payload.sort_order !== undefined ? { sort_order: Number(payload.sort_order || 0) } : {})
   };
 
-  let result = await client.from('products').update(preparedPayload).eq('id', productId).eq('establishment_id', establishmentId).select().single();
+  let result = await client.from('products').update(preparedPayload).eq('id', safeProductId).eq('establishment_id', establishmentId).select().single();
   if (result.error) {
     const fallbackPayload = { ...preparedPayload };
     if (fallbackPayload.sale_price !== undefined) {
@@ -326,7 +340,7 @@ async function updateProduct(productId, payload, establishmentId) {
       delete fallbackPayload.sale_price;
     }
     delete fallbackPayload.sort_order;
-    result = await client.from('products').update(fallbackPayload).eq('id', productId).eq('establishment_id', establishmentId).select().single();
+    result = await client.from('products').update(fallbackPayload).eq('id', safeProductId).eq('establishment_id', establishmentId).select().single();
     if (result.error) throw result.error;
   }
 
@@ -334,10 +348,12 @@ async function updateProduct(productId, payload, establishmentId) {
 }
 
 async function deleteProduct(productId, establishmentId) {
+  const safeProductId = sanitizeEntityId(productId);
+  if (!safeProductId) throw new Error('Produto sem ID válido.');
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase não configurado.');
 
-  const { error } = await client.from('products').delete().eq('id', productId).eq('establishment_id', establishmentId);
+  const { error } = await client.from('products').delete().eq('id', safeProductId).eq('establishment_id', establishmentId);
   if (error) throw error;
   return true;
 }

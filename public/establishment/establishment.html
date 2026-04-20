@@ -62,8 +62,6 @@
         </div>
       </header>
 
-      <div class="establishment-shell-layout">
-        <div class="establishment-primary-column">
       <section class="admin-screen active" data-panel="dashboard">
         <div class="stats-grid admin-stats">
           <article class="panel stat-card">
@@ -468,66 +466,45 @@
           </form>
         </article>
       </section>
-        </div>
 
-        <aside class="establishment-preview-rail">
-          <article class="panel preview-panel">
-            <div class="panel-head">
-              <div>
-                <span class="panel-kicker">Prévia do cardápio digital</span>
-                <h3>Visual do cliente</h3>
-              </div>
+      <aside class="menu-preview-sidebar">
+        <article class="panel menu-preview-panel">
+          <div class="panel-head">
+            <div>
+              <span class="panel-kicker">Prévia</span>
+              <h3>Cardápio digital</h3>
+            </div>
+            <span class="status-pill alt">Ao vivo</span>
+          </div>
+
+          <div class="menu-preview-actions">
+            <a class="ghost-button small" id="menu-preview-open" href="/menu/menu.html" target="_blank" rel="noopener">Abrir cardápio</a>
+            <button class="ghost-button small" type="button" id="menu-preview-go-products">Ir para produtos</button>
+          </div>
+
+          <div class="menu-preview-phone" id="menu-preview-phone">
+            <div class="menu-preview-banner" id="menu-preview-banner"></div>
+            <div class="menu-preview-logo-wrap">
+              <img class="menu-preview-logo" id="menu-preview-logo" src="/assets/logo-dooki.png" alt="Logo da loja">
+            </div>
+            <div class="menu-preview-store">
+              <strong id="menu-preview-name">Minha Loja</strong>
+              <span id="menu-preview-city">Cidade</span>
+              <p id="menu-preview-description">Seu cardápio digital aparecerá aqui conforme os produtos e categorias forem cadastrados.</p>
             </div>
 
-            <div class="preview-toolbar">
-              <button class="preview-chip active" type="button">Mobile</button>
-              <button class="preview-chip" type="button" disabled>Desktop</button>
-            </div>
+            <div class="menu-preview-tabs" id="menu-preview-tabs"></div>
+            <div class="menu-preview-list" id="menu-preview-list"></div>
+          </div>
+        </article>
+      </aside>
 
-            <div class="menu-preview-phone">
-              <div class="menu-preview-screen">
-                <div class="menu-preview-cover" id="menu-preview-cover"></div>
-                <div class="menu-preview-brand">
-                  <img id="menu-preview-logo" src="/assets/logo-dooki.png" alt="Loja">
-                </div>
-                <div class="menu-preview-content">
-                  <span class="menu-preview-status" id="menu-preview-status">Aberto</span>
-                  <h3 id="menu-preview-name">Minha Loja</h3>
-                  <p id="menu-preview-description">Seu cardápio digital aparecerá aqui.</p>
-
-                  <div class="menu-preview-info">
-                    <span id="menu-preview-city">Cidade</span>
-                    <span id="menu-preview-plan">Plano</span>
-                  </div>
-
-                  <div class="menu-preview-tabs" id="menu-preview-tabs"></div>
-                  <div class="menu-preview-products" id="menu-preview-products"></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="preview-actions">
-              <a class="ghost-button" id="menu-preview-link" href="/menu/menu.html" target="_blank" rel="noreferrer">Abrir cardápio</a>
-              <button class="primary-button" type="button" id="preview-go-products">Editar cardápio</button>
-            </div>
-          </article>
-
-          <article class="panel">
-            <div class="panel-head">
-              <div>
-                <span class="panel-kicker">Resumo rápido</span>
-                <h3>Saúde do cardápio</h3>
-              </div>
-            </div>
-            <div class="summary-list" id="preview-summary-list"></div>
-          </article>
-        </aside>
-      </div>
     </main>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../shared/supabase-client.js"></script>
+  <script src="../shared/dooki-data.js"></script>
   <script src="./establishment-auth.js"></script>
   <script src="./establishment-app.js"></script>
 </body>

@@ -495,6 +495,235 @@ async function sendTicketMessage(ticketId, payload) {
   return normalizeMessage(data);
 }
 
+
+function normalizeCategory(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    establishment_id: row.establishment_id || null,
+    name: row.name || "Categoria",
+    description: row.description || "",
+    sort_order: Number(row.sort_order || 0),
+    active: row.active !== false,
+    created_at: row.created_at || null,
+    raw: row
+  };
+}
+
+function normalizeProduct(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    establishment_id: row.establishment_id || null,
+    category_id: row.category_id || null,
+    name: row.name || "Produto",
+    description: row.description || "",
+    sale_price: Number(row.sale_price ?? row.price ?? 0),
+    price: Number(row.price ?? row.sale_price ?? 0),
+    cost_price: Number(row.cost_price || 0),
+    stock_quantity: Number(row.stock_quantity || 0),
+    stock_min_quantity: Number(row.stock_min_quantity || 0),
+    active: row.active ?? row.is_active ?? true,
+    is_active: row.is_active ?? row.active ?? true,
+    image_url: row.image_url || "",
+    created_at: row.created_at || null,
+    raw: row
+  };
+}
+
+function shouldRetryLegacyColumn(error, columnNames) {
+  const message = String(error?.message || error?.details || "");
+  return columnNames.some(function (column) {
+    return message.includes(column);
+  });
+}
+
+async function createCategory(payload) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error("Supabase não configurado.");
+
+  const attempt = await client
+    .from("categories")
+    .insert([{
+      establishment_id: payload.establishment_id,
+      name: payload.name,
+      description: payload.description || "",
+      active: payload.active !== false,
+      sort_order: Number(payload.sort_order || 0)
+    }])
+    .select()
+    .single();
+
+  if (attempt.error && shouldRetryLegacyColumn(attempt.error, ["sort_order", "active", "description"])) {
+    const fallback = await client
+      .from("categories")
+      .insert([{
+        establishment_id: payload.establishment_id,
+        name: payload.name
+      }])
+      .select()
+      .single();
+
+    if (fallback.error) {
+      if (String(fallback.error.message || "").includes("categories_establishment_id_name_key")) {
+        throw new Error("Já existe uma categoria com esse nome na sua loja.");
+      }
+      throw fallback.error;
+    }
+
+    return normalizeCategory(fallback.data);
+  }
+
+  if (attempt.error) {
+    if (String(attempt.error.message || "").includes("categories_establishment_id_name_key")) {
+      throw new Error("Já existe uma categoria com esse nome na sua loja.");
+    }
+    throw attempt.error;
+  }
+
+  return normalizeCategory(attempt.data);
+}
+
+async function updateCategory(id, payload, establishmentId = null) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error("Supabase não configurado.");
+
+  const prepared = {
+    ...(payload.name !== undefined ? { name: payload.name } : {}),
+    ...(payload.description !== undefined ? { description: payload.description } : {}),
+    ...(payload.active !== undefined ? { active: payload.active } : {}),
+    ...(payload.sort_order !== undefined ? { sort_order: Number(payload.sort_order || 0) } : {})
+  };
+
+  let query = client.from("categories").update(prepared).eq("id", id);
+  if (establishmentId) query = query.eq("establishment_id", establishmentId);
+  let result = await query.select().single();
+
+  if (result.error && shouldRetryLegacyColumn(result.error, ["sort_order", "active", "description"])) {
+    const fallbackPrepared = {
+      ...(payload.name !== undefined ? { name: payload.name } : {})
+    };
+    let fallbackQuery = client.from("categories").update(fallbackPrepared).eq("id", id);
+    if (establishmentId) fallbackQuery = fallbackQuery.eq("establishment_id", establishmentId);
+    result = await fallbackQuery.select().single();
+  }
+
+  if (result.error) throw result.error;
+  return normalizeCategory(result.data);
+}
+
+async function deleteCategory(id, establishmentId = null) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error("Supabase não configurado.");
+
+  let query = client.from("categories").delete().eq("id", id);
+  if (establishmentId) query = query.eq("establishment_id", establishmentId);
+  const { error } = await query;
+  if (error) throw error;
+  return true;
+}
+
+async function createProduct(payload, categories = []) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error("Supabase não configurado.");
+
+  const categoryName = categories.find(function (item) {
+    return String(item.id) === String(payload.category_id || "");
+  })?.name || "Categoria";
+
+  const modernPayload = {
+    establishment_id: payload.establishment_id,
+    category_id: payload.category_id || null,
+    name: payload.name,
+    description: payload.description || "",
+    sale_price: Number(payload.sale_price || 0),
+    cost_price: Number(payload.cost_price || 0),
+    stock_quantity: Number(payload.stock_quantity || 0),
+    stock_min_quantity: Number(payload.stock_min_quantity || 0),
+    active: payload.active !== false
+  };
+
+  let result = await client.from("products").insert([modernPayload]).select().single();
+
+  if (result.error && shouldRetryLegacyColumn(result.error, ["sale_price", "cost_price", "stock_quantity", "stock_min_quantity", "active", "category_id"])) {
+    const legacyPayload = {
+      establishment_id: payload.establishment_id,
+      name: payload.name,
+      category: categoryName,
+      description: payload.description || "",
+      price: Number(payload.sale_price || 0),
+      is_active: payload.active !== false
+    };
+
+    result = await client.from("products").insert([legacyPayload]).select().single();
+  }
+
+  if (result.error) throw result.error;
+  return normalizeProduct(result.data);
+}
+
+async function updateProduct(id, payload, categories = []) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error("Supabase não configurado.");
+
+  const categoryName = categories.find(function (item) {
+    return String(item.id) === String(payload.category_id || "");
+  })?.name || "Categoria";
+
+  const prepared = {
+    ...(payload.name !== undefined ? { name: payload.name } : {}),
+    ...(payload.category_id !== undefined ? { category_id: payload.category_id || null } : {}),
+    ...(payload.description !== undefined ? { description: payload.description } : {}),
+    ...(payload.sale_price !== undefined ? { sale_price: Number(payload.sale_price || 0) } : {}),
+    ...(payload.cost_price !== undefined ? { cost_price: Number(payload.cost_price || 0) } : {}),
+    ...(payload.stock_quantity !== undefined ? { stock_quantity: Number(payload.stock_quantity || 0) } : {}),
+    ...(payload.stock_min_quantity !== undefined ? { stock_min_quantity: Number(payload.stock_min_quantity || 0) } : {}),
+    ...(payload.active !== undefined ? { active: payload.active } : {})
+  };
+
+  let query = client
+    .from("products")
+    .update(prepared)
+    .eq("id", id);
+
+  if (payload.establishment_id) {
+    query = query.eq("establishment_id", payload.establishment_id);
+  }
+
+  let result = await query.select().single();
+
+  if (result.error && shouldRetryLegacyColumn(result.error, ["sale_price", "cost_price", "stock_quantity", "stock_min_quantity", "active", "category_id"])) {
+    const fallbackPrepared = {
+      ...(payload.name !== undefined ? { name: payload.name } : {}),
+      ...(payload.description !== undefined ? { description: payload.description } : {}),
+      ...(payload.sale_price !== undefined ? { price: Number(payload.sale_price || 0) } : {}),
+      ...(payload.active !== undefined ? { is_active: payload.active } : {}),
+      ...(payload.category_id !== undefined ? { category: categoryName } : {})
+    };
+
+    result = await client
+      .from("products")
+      .update(fallbackPrepared)
+      .eq("id", id)
+      .select()
+      .single();
+  }
+
+  if (result.error) throw result.error;
+  return normalizeProduct(result.data);
+}
+
+async function deleteProduct(id, establishmentId = null) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error("Supabase não configurado.");
+
+  let query = client.from("products").delete().eq("id", id);
+  if (establishmentId) query = query.eq("establishment_id", establishmentId);
+  const { error } = await query;
+  if (error) throw error;
+  return true;
+}
+
 window.DookiData = {
   getSnapshot,
   createStore,
@@ -508,5 +737,11 @@ window.DookiData = {
   createSupportTicket,
   updateSupportTicket,
   getTicketMessages,
-  sendTicketMessage
+  sendTicketMessage,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  createProduct,
+  updateProduct,
+  deleteProduct
 };

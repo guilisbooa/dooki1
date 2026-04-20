@@ -313,6 +313,13 @@
       });
     }
 
+    const previewProductsButton = document.getElementById("menu-preview-go-products");
+    if (previewProductsButton) {
+      previewProductsButton.addEventListener("click", function () {
+        openScreen("products");
+      });
+    }
+
     document.querySelectorAll("[data-screen]").forEach(function (button) {
       button.addEventListener("click", function () {
         const featureKey = button.dataset.feature;
@@ -372,8 +379,8 @@
     renderTables();
     renderFinance();
     renderSupport();
-    renderMenuPreview();
     fillSettingsForm();
+    renderMenuPreview();
   }
 
   async function loadAllData() {
@@ -542,8 +549,10 @@
 
     document.querySelectorAll('[data-establishment-logo]').forEach(function (img) {
       img.src = state.establishment?.logo_url || "/assets/logo-dooki.png";
-      img.alt = "Dooki";
+      img.alt = state.establishment?.name || "Dooki";
     });
+
+    renderMenuPreview();
   }
 
   function renderSidebar() {
@@ -635,97 +644,6 @@
     }
 
     if (screen === "settings") fillSettingsForm();
-  }
-
-  function renderMenuPreview() {
-    const cover = document.getElementById("menu-preview-cover");
-    const logo = document.getElementById("menu-preview-logo");
-    const name = document.getElementById("menu-preview-name");
-    const description = document.getElementById("menu-preview-description");
-    const city = document.getElementById("menu-preview-city");
-    const plan = document.getElementById("menu-preview-plan");
-    const status = document.getElementById("menu-preview-status");
-    const tabs = document.getElementById("menu-preview-tabs");
-    const products = document.getElementById("menu-preview-products");
-    const summary = document.getElementById("preview-summary-list");
-    const previewLink = document.getElementById("menu-preview-link");
-    const editButton = document.getElementById("preview-go-products");
-
-    if (!cover || !logo || !name || !description || !tabs || !products) return;
-
-    const storeName = state.establishment?.name || "Minha Loja";
-    const storeDescription = state.establishment?.description || "Seu cardápio digital aparecerá aqui para o cliente final.";
-    const storeCity = state.establishment?.city || "Cidade";
-    const storePlan = getPlanLabel();
-    const isOpen = state.establishment?.status ? !["inactive", "disabled", "closed"].includes(String(state.establishment.status).toLowerCase()) : true;
-    const activeProducts = state.products.filter(function (product) { return product.active !== false; });
-    const orderedCategories = state.categories.slice().sort(function (a, b) {
-      return String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
-    });
-    const categoryNames = orderedCategories.slice(0, 4).map(function (category) {
-      return category.name || "Categoria";
-    });
-    const featuredProducts = activeProducts
-      .slice()
-      .sort(function (a, b) {
-        return Number(b.sale_price || 0) - Number(a.sale_price || 0);
-      })
-      .slice(0, 3);
-
-    cover.style.backgroundImage = state.establishment?.banner_url
-      ? `linear-gradient(180deg, rgba(15, 23, 42, 0.10), rgba(15, 23, 42, 0.55)), url("${state.establishment.banner_url}")`
-      : "linear-gradient(135deg, #111827, #1f2937 45%, #d4a017 120%)";
-    logo.src = state.establishment?.logo_url || "/assets/logo-dooki.png";
-    logo.alt = storeName;
-    name.textContent = storeName;
-    description.textContent = storeDescription;
-    city.textContent = storeCity;
-    plan.textContent = `Plano ${storePlan}`;
-    status.textContent = isOpen ? "Aberto" : "Fechado";
-    status.classList.toggle("closed", !isOpen);
-
-    tabs.innerHTML = (categoryNames.length ? categoryNames : ["Destaques", "Cardápio"]).map(function (category, index) {
-      return `<span class="${index === 0 ? "active" : ""}">${category}</span>`;
-    }).join("");
-
-    products.innerHTML = featuredProducts.length
-      ? featuredProducts.map(function (product) {
-          const category = state.categories.find(function (item) {
-            return item.id === product.category_id;
-          });
-
-          return `
-            <article class="menu-preview-item">
-              <div class="menu-preview-item-main">
-                <strong>${product.name || "Produto"}</strong>
-                <span>${category?.name || "Sem categoria"}</span>
-              </div>
-              <strong>${formatMoney(product.sale_price || 0)}</strong>
-            </article>
-          `;
-        }).join("")
-      : `<div class="menu-preview-empty">Cadastre produtos para ver sua prévia aqui.</div>`;
-
-    if (summary) {
-      summary.innerHTML = [
-        summaryItem("Produtos ativos", String(activeProducts.length)),
-        summaryItem("Categorias", String(state.categories.length)),
-        summaryItem("Mesas cadastradas", String(state.tables.length)),
-        summaryItem("Pedidos recebidos", String(state.orders.length))
-      ].join("");
-    }
-
-    if (previewLink) {
-      const slug = state.establishment?.slug || state.establishment?.id || "menu";
-      previewLink.href = `/menu/menu.html?store=${encodeURIComponent(slug)}`;
-    }
-
-    if (editButton && !editButton.dataset.bound) {
-      editButton.dataset.bound = "true";
-      editButton.addEventListener("click", function () {
-        openScreen("products");
-      });
-    }
   }
 
   function renderDashboard() {
@@ -976,11 +894,11 @@
             </div>
 
             <div class="pro-store-row-right">
-              <span class="pro-status-badge ${product.active === false ? "neutral" : "success"}">
-                ${product.active === false ? "Inativo" : "Ativo"}
+              <span class="pro-status-badge ${isProductActive(product) ? "success" : "neutral"}">
+                ${isProductActive(product) ? "Ativo" : "Inativo"}
               </span>
 
-              <strong>${formatMoney(product.sale_price || 0)}</strong>
+              <strong>${formatMoney(getProductPrice(product))}</strong>
 
               <div class="pro-action-group">
                 <button
@@ -1317,6 +1235,230 @@ function renderCategories() {
     return "neutral";
   }
 
+
+  function getProductPrice(product) {
+    return Number(
+      product?.sale_price ??
+      product?.price ??
+      product?.unit_price ??
+      0
+    );
+  }
+
+  function isProductActive(product) {
+    if (product?.active != null) return product.active !== false;
+    if (product?.is_active != null) return product.is_active !== false;
+    return true;
+  }
+
+  function getCategoryNameById(categoryId) {
+    const category = state.categories.find(function (item) {
+      return String(item.id) === String(categoryId);
+    });
+    return category?.name || "";
+  }
+
+  async function createProductRecord(payload) {
+    if (window.DookiData?.createProduct) {
+      return window.DookiData.createProduct(payload, state.categories);
+    }
+
+    const client = getClient();
+    const { data, error } = await client.from("products").insert([payload]).select().single();
+    if (error) throw error;
+    return data;
+  }
+
+  async function updateProductRecord(productId, payload) {
+    if (window.DookiData?.updateProduct) {
+      return window.DookiData.updateProduct(productId, payload, state.categories);
+    }
+
+    const client = getClient();
+    const { data, error } = await client
+      .from("products")
+      .update(payload)
+      .eq("id", productId)
+      .eq("establishment_id", state.membership.establishment_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async function deleteProductRecord(productId) {
+    if (window.DookiData?.deleteProduct) {
+      return window.DookiData.deleteProduct(productId, state.membership.establishment_id);
+    }
+
+    const client = getClient();
+    const { error } = await client
+      .from("products")
+      .delete()
+      .eq("id", productId)
+      .eq("establishment_id", state.membership.establishment_id);
+
+    if (error) throw error;
+    return true;
+  }
+
+  async function createCategoryRecord(payload) {
+    if (window.DookiData?.createCategory) {
+      return window.DookiData.createCategory(payload);
+    }
+
+    const client = getClient();
+    const { data, error } = await client.from("categories").insert([payload]).select().single();
+    if (error) throw error;
+    return data;
+  }
+
+  async function updateCategoryRecord(categoryId, payload) {
+    if (window.DookiData?.updateCategory) {
+      return window.DookiData.updateCategory(categoryId, payload, state.membership.establishment_id);
+    }
+
+    const client = getClient();
+    const { data, error } = await client
+      .from("categories")
+      .update(payload)
+      .eq("id", categoryId)
+      .eq("establishment_id", state.membership.establishment_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async function deleteCategoryRecord(categoryId) {
+    if (window.DookiData?.deleteCategory) {
+      return window.DookiData.deleteCategory(categoryId, state.membership.establishment_id);
+    }
+
+    const client = getClient();
+    const { error } = await client
+      .from("categories")
+      .delete()
+      .eq("id", categoryId)
+      .eq("establishment_id", state.membership.establishment_id);
+
+    if (error) throw error;
+    return true;
+  }
+
+  function getPublicMenuUrl() {
+    const establishmentId = state.membership?.establishment_id || state.establishment?.id || "";
+    const search = establishmentId ? `?establishment=${encodeURIComponent(establishmentId)}` : "";
+    return `/menu/menu.html${search}`;
+  }
+
+  function renderMenuPreview(activeCategoryId) {
+    const banner = document.getElementById("menu-preview-banner");
+    const logo = document.getElementById("menu-preview-logo");
+    const name = document.getElementById("menu-preview-name");
+    const city = document.getElementById("menu-preview-city");
+    const description = document.getElementById("menu-preview-description");
+    const tabs = document.getElementById("menu-preview-tabs");
+    const list = document.getElementById("menu-preview-list");
+    const openLink = document.getElementById("menu-preview-open");
+
+    if (!banner || !logo || !name || !city || !description || !tabs || !list) return;
+
+    const bannerUrl = state.establishment?.banner_url || "";
+    const logoUrl = state.establishment?.logo_url || "/assets/logo-dooki.png";
+
+    banner.style.backgroundImage = bannerUrl
+      ? `linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.02)), url("${bannerUrl}")`
+      : 'linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.02)), linear-gradient(135deg, rgba(218, 165, 32, 0.38), rgba(184, 134, 11, 0.52))';
+    logo.src = logoUrl;
+    name.textContent = state.establishment?.name || "Minha Loja";
+    city.textContent = state.establishment?.city || "Cidade não informada";
+    description.textContent = state.establishment?.description || `Plano ${getPlanLabel()} • ${state.products.length} produto(s) cadastrado(s)`;
+
+    if (openLink) {
+      openLink.href = getPublicMenuUrl();
+    }
+
+    const categories = [...state.categories]
+      .filter(function (category) { return category.active !== false; })
+      .sort(function (a, b) {
+        return Number(a.sort_order || 0) - Number(b.sort_order || 0) ||
+          String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+      });
+
+    const visibleProducts = state.products.filter(function (product) {
+      return isProductActive(product);
+    });
+
+    const groups = categories.map(function (category) {
+      const items = visibleProducts.filter(function (product) {
+        return String(product.category_id || "") === String(category.id);
+      });
+      return { category, items };
+    }).filter(function (group) {
+      return group.items.length > 0;
+    });
+
+    const uncategorized = visibleProducts.filter(function (product) {
+      return !product.category_id || !groups.some(function (group) {
+        return group.items.some(function (item) { return String(item.id) === String(product.id); });
+      });
+    });
+
+    if (uncategorized.length) {
+      groups.push({
+        category: { id: "__sem_categoria__", name: "Mais pedidos" },
+        items: uncategorized
+      });
+    }
+
+    const currentCategoryId = activeCategoryId || tabs.dataset.activeCategoryId || groups[0]?.category?.id || "";
+
+    tabs.innerHTML = groups.length
+      ? groups.map(function (group) {
+          const active = String(group.category.id) === String(currentCategoryId);
+          return `<button type="button" class="menu-preview-tab ${active ? "active" : ""}" data-preview-category-id="${group.category.id}">${group.category.name}</button>`;
+        }).join("")
+      : "";
+
+    tabs.dataset.activeCategoryId = currentCategoryId;
+
+    const selectedGroups = groups.length
+      ? groups.filter(function (group) {
+          return !currentCategoryId || String(group.category.id) === String(currentCategoryId);
+        })
+      : [];
+
+    list.innerHTML = selectedGroups.length
+      ? selectedGroups.map(function (group) {
+          return `
+            <section class="menu-preview-category">
+              <div class="menu-preview-category-title">${group.category.name}</div>
+              ${group.items.slice(0, 8).map(function (product) {
+                return `
+                  <article class="menu-preview-item">
+                    <div>
+                      <strong>${product.name || "Produto"}</strong>
+                      <p>${product.description || "Descrição não informada."}</p>
+                    </div>
+                    <div class="menu-preview-price">${formatMoney(getProductPrice(product))}</div>
+                  </article>
+                `;
+              }).join("")}
+            </section>
+          `;
+        }).join("")
+      : `<div class="menu-preview-empty">Cadastre categorias e produtos para visualizar o cardápio digital aqui.</div>`;
+
+    tabs.querySelectorAll("[data-preview-category-id]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        renderMenuPreview(button.dataset.previewCategoryId);
+      });
+    });
+  }
+
   async function handleCreateProduct(event) {
   event.preventDefault();
 
@@ -1387,7 +1529,6 @@ function renderCategories() {
     renderProducts();
     renderDashboard();
     renderInventory();
-    renderMenuPreview();
 
     alert(editingId ? "Produto atualizado com sucesso." : "Produto cadastrado com sucesso.");
   } catch (error) {
@@ -1492,16 +1633,8 @@ async function deleteProduct(productId) {
   const confirmed = window.confirm(`Deseja excluir o produto "${product.name}"?`);
   if (!confirmed) return;
 
-  const client = getClient();
-
   try {
-    const { error } = await client
-      .from("products")
-      .delete()
-      .eq("id", productId)
-      .eq("establishment_id", state.membership.establishment_id);
-
-    if (error) throw error;
+    await deleteProductRecord(productId);
 
     state.products = state.products.filter(function (item) {
       return item.id !== productId;
@@ -1525,7 +1658,6 @@ async function deleteProduct(productId) {
  async function handleCreateCategory(event) {
   event.preventDefault();
 
-  const client = getClient();
   const form = event.target;
   const formData = new FormData(form);
 
@@ -1544,37 +1676,14 @@ async function deleteProduct(productId) {
   }
 
   try {
-    let error = null;
-
     if (editingId) {
-      const response = await client
-        .from("categories")
-        .update({
-          name: payload.name,
-          description: payload.description
-        })
-        .eq("id", editingId)
-        .eq("establishment_id", state.membership.establishment_id);
-
-      error = response.error || null;
+      await updateCategoryRecord(editingId, {
+        name: payload.name,
+        description: payload.description,
+        active: payload.active
+      });
     } else {
-      const response = await client
-        .from("categories")
-        .insert([payload])
-        .select();
-
-      error = response.error || null;
-
-      if (!error && response.data?.length) {
-        state.categories = [response.data[0], ...state.categories];
-      }
-    }
-
-    if (error) {
-      if (error.message && error.message.includes("categories_establishment_id_name_key")) {
-        throw new Error("Já existe uma categoria com esse nome na sua loja.");
-      }
-      throw error;
+      await createCategoryRecord(payload);
     }
 
     form.reset();
@@ -1681,16 +1790,8 @@ async function deleteCategory(categoryId) {
   const confirmed = window.confirm(`Deseja excluir a categoria "${category.name}"?`);
   if (!confirmed) return;
 
-  const client = getClient();
-
   try {
-    const { error } = await client
-      .from("categories")
-      .delete()
-      .eq("id", categoryId)
-      .eq("establishment_id", state.membership.establishment_id);
-
-    if (error) throw error;
+    await deleteCategoryRecord(categoryId);
 
     state.categories = state.categories.filter(function (item) {
       return item.id !== categoryId;
@@ -1814,7 +1915,6 @@ async function deleteCategory(categoryId) {
 
       await loadAllData();
       renderHeader();
-      renderMenuPreview();
       fillSettingsForm();
       alert("Dados do estabelecimento atualizados com sucesso.");
     } catch (error) {

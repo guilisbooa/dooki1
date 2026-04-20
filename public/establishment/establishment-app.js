@@ -380,7 +380,7 @@
     renderFinance();
     renderSupport();
     fillSettingsForm();
-    renderMenuPreview();
+    refreshMenuPreview();
   }
 
   async function loadAllData() {
@@ -1354,6 +1354,11 @@ function renderCategories() {
     return `/menu/menu.html${search}`;
   }
 
+  function refreshMenuPreview() {
+    const activeCategoryId = document.getElementById("menu-preview-tabs")?.dataset?.activeCategoryId || "";
+    renderMenuPreview(activeCategoryId);
+  }
+
   function renderMenuPreview(activeCategoryId) {
     const banner = document.getElementById("menu-preview-banner");
     const logo = document.getElementById("menu-preview-logo");
@@ -1529,6 +1534,7 @@ function renderCategories() {
     renderProducts();
     renderDashboard();
     renderInventory();
+    refreshMenuPreview();
 
     alert(editingId ? "Produto atualizado com sucesso." : "Produto cadastrado com sucesso.");
   } catch (error) {
@@ -1645,7 +1651,7 @@ async function deleteProduct(productId) {
     renderProducts();
     renderDashboard();
     renderInventory();
-    renderMenuPreview();
+    refreshMenuPreview();
     resetProductFormMode();
 
     alert("Produto excluído com sucesso.");
@@ -1695,7 +1701,7 @@ async function deleteProduct(productId) {
     renderCategories();
     renderProducts();
     renderDashboard();
-    renderMenuPreview();
+    refreshMenuPreview();
 
     alert(editingId ? "Categoria atualizada com sucesso." : "Categoria cadastrada com sucesso.");
   } catch (error) {
@@ -1802,7 +1808,7 @@ async function deleteCategory(categoryId) {
     renderCategories();
     renderProducts();
     renderDashboard();
-    renderMenuPreview();
+    refreshMenuPreview();
     resetCategoryFormMode();
 
     alert("Categoria excluída com sucesso.");
@@ -1916,6 +1922,7 @@ async function deleteCategory(categoryId) {
       await loadAllData();
       renderHeader();
       fillSettingsForm();
+      refreshMenuPreview();
       alert("Dados do estabelecimento atualizados com sucesso.");
     } catch (error) {
       console.error("Erro ao salvar configurações:", error);

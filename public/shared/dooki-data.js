@@ -16,13 +16,74 @@ function normalizeStore(row) {
     status: row.status || "active",
     email: row.email || null,
     whatsapp: row.whatsapp || row.phone || null,
-    plan: row.plan || row.plan_name || null,
+    plan_id: row.plan_id || row.current_plan_id || null,
+    plan: row.plan || row.plan_name || row.current_plan_name || null,
+    plan_name: row.plan_name || row.current_plan_name || row.plan || null,
     logo_url: row.logo_url || row.logo || null,
     banner_url: row.banner_url || row.banner || null,
+    description: row.description || "",
     code: row.code || row.establishment_code || null,
     created_at: row.created_at || null,
     raw: row
   };
+}
+
+
+async function getPlanRecordById(planId) {
+  const client = getSupabaseClient();
+  if (!client || !planId) return null;
+
+  const { data, error } = await client
+    .from("plans")
+    .select("*")
+    .eq("id", planId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+}
+
+async function syncEstablishmentSubscription(establishmentId, planId, planRow = null) {
+  const client = getSupabaseClient();
+  if (!client || !establishmentId || !planId) return null;
+
+  const resolvedPlan = planRow || await getPlanRecordById(planId);
+  const commissionPercent = Number(
+    resolvedPlan?.commission_percent ??
+    resolvedPlan?.commission ??
+    resolvedPlan?.commission_rate ??
+    0
+  );
+  const watermarkEnabled = resolvedPlan?.watermark_enabled ?? resolvedPlan?.watermarkEnabled ?? true;
+  const supportLevel = resolvedPlan?.support_level || resolvedPlan?.supportLevel || "ticket";
+
+  const { error: deactivateError } = await client
+    .from("establishment_subscriptions")
+    .update({ status: "inactive" })
+    .eq("establishment_id", establishmentId)
+    .eq("status", "active");
+
+  if (deactivateError) throw deactivateError;
+
+  const subscriptionPayload = {
+    establishment_id: establishmentId,
+    plan_id: planId,
+    status: "active",
+    started_at: new Date().toISOString(),
+    expires_at: null,
+    commission_percent_snapshot: commissionPercent,
+    watermark_enabled_snapshot: watermarkEnabled,
+    support_level_snapshot: supportLevel
+  };
+
+  const { data, error } = await client
+    .from("establishment_subscriptions")
+    .insert([subscriptionPayload])
+    .select()
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
 }
 
 function normalizePlan(row) {
@@ -187,18 +248,40 @@ async function createStore(payload) {
     banner_url: payload.banner_url || payload.bannerUrl || null
   };
 
-  // Só envia plan_name se existir no payload
+  if (payload.plan_id !== undefined) {
+    preparedPayload.plan_id = payload.plan_id || null;
+  }
+
   if (payload.plan || payload.plan_name) {
     preparedPayload.plan_name = payload.plan_name || payload.plan;
   }
 
-  const { data, error } = await client
+  let { data, error } = await client
     .from("establishments")
     .insert([preparedPayload])
     .select()
     .single();
 
   if (error) throw error;
+
+  if (preparedPayload.plan_id) {
+    const planRow = await getPlanRecordById(preparedPayload.plan_id);
+
+    if (planRow?.name) {
+      const { data: syncedStore, error: syncStoreError } = await client
+        .from("establishments")
+        .update({ plan_name: planRow.name })
+        .eq("id", data.id)
+        .select()
+        .single();
+
+      if (syncStoreError) throw syncStoreError;
+      data = syncedStore;
+    }
+
+    await syncEstablishmentSubscription(data.id, preparedPayload.plan_id, planRow);
+  }
+
   return normalizeStore(data);
 }
 
@@ -219,12 +302,15 @@ async function updateStore(id, payload) {
     ...(payload.bannerUrl !== undefined ? { banner_url: payload.bannerUrl } : {})
   };
 
-  // NÃO envia "plan"
+  if (payload.plan_id !== undefined) {
+    preparedPayload.plan_id = payload.plan_id || null;
+  }
+
   if (payload.plan !== undefined || payload.plan_name !== undefined) {
     preparedPayload.plan_name = payload.plan_name || payload.plan || null;
   }
 
-  const { data, error } = await client
+  let { data, error } = await client
     .from("establishments")
     .update(preparedPayload)
     .eq("id", id)
@@ -232,6 +318,35 @@ async function updateStore(id, payload) {
     .single();
 
   if (error) throw error;
+
+  if (payload.plan_id !== undefined) {
+    if (payload.plan_id) {
+      const planRow = await getPlanRecordById(payload.plan_id);
+
+      if (planRow?.name && data?.plan_name !== planRow.name) {
+        const { data: syncedStore, error: syncStoreError } = await client
+          .from("establishments")
+          .update({ plan_name: planRow.name })
+          .eq("id", id)
+          .select()
+          .single();
+
+        if (syncStoreError) throw syncStoreError;
+        data = syncedStore;
+      }
+
+      await syncEstablishmentSubscription(id, payload.plan_id, planRow);
+    } else {
+      const { error: subscriptionError } = await client
+        .from("establishment_subscriptions")
+        .update({ status: "inactive" })
+        .eq("establishment_id", id)
+        .eq("status", "active");
+
+      if (subscriptionError) throw subscriptionError;
+    }
+  }
+
   return normalizeStore(data);
 }
 
@@ -727,8 +842,11 @@ async function deleteProduct(id, establishmentId = null) {
 window.DookiData = {
   getSnapshot,
   createStore,
+  createEstablishment: createStore,
   updateStore,
+  updateEstablishment: updateStore,
   deleteStore,
+  deleteEstablishment: deleteStore,
   createPlan,
   updatePlan,
   deletePlan,

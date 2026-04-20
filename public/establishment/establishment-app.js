@@ -168,6 +168,7 @@
     return String(
       state.plan?.plan_name ||
       state.plan?.plan_display_name ||
+      state.establishment?.plan_name ||
       state.establishment?.plan ||
       state.establishment?.current_plan_name ||
       "Standard"
@@ -186,7 +187,14 @@
   }
 
   function getPlanLabel() {
-    return state.plan?.plan_display_name || state.plan?.plan_name || state.establishment?.plan || "Standard";
+    return (
+      state.plan?.plan_display_name ||
+      state.plan?.plan_name ||
+      state.establishment?.plan_name ||
+      state.establishment?.plan ||
+      state.establishment?.current_plan_name ||
+      "Standard"
+    );
   }
 
   function getCommissionPercent() {
@@ -390,6 +398,7 @@
     const [
       establishmentRes,
       planRes,
+      directPlanRes,
       featuresRes,
       ordersRes,
       productsRes,
@@ -400,6 +409,7 @@
     ] = await Promise.all([
       client.from("establishments").select("*").eq("id", establishmentId).single(),
       safeView("v_establishment_active_plan", "establishment_id", establishmentId, true),
+      safeActivePlan(establishmentId),
       safeView("v_establishment_features", "establishment_id", establishmentId, false),
       safeTable("orders", establishmentId),
       safeTable("products", establishmentId),
@@ -412,7 +422,7 @@
     if (establishmentRes.error) throw establishmentRes.error;
 
     state.establishment = establishmentRes.data || null;
-    state.plan = planRes || null;
+    state.plan = planRes || directPlanRes || derivePlanFromEstablishment(state.establishment) || null;
     state.features = normalizeFeatures(featuresRes || [], state.establishment, state.plan);
     state.orders = ordersRes || [];
     state.products = productsRes || [];
@@ -421,6 +431,69 @@
     state.tables = tablesRes || [];
     state.inventoryMovements = movementsRes || [];
     state.finance = computeFinance();
+  }
+
+
+  async function safeActivePlan(establishmentId) {
+    const client = getClient();
+
+    try {
+      const { data, error } = await client
+        .from("establishment_subscriptions")
+        .select(`
+          establishment_id,
+          plan_id,
+          status,
+          started_at,
+          expires_at,
+          commission_percent_snapshot,
+          watermark_enabled_snapshot,
+          support_level_snapshot,
+          plans ( id, name, commission_percent, watermark_enabled, support_level )
+        `)
+        .eq("establishment_id", establishmentId)
+        .eq("status", "active")
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data) return null;
+
+      return {
+        establishment_id: data.establishment_id,
+        plan_id: data.plan_id,
+        plan_name: data.plans?.name || null,
+        plan_display_name: data.plans?.name || null,
+        commission_percent: data.commission_percent_snapshot ?? data.plans?.commission_percent ?? 0,
+        watermark_enabled: data.watermark_enabled_snapshot ?? data.plans?.watermark_enabled ?? true,
+        support_level: data.support_level_snapshot ?? data.plans?.support_level ?? "ticket",
+        status: data.status,
+        started_at: data.started_at,
+        expires_at: data.expires_at
+      };
+    } catch (error) {
+      console.warn("Falha ao consultar subscription ativa.", error);
+      return null;
+    }
+  }
+
+  function derivePlanFromEstablishment(establishment) {
+    if (!establishment) return null;
+
+    const planName = establishment.plan_name || establishment.current_plan_name || establishment.plan || null;
+    const planId = establishment.plan_id || establishment.current_plan_id || null;
+
+    if (!planName && !planId) return null;
+
+    return {
+      establishment_id: establishment.id,
+      plan_id: planId,
+      plan_name: planName || "Standard",
+      plan_display_name: planName || "Standard",
+      commission_percent: establishment.current_commission_percent ?? 0,
+      watermark_enabled: establishment.watermark_enabled ?? true,
+      support_level: establishment.support_level || "ticket"
+    };
   }
 
   async function safeTable(tableName, establishmentId) {
@@ -478,6 +551,7 @@
     const rawPlan = String(
       plan?.plan_name ||
       plan?.plan_display_name ||
+      establishment?.plan_name ||
       establishment?.plan ||
       establishment?.current_plan_name ||
       "standard"

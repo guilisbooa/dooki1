@@ -624,7 +624,7 @@ function getPlanLabelFromStore(store) {
   if (!store) return "—";
 
   const planById = state.snapshot.plans.find((plan) => String(plan.id) === String(store.plan_id));
-  return planById?.name || store.plan || store.plan_name || "—";
+  return planById?.name || store.plan_name || store.current_plan_name || store.plan || "—";
 }
 
 function getSelectedStore() {
@@ -853,22 +853,31 @@ function renderStores() {
   const stores = getFilteredStores();
 
   container.innerHTML = stores.length
-    ? stores.map((store) => `
-        <article class="pro-store-row">
-          <div class="pro-store-row-left">
-            <div class="pro-avatar">${String(store.name || "L").charAt(0).toUpperCase()}</div>
-            <div class="pro-store-row-content">
-              <strong>${store.name || "Loja"}</strong>
-              <span>${store.city || "Cidade"} • ${getPlanLabelFromStore(store)}</span>
-            </div>
-          </div>
+    ? stores.map((store) => {
+        const logo = store.logo_url
+          ? `<img class="pro-store-thumb" src="${store.logo_url}" alt="${store.name || "Loja"}">`
+          : `<div class="pro-avatar">${String(store.name || "L").charAt(0).toUpperCase()}</div>`;
 
-          <div class="pro-store-row-right">
-            <span class="pro-status-badge ${statusBadgeClass(store.status)}">${store.status || "—"}</span>
-            <button class="ghost-button small" onclick="window.selectStore('${store.id}')">Ver</button>
-          </div>
-        </article>
-      `).join("")
+        return `
+          <article class="pro-store-row ${String(store.id) === String(state.selectedStoreId) ? "is-selected" : ""}">
+            <div class="pro-store-row-left">
+              ${logo}
+              <div class="pro-store-row-content">
+                <strong>${store.name || "Loja"}</strong>
+                <span>${store.city || "Cidade"}</span>
+                <div class="pro-inline-meta">
+                  <span class="plan-pill">${getPlanLabelFromStore(store)}</span>
+                  <span class="pro-status-badge ${statusBadgeClass(store.status)}">${store.status || "—"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pro-store-row-right">
+              <button class="ghost-button small" onclick="window.selectStore('${store.id}')">Gerenciar</button>
+            </div>
+          </article>
+        `;
+      }).join("")
     : `<div class="pro-empty-state"><strong>Nenhum estabelecimento</strong><span>Nenhuma loja encontrada para este filtro.</span></div>`;
 
   renderStoreDetail();
@@ -887,14 +896,29 @@ function renderStoreDetail() {
   if (!container) return;
 
   const store = getSelectedStore();
+  const planLabel = getPlanLabelFromStore(store);
 
   container.innerHTML = store
     ? `
-      <article class="detail-card-box">
-        <strong>${store.name}</strong>
-        <span>${store.city || "Cidade não informada"}</span>
-        <span>${store.email || "Sem email"}</span>
-        <span>${getPlanLabelFromStore(store)}</span>
+      <article class="detail-card-box detail-card-box--rich">
+        <div class="store-glance-cover" style="background-image:url('${store.banner_url || ""}');">
+          <div class="store-glance-overlay"></div>
+          <div class="store-glance-top">
+            ${store.logo_url ? `<img class="store-glance-logo" src="${store.logo_url}" alt="${store.name || "Loja"}">` : `<div class="store-glance-logo fallback">${String(store.name || "L").charAt(0).toUpperCase()}</div>`}
+            <div>
+              <strong>${store.name}</strong>
+              <span>${store.city || "Cidade não informada"}</span>
+            </div>
+          </div>
+        </div>
+        <div class="store-glance-meta">
+          <span class="plan-pill">${planLabel}</span>
+          <span class="pro-status-badge ${statusBadgeClass(store.status)}">${store.status || "—"}</span>
+        </div>
+        <div class="summary-list compact">
+          ${summaryItem("Email", store.email || "Sem email")}
+          ${summaryItem("WhatsApp", store.phone || store.whatsapp || "Não informado")}
+        </div>
       </article>
     `
     : `
@@ -911,13 +935,15 @@ function populateStoreEditForm(store) {
 
   form.name.value = store.name || "";
   form.city.value = store.city || "";
-  form.plan_id.value = store.plan_id || "";
   form.status.value = store.status || "active";
   form.email.value = store.email || "";
-  form.phone.value = store.phone || "";
+  form.phone.value = store.phone || store.whatsapp || "";
   form.owner_name.value = store.owner_name || "";
   form.logo_url.value = store.logo_url || "";
   form.banner_url.value = store.banner_url || "";
+  if (form.plan_id) {
+    form.plan_id.value = store.plan_id || "";
+  }
 }
 
 function renderStoreProfile() {
@@ -956,8 +982,8 @@ function renderStoreProfile() {
     </article>
   `;
 
-  populateStoreEditForm(store);
   fillPlanSelects();
+  populateStoreEditForm(store);
   renderCategoriesList();
   renderProductsList();
   fillProductCategorySelect();
@@ -1022,9 +1048,10 @@ async function handleStoreUpdate(event) {
   try {
     await api.updateEstablishment(store.id, payload);
     await refreshSnapshot();
+    const refreshedStore = getSelectedStore();
     renderAll();
     navigate("store-profile");
-    alert("Estabelecimento atualizado com sucesso.");
+    alert(`Estabelecimento atualizado com sucesso. Plano atual: ${getPlanLabelFromStore(refreshedStore || store)}.`);
   } catch (error) {
     console.error(error);
     alert(`Erro ao atualizar estabelecimento: ${error.message || "erro desconhecido"}`);

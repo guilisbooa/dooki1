@@ -16,9 +16,12 @@ function normalizeStore(row) {
     status: row.status || "active",
     email: row.email || null,
     whatsapp: row.whatsapp || row.phone || null,
+    phone: row.phone || row.whatsapp || null,
     plan_id: row.plan_id || row.current_plan_id || null,
     plan: row.plan || row.plan_name || row.current_plan_name || null,
     plan_name: row.plan_name || row.current_plan_name || row.plan || null,
+    current_plan_name: row.current_plan_name || row.plan_name || row.plan || null,
+    current_plan_id: row.current_plan_id || row.plan_id || null,
     logo_url: row.logo_url || row.logo || null,
     banner_url: row.banner_url || row.banner || null,
     description: row.description || "",
@@ -57,16 +60,7 @@ async function syncEstablishmentSubscription(establishmentId, planId, planRow = 
   const watermarkEnabled = resolvedPlan?.watermark_enabled ?? resolvedPlan?.watermarkEnabled ?? true;
   const supportLevel = resolvedPlan?.support_level || resolvedPlan?.supportLevel || "ticket";
 
-  const { error: deactivateError } = await client
-    .from("establishment_subscriptions")
-    .update({ status: "inactive" })
-    .eq("establishment_id", establishmentId)
-    .eq("status", "active");
-
-  if (deactivateError) throw deactivateError;
-
   const subscriptionPayload = {
-    establishment_id: establishmentId,
     plan_id: planId,
     status: "active",
     started_at: new Date().toISOString(),
@@ -76,9 +70,40 @@ async function syncEstablishmentSubscription(establishmentId, planId, planRow = 
     support_level_snapshot: supportLevel
   };
 
+  const { data: activeRow, error: activeError } = await client
+    .from("establishment_subscriptions")
+    .select("id")
+    .eq("establishment_id", establishmentId)
+    .eq("status", "active")
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeError) throw activeError;
+
+  if (activeRow?.id) {
+    const { data, error } = await client
+      .from("establishment_subscriptions")
+      .update(subscriptionPayload)
+      .eq("id", activeRow.id)
+      .select()
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
+  }
+
+  const { error: deactivateError } = await client
+    .from("establishment_subscriptions")
+    .update({ status: "inactive" })
+    .eq("establishment_id", establishmentId)
+    .neq("status", "inactive");
+
+  if (deactivateError) throw deactivateError;
+
   const { data, error } = await client
     .from("establishment_subscriptions")
-    .insert([subscriptionPayload])
+    .insert([{ establishment_id: establishmentId, ...subscriptionPayload }])
     .select()
     .maybeSingle();
 
@@ -289,6 +314,14 @@ async function updateStore(id, payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
 
+  const { data: existingStore, error: existingError } = await client
+    .from("establishments")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+
   const preparedPayload = {
     ...(payload.name !== undefined ? { name: payload.name } : {}),
     ...(payload.city !== undefined ? { city: payload.city } : {}),
@@ -310,6 +343,47 @@ async function updateStore(id, payload) {
     preparedPayload.plan_name = payload.plan_name || payload.plan || null;
   }
 
+  if (Object.prototype.hasOwnProperty.call(existingStore || {}, "phone") && payload.phone !== undefined) {
+    preparedPayload.phone = payload.phone || null;
+  }
+
+  let resolvedPlan = null;
+
+  if (payload.plan_id) {
+    resolvedPlan = await getPlanRecordById(payload.plan_id);
+    const resolvedPlanName = resolvedPlan?.name || payload.plan_name || payload.plan || null;
+
+    if (resolvedPlanName) {
+      preparedPayload.plan_name = resolvedPlanName;
+
+      if (Object.prototype.hasOwnProperty.call(existingStore || {}, "plan")) {
+        preparedPayload.plan = resolvedPlanName;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(existingStore || {}, "current_plan_name")) {
+        preparedPayload.current_plan_name = resolvedPlanName;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(existingStore || {}, "current_plan_id")) {
+      preparedPayload.current_plan_id = payload.plan_id;
+    }
+  } else if (payload.plan_id === null || payload.plan_id === "") {
+    preparedPayload.plan_name = null;
+
+    if (Object.prototype.hasOwnProperty.call(existingStore || {}, "plan")) {
+      preparedPayload.plan = null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(existingStore || {}, "current_plan_name")) {
+      preparedPayload.current_plan_name = null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(existingStore || {}, "current_plan_id")) {
+      preparedPayload.current_plan_id = null;
+    }
+  }
+
   let { data, error } = await client
     .from("establishments")
     .update(preparedPayload)
@@ -321,27 +395,13 @@ async function updateStore(id, payload) {
 
   if (payload.plan_id !== undefined) {
     if (payload.plan_id) {
-      const planRow = await getPlanRecordById(payload.plan_id);
-
-      if (planRow?.name && data?.plan_name !== planRow.name) {
-        const { data: syncedStore, error: syncStoreError } = await client
-          .from("establishments")
-          .update({ plan_name: planRow.name })
-          .eq("id", id)
-          .select()
-          .single();
-
-        if (syncStoreError) throw syncStoreError;
-        data = syncedStore;
-      }
-
-      await syncEstablishmentSubscription(id, payload.plan_id, planRow);
+      await syncEstablishmentSubscription(id, payload.plan_id, resolvedPlan);
     } else {
       const { error: subscriptionError } = await client
         .from("establishment_subscriptions")
         .update({ status: "inactive" })
         .eq("establishment_id", id)
-        .eq("status", "active");
+        .neq("status", "inactive");
 
       if (subscriptionError) throw subscriptionError;
     }

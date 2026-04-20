@@ -372,6 +372,7 @@
     renderTables();
     renderFinance();
     renderSupport();
+    renderMenuPreview();
     fillSettingsForm();
   }
 
@@ -540,7 +541,7 @@
     }
 
     document.querySelectorAll('[data-establishment-logo]').forEach(function (img) {
-      img.src = "/assets/logo-dooki.png";
+      img.src = state.establishment?.logo_url || "/assets/logo-dooki.png";
       img.alt = "Dooki";
     });
   }
@@ -634,6 +635,97 @@
     }
 
     if (screen === "settings") fillSettingsForm();
+  }
+
+  function renderMenuPreview() {
+    const cover = document.getElementById("menu-preview-cover");
+    const logo = document.getElementById("menu-preview-logo");
+    const name = document.getElementById("menu-preview-name");
+    const description = document.getElementById("menu-preview-description");
+    const city = document.getElementById("menu-preview-city");
+    const plan = document.getElementById("menu-preview-plan");
+    const status = document.getElementById("menu-preview-status");
+    const tabs = document.getElementById("menu-preview-tabs");
+    const products = document.getElementById("menu-preview-products");
+    const summary = document.getElementById("preview-summary-list");
+    const previewLink = document.getElementById("menu-preview-link");
+    const editButton = document.getElementById("preview-go-products");
+
+    if (!cover || !logo || !name || !description || !tabs || !products) return;
+
+    const storeName = state.establishment?.name || "Minha Loja";
+    const storeDescription = state.establishment?.description || "Seu cardápio digital aparecerá aqui para o cliente final.";
+    const storeCity = state.establishment?.city || "Cidade";
+    const storePlan = getPlanLabel();
+    const isOpen = state.establishment?.status ? !["inactive", "disabled", "closed"].includes(String(state.establishment.status).toLowerCase()) : true;
+    const activeProducts = state.products.filter(function (product) { return product.active !== false; });
+    const orderedCategories = state.categories.slice().sort(function (a, b) {
+      return String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+    });
+    const categoryNames = orderedCategories.slice(0, 4).map(function (category) {
+      return category.name || "Categoria";
+    });
+    const featuredProducts = activeProducts
+      .slice()
+      .sort(function (a, b) {
+        return Number(b.sale_price || 0) - Number(a.sale_price || 0);
+      })
+      .slice(0, 3);
+
+    cover.style.backgroundImage = state.establishment?.banner_url
+      ? `linear-gradient(180deg, rgba(15, 23, 42, 0.10), rgba(15, 23, 42, 0.55)), url("${state.establishment.banner_url}")`
+      : "linear-gradient(135deg, #111827, #1f2937 45%, #d4a017 120%)";
+    logo.src = state.establishment?.logo_url || "/assets/logo-dooki.png";
+    logo.alt = storeName;
+    name.textContent = storeName;
+    description.textContent = storeDescription;
+    city.textContent = storeCity;
+    plan.textContent = `Plano ${storePlan}`;
+    status.textContent = isOpen ? "Aberto" : "Fechado";
+    status.classList.toggle("closed", !isOpen);
+
+    tabs.innerHTML = (categoryNames.length ? categoryNames : ["Destaques", "Cardápio"]).map(function (category, index) {
+      return `<span class="${index === 0 ? "active" : ""}">${category}</span>`;
+    }).join("");
+
+    products.innerHTML = featuredProducts.length
+      ? featuredProducts.map(function (product) {
+          const category = state.categories.find(function (item) {
+            return item.id === product.category_id;
+          });
+
+          return `
+            <article class="menu-preview-item">
+              <div class="menu-preview-item-main">
+                <strong>${product.name || "Produto"}</strong>
+                <span>${category?.name || "Sem categoria"}</span>
+              </div>
+              <strong>${formatMoney(product.sale_price || 0)}</strong>
+            </article>
+          `;
+        }).join("")
+      : `<div class="menu-preview-empty">Cadastre produtos para ver sua prévia aqui.</div>`;
+
+    if (summary) {
+      summary.innerHTML = [
+        summaryItem("Produtos ativos", String(activeProducts.length)),
+        summaryItem("Categorias", String(state.categories.length)),
+        summaryItem("Mesas cadastradas", String(state.tables.length)),
+        summaryItem("Pedidos recebidos", String(state.orders.length))
+      ].join("");
+    }
+
+    if (previewLink) {
+      const slug = state.establishment?.slug || state.establishment?.id || "menu";
+      previewLink.href = `/menu/menu.html?store=${encodeURIComponent(slug)}`;
+    }
+
+    if (editButton && !editButton.dataset.bound) {
+      editButton.dataset.bound = "true";
+      editButton.addEventListener("click", function () {
+        openScreen("products");
+      });
+    }
   }
 
   function renderDashboard() {
@@ -1295,6 +1387,7 @@ function renderCategories() {
     renderProducts();
     renderDashboard();
     renderInventory();
+    renderMenuPreview();
 
     alert(editingId ? "Produto atualizado com sucesso." : "Produto cadastrado com sucesso.");
   } catch (error) {
@@ -1419,6 +1512,7 @@ async function deleteProduct(productId) {
     renderProducts();
     renderDashboard();
     renderInventory();
+    renderMenuPreview();
     resetProductFormMode();
 
     alert("Produto excluído com sucesso.");
@@ -1492,6 +1586,7 @@ async function deleteProduct(productId) {
     renderCategories();
     renderProducts();
     renderDashboard();
+    renderMenuPreview();
 
     alert(editingId ? "Categoria atualizada com sucesso." : "Categoria cadastrada com sucesso.");
   } catch (error) {
@@ -1606,6 +1701,7 @@ async function deleteCategory(categoryId) {
     renderCategories();
     renderProducts();
     renderDashboard();
+    renderMenuPreview();
     resetCategoryFormMode();
 
     alert("Categoria excluída com sucesso.");
@@ -1718,6 +1814,7 @@ async function deleteCategory(categoryId) {
 
       await loadAllData();
       renderHeader();
+      renderMenuPreview();
       fillSettingsForm();
       alert("Dados do estabelecimento atualizados com sucesso.");
     } catch (error) {

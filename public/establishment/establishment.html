@@ -62,6 +62,8 @@
         </div>
       </header>
 
+      <div class="establishment-shell-layout">
+        <div class="establishment-primary-column">
       <section class="admin-screen active" data-panel="dashboard">
         <div class="stats-grid admin-stats">
           <article class="panel stat-card">
@@ -466,6 +468,61 @@
           </form>
         </article>
       </section>
+        </div>
+
+        <aside class="establishment-preview-rail">
+          <article class="panel preview-panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Prévia do cardápio digital</span>
+                <h3>Visual do cliente</h3>
+              </div>
+            </div>
+
+            <div class="preview-toolbar">
+              <button class="preview-chip active" type="button">Mobile</button>
+              <button class="preview-chip" type="button" disabled>Desktop</button>
+            </div>
+
+            <div class="menu-preview-phone">
+              <div class="menu-preview-screen">
+                <div class="menu-preview-cover" id="menu-preview-cover"></div>
+                <div class="menu-preview-brand">
+                  <img id="menu-preview-logo" src="/assets/logo-dooki.png" alt="Loja">
+                </div>
+                <div class="menu-preview-content">
+                  <span class="menu-preview-status" id="menu-preview-status">Aberto</span>
+                  <h3 id="menu-preview-name">Minha Loja</h3>
+                  <p id="menu-preview-description">Seu cardápio digital aparecerá aqui.</p>
+
+                  <div class="menu-preview-info">
+                    <span id="menu-preview-city">Cidade</span>
+                    <span id="menu-preview-plan">Plano</span>
+                  </div>
+
+                  <div class="menu-preview-tabs" id="menu-preview-tabs"></div>
+                  <div class="menu-preview-products" id="menu-preview-products"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="preview-actions">
+              <a class="ghost-button" id="menu-preview-link" href="/menu/menu.html" target="_blank" rel="noreferrer">Abrir cardápio</a>
+              <button class="primary-button" type="button" id="preview-go-products">Editar cardápio</button>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Resumo rápido</span>
+                <h3>Saúde do cardápio</h3>
+              </div>
+            </div>
+            <div class="summary-list" id="preview-summary-list"></div>
+          </article>
+        </aside>
+      </div>
     </main>
   </div>
 

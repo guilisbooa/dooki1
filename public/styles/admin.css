@@ -944,3 +944,55 @@ body.admin-app-body {
     padding: 18px;
   }
 }
+/* =========================
+   AJUSTE VISUAL - PADRÃO DOOKI PRO
+========================= */
+
+.admin-sidebar {
+  background:
+    radial-gradient(circle at top left, rgba(93, 63, 211, 0.18), transparent 22%),
+    linear-gradient(180deg, #0b1220 0%, #101a2f 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 16px 0 32px rgba(15, 23, 42, 0.18);
+}
+
+.admin-sidebar .admin-chip,
+.admin-sidebar .sidebar-copy,
+.admin-sidebar h2,
+.admin-sidebar .sidebar-user strong,
+.admin-sidebar .sidebar-user span {
+  color: #e5eefc;
+}
+
+.admin-sidebar .admin-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.admin-sidebar .admin-nav {
+  gap: 8px;
+}
+
+.admin-sidebar .admin-nav-item {
+  background: rgba(255, 255, 255, 0.04);
+  color: #dbe7ff;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-sidebar .admin-nav-item.active,
+.admin-sidebar .admin-nav-item:hover {
+  background: linear-gradient(135deg, #2563eb, #4338ca);
+  color: #fff;
+  border-color: transparent;
+  transform: translateY(-1px);
+}
+
+.admin-main {
+  padding-right: 24px;
+}
+
+.panel,
+.admin-topbar {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+}

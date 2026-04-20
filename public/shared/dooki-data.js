@@ -163,9 +163,27 @@ async function getSnapshot() {
     if (paymentsRes.error) throw paymentsRes.error;
     if (ticketsRes.error) throw ticketsRes.error;
 
+    const normalizedPlans = (plansRes.data || []).map(normalizePlan);
+    const planNameById = new Map(normalizedPlans.map(function (plan) {
+      return [String(plan.id), plan.name || null];
+    }));
+
+    const normalizedEstablishments = (establishmentsRes.data || []).map(function (row) {
+      const store = normalizeStore(row);
+      if (store?.plan_id && !store.plan_name) {
+        const linkedPlanName = planNameById.get(String(store.plan_id)) || null;
+        if (linkedPlanName) {
+          store.plan = linkedPlanName;
+          store.plan_name = linkedPlanName;
+          store.current_plan_name = linkedPlanName;
+        }
+      }
+      return store;
+    });
+
     return {
-      establishments: (establishmentsRes.data || []).map(normalizeStore),
-      plans: (plansRes.data || []).map(normalizePlan),
+      establishments: normalizedEstablishments,
+      plans: normalizedPlans,
       orders: ordersRes.data || [],
       payments: (paymentsRes.data || []).map(normalizePayment),
       tickets: (ticketsRes.data || []).map(normalizeTicket)
@@ -190,65 +208,97 @@ async function getPlanById(planId) {
   return data || null;
 }
 
+function isSubscriptionRlsError(error) {
+  const message = String(error?.message || error?.details || "").toLowerCase();
+  return message.includes("row-level security") || message.includes("violates row-level security policy");
+}
+
 async function syncActiveSubscription(establishmentId, planId) {
   const client = getSupabaseClient();
   if (!client || !establishmentId) return null;
 
   const now = new Date().toISOString();
 
-  await client
-    .from("establishment_subscriptions")
-    .update({ status: "inactive" })
-    .eq("establishment_id", establishmentId)
-    .eq("status", "active")
-    .neq("plan_id", planId || "00000000-0000-0000-0000-000000000000");
-
-  if (!planId) return null;
-
-  const planRow = await getPlanById(planId);
-
-  const { data: existing, error: existingError } = await client
-    .from("establishment_subscriptions")
-    .select("id, started_at")
-    .eq("establishment_id", establishmentId)
-    .eq("plan_id", planId)
-    .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (existingError) throw existingError;
-
-  const payload = {
-    establishment_id: establishmentId,
-    plan_id: planId,
-    status: "active",
-    started_at: existing?.started_at || now,
-    expires_at: null
-  };
-
-  if (planRow) {
-    if (Object.prototype.hasOwnProperty.call(planRow, "commission_percent")) payload.commission_percent_snapshot = planRow.commission_percent;
-    if (Object.prototype.hasOwnProperty.call(planRow, "watermark_enabled")) payload.watermark_enabled_snapshot = planRow.watermark_enabled;
-    if (Object.prototype.hasOwnProperty.call(planRow, "support_level")) payload.support_level_snapshot = planRow.support_level;
-  }
-
-  if (existing?.id) {
-    const { error } = await client
+  try {
+    const deactivateRes = await client
       .from("establishment_subscriptions")
-      .update(payload)
-      .eq("id", existing.id);
-    if (error) throw error;
-    return existing.id;
+      .update({ status: "inactive" })
+      .eq("establishment_id", establishmentId)
+      .eq("status", "active")
+      .neq("plan_id", planId || "00000000-0000-0000-0000-000000000000");
+
+    if (deactivateRes.error && !isSubscriptionRlsError(deactivateRes.error)) {
+      throw deactivateRes.error;
+    }
+
+    if (!planId) return null;
+
+    const planRow = await getPlanById(planId);
+
+    const { data: existing, error: existingError } = await client
+      .from("establishment_subscriptions")
+      .select("id, started_at")
+      .eq("establishment_id", establishmentId)
+      .eq("plan_id", planId)
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingError && !isSubscriptionRlsError(existingError)) throw existingError;
+
+    const payload = {
+      establishment_id: establishmentId,
+      plan_id: planId,
+      status: "active",
+      started_at: existing?.started_at || now,
+      expires_at: null
+    };
+
+    if (planRow) {
+      if (Object.prototype.hasOwnProperty.call(planRow, "commission_percent")) payload.commission_percent_snapshot = planRow.commission_percent;
+      if (Object.prototype.hasOwnProperty.call(planRow, "watermark_enabled")) payload.watermark_enabled_snapshot = planRow.watermark_enabled;
+      if (Object.prototype.hasOwnProperty.call(planRow, "support_level")) payload.support_level_snapshot = planRow.support_level;
+    }
+
+    if (existing?.id) {
+      const { error } = await client
+        .from("establishment_subscriptions")
+        .update(payload)
+        .eq("id", existing.id);
+
+      if (error) {
+        if (isSubscriptionRlsError(error)) {
+          console.warn("RLS bloqueou update em establishment_subscriptions. Mantendo plano salvo em establishments.");
+          return existing.id;
+        }
+        throw error;
+      }
+
+      return existing.id;
+    }
+
+    const { data, error } = await client
+      .from("establishment_subscriptions")
+      .insert([payload])
+      .select("id")
+      .single();
+
+    if (error) {
+      if (isSubscriptionRlsError(error)) {
+        console.warn("RLS bloqueou insert em establishment_subscriptions. Mantendo plano salvo em establishments.");
+        return null;
+      }
+      throw error;
+    }
+
+    return data?.id || null;
+  } catch (error) {
+    if (isSubscriptionRlsError(error)) {
+      console.warn("RLS bloqueou sincronização da assinatura. O plano seguirá pelo plan_id em establishments.");
+      return null;
+    }
+    throw error;
   }
-
-  const { data, error } = await client
-    .from("establishment_subscriptions")
-    .insert([payload])
-    .select("id")
-    .single();
-
-  if (error) throw error;
-  return data?.id || null;
 }
 
 async function createStore(payload) {

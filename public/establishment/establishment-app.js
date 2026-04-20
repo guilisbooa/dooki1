@@ -423,7 +423,13 @@
     if (establishmentRes.error) throw establishmentRes.error;
 
     state.establishment = establishmentRes.data || null;
-    state.plan = planRes || directPlanRes || derivePlanFromEstablishment(state.establishment) || null;
+
+    let resolvedPlan = planRes || directPlanRes || null;
+    if (!resolvedPlan && state.establishment?.plan_id) {
+      resolvedPlan = await safePlanById(state.establishment.plan_id, state.establishment.id);
+    }
+    state.plan = resolvedPlan || derivePlanFromEstablishment(state.establishment) || null;
+
     state.features = normalizeFeatures(featuresRes || [], state.establishment, state.plan);
     state.orders = ordersRes || [];
     state.products = productsRes || [];
@@ -434,6 +440,37 @@
     state.finance = computeFinance();
   }
 
+
+
+  async function safePlanById(planId, establishmentId) {
+    const client = getClient();
+
+    try {
+      const { data, error } = await client
+        .from("plans")
+        .select("*")
+        .eq("id", planId)
+        .maybeSingle();
+
+      if (error || !data) return null;
+
+      return {
+        establishment_id: establishmentId,
+        plan_id: data.id,
+        plan_name: data.name || "Standard",
+        plan_display_name: data.name || "Standard",
+        commission_percent: data.commission_percent ?? 0,
+        watermark_enabled: data.watermark_enabled ?? true,
+        support_level: data.support_level || "ticket",
+        status: "active",
+        started_at: null,
+        expires_at: null
+      };
+    } catch (error) {
+      console.warn("Falha ao consultar plano por plan_id.", error);
+      return null;
+    }
+  }
 
   async function safeActivePlan(establishmentId) {
     const client = getClient();

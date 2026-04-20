@@ -16,12 +16,9 @@ function normalizeStore(row) {
     status: row.status || "active",
     email: row.email || null,
     whatsapp: row.whatsapp || row.phone || null,
-    phone: row.phone || row.whatsapp || null,
-    owner_name: row.owner_name || row.responsible_name || null,
-    plan_id: row.plan_id || row.current_plan_id || null,
+    plan_id: row.plan_id || row.current_plan_id || row.raw?.plan_id || null,
     plan: row.plan || row.plan_name || row.current_plan_name || null,
     plan_name: row.plan_name || row.current_plan_name || row.plan || null,
-    current_plan_id: row.current_plan_id || row.plan_id || null,
     current_plan_name: row.current_plan_name || row.plan_name || row.plan || null,
     logo_url: row.logo_url || row.logo || null,
     banner_url: row.banner_url || row.banner || null,
@@ -131,135 +128,6 @@ function normalizeMessage(row) {
   };
 }
 
-function isMissingColumnError(error, columnName) {
-  if (!error) return false;
-  const message = String(error.message || error.details || error.hint || "").toLowerCase();
-  const target = String(columnName || "").toLowerCase();
-  return message.includes("column") && message.includes(target);
-}
-
-function pickLatestSubscription(subscriptions) {
-  if (!Array.isArray(subscriptions) || !subscriptions.length) return null;
-
-  const priority = {
-    active: 4,
-    trialing: 3,
-    trial: 3,
-    pending: 2,
-    overdue: 1,
-    canceled: 0,
-    cancelled: 0,
-    inactive: 0,
-    expired: 0
-  };
-
-  return [...subscriptions].sort((a, b) => {
-    const scoreA = priority[String(a.status || "").toLowerCase()] ?? -1;
-    const scoreB = priority[String(b.status || "").toLowerCase()] ?? -1;
-    if (scoreA !== scoreB) return scoreB - scoreA;
-
-    const dateA = new Date(a.updated_at || a.created_at || a.started_at || 0).getTime();
-    const dateB = new Date(b.updated_at || b.created_at || b.started_at || 0).getTime();
-    return dateB - dateA;
-  })[0] || null;
-}
-
-async function enrichStoresWithPlans(client, stores, plans) {
-  if (!client || !Array.isArray(stores) || !stores.length) return stores || [];
-
-  const establishmentIds = stores.map((store) => store.id).filter(Boolean);
-  if (!establishmentIds.length) return stores;
-
-  try {
-    const { data, error } = await client
-      .from("establishment_subscriptions")
-      .select("*")
-      .in("establishment_id", establishmentIds)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    const grouped = new Map();
-    (data || []).forEach((row) => {
-      const key = String(row.establishment_id || "");
-      if (!grouped.has(key)) grouped.set(key, []);
-      grouped.get(key).push(row);
-    });
-
-    const planNameById = new Map((plans || []).map((plan) => [String(plan.id), plan.name]));
-
-    return stores.map((store) => {
-      const subscription = pickLatestSubscription(grouped.get(String(store.id)) || []);
-      if (!subscription) return store;
-
-      const planId = subscription.plan_id || store.plan_id || store.current_plan_id || null;
-      const planName =
-        subscription.plan_name ||
-        planNameById.get(String(planId || "")) ||
-        store.plan_name ||
-        store.current_plan_name ||
-        store.plan ||
-        null;
-
-      return normalizeStore({
-        ...store.raw,
-        ...store,
-        plan_id: planId,
-        current_plan_id: planId,
-        plan_name: planName,
-        current_plan_name: planName
-      });
-    });
-  } catch (error) {
-    console.warn("Não foi possível enriquecer estabelecimentos com assinaturas.", error);
-    return stores;
-  }
-}
-
-async function syncEstablishmentPlan(client, establishmentId, planId) {
-  if (!client || !establishmentId) return null;
-
-  try {
-    const { data: existingRows, error: existingError } = await client
-      .from("establishment_subscriptions")
-      .select("id, establishment_id, plan_id, status")
-      .eq("establishment_id", establishmentId)
-      .order("created_at", { ascending: false });
-
-    if (existingError) throw existingError;
-
-    const existing = pickLatestSubscription(existingRows || []);
-
-    if (existing?.id) {
-      const { error: updateError } = await client
-        .from("establishment_subscriptions")
-        .update({
-          plan_id: planId,
-          status: existing.status || "active",
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", existing.id);
-
-      if (updateError) throw updateError;
-      return true;
-    }
-
-    const { error: insertError } = await client
-      .from("establishment_subscriptions")
-      .insert([{
-        establishment_id: establishmentId,
-        plan_id: planId,
-        status: "active"
-      }]);
-
-    if (insertError) throw insertError;
-    return true;
-  } catch (error) {
-    console.warn("Não foi possível sincronizar assinatura do estabelecimento.", error);
-    return null;
-  }
-}
-
 async function getSnapshot() {
   const client = getSupabaseClient();
 
@@ -295,13 +163,9 @@ async function getSnapshot() {
     if (paymentsRes.error) throw paymentsRes.error;
     if (ticketsRes.error) throw ticketsRes.error;
 
-    const normalizedPlans = (plansRes.data || []).map(normalizePlan);
-    const normalizedStores = (establishmentsRes.data || []).map(normalizeStore);
-    const enrichedStores = await enrichStoresWithPlans(client, normalizedStores, normalizedPlans);
-
     return {
-      establishments: enrichedStores,
-      plans: normalizedPlans,
+      establishments: (establishmentsRes.data || []).map(normalizeStore),
+      plans: (plansRes.data || []).map(normalizePlan),
       orders: ordersRes.data || [],
       payments: (paymentsRes.data || []).map(normalizePayment),
       tickets: (ticketsRes.data || []).map(normalizeTicket)
@@ -312,11 +176,84 @@ async function getSnapshot() {
   }
 }
 
+async function getPlanById(planId) {
+  const client = getSupabaseClient();
+  if (!client || !planId) return null;
+
+  const { data, error } = await client
+    .from("plans")
+    .select("*")
+    .eq("id", planId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+}
+
+async function syncActiveSubscription(establishmentId, planId) {
+  const client = getSupabaseClient();
+  if (!client || !establishmentId) return null;
+
+  const now = new Date().toISOString();
+
+  await client
+    .from("establishment_subscriptions")
+    .update({ status: "inactive" })
+    .eq("establishment_id", establishmentId)
+    .eq("status", "active")
+    .neq("plan_id", planId || "00000000-0000-0000-0000-000000000000");
+
+  if (!planId) return null;
+
+  const planRow = await getPlanById(planId);
+
+  const { data: existing, error: existingError } = await client
+    .from("establishment_subscriptions")
+    .select("id, started_at")
+    .eq("establishment_id", establishmentId)
+    .eq("plan_id", planId)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+
+  const payload = {
+    establishment_id: establishmentId,
+    plan_id: planId,
+    status: "active",
+    started_at: existing?.started_at || now,
+    expires_at: null
+  };
+
+  if (planRow) {
+    if (Object.prototype.hasOwnProperty.call(planRow, "commission_percent")) payload.commission_percent_snapshot = planRow.commission_percent;
+    if (Object.prototype.hasOwnProperty.call(planRow, "watermark_enabled")) payload.watermark_enabled_snapshot = planRow.watermark_enabled;
+    if (Object.prototype.hasOwnProperty.call(planRow, "support_level")) payload.support_level_snapshot = planRow.support_level;
+  }
+
+  if (existing?.id) {
+    const { error } = await client
+      .from("establishment_subscriptions")
+      .update(payload)
+      .eq("id", existing.id);
+    if (error) throw error;
+    return existing.id;
+  }
+
+  const { data, error } = await client
+    .from("establishment_subscriptions")
+    .insert([payload])
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data?.id || null;
+}
+
 async function createStore(payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
-
-  const planId = payload.plan_id || payload.current_plan_id || null;
 
   const preparedPayload = {
     name: payload.name || "Nova loja",
@@ -324,45 +261,29 @@ async function createStore(payload) {
     status: payload.status || "active",
     email: payload.email || null,
     whatsapp: payload.whatsapp || payload.phone || null,
-    owner_name: payload.owner_name || null,
     logo_url: payload.logo_url || payload.logoUrl || null,
     banner_url: payload.banner_url || payload.bannerUrl || null,
-    ...(planId ? { plan_id: planId } : {})
+    ...(payload.plan_id !== undefined ? { plan_id: payload.plan_id || null } : {})
   };
 
-  let response = await client
+  const { data, error } = await client
     .from("establishments")
     .insert([preparedPayload])
     .select()
     .single();
 
-  if (response.error && isMissingColumnError(response.error, "plan_id")) {
-    delete preparedPayload.plan_id;
-    response = await client
-      .from("establishments")
-      .insert([preparedPayload])
-      .select()
-      .single();
+  if (error) throw error;
+
+  if (payload.plan_id) {
+    await syncActiveSubscription(data.id, payload.plan_id);
   }
 
-  if (response.error) throw response.error;
-
-  if (planId && response.data?.id) {
-    await syncEstablishmentPlan(client, response.data.id, planId);
-  }
-
-  return normalizeStore({
-    ...response.data,
-    plan_id: planId || response.data?.plan_id || null,
-    current_plan_id: planId || response.data?.plan_id || null
-  });
+  return normalizeStore(data);
 }
 
 async function updateStore(id, payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
-
-  const planId = payload.plan_id || payload.current_plan_id || null;
 
   const preparedPayload = {
     ...(payload.name !== undefined ? { name: payload.name } : {}),
@@ -371,52 +292,27 @@ async function updateStore(id, payload) {
     ...(payload.email !== undefined ? { email: payload.email } : {}),
     ...(payload.whatsapp !== undefined ? { whatsapp: payload.whatsapp } : {}),
     ...(payload.phone !== undefined ? { whatsapp: payload.phone } : {}),
-    ...(payload.owner_name !== undefined ? { owner_name: payload.owner_name } : {}),
     ...(payload.logo_url !== undefined ? { logo_url: payload.logo_url } : {}),
     ...(payload.logoUrl !== undefined ? { logo_url: payload.logoUrl } : {}),
     ...(payload.banner_url !== undefined ? { banner_url: payload.banner_url } : {}),
     ...(payload.bannerUrl !== undefined ? { banner_url: payload.bannerUrl } : {}),
-    ...(payload.plan_id !== undefined ? { plan_id: payload.plan_id } : {})
+    ...(payload.plan_id !== undefined ? { plan_id: payload.plan_id || null } : {})
   };
 
-  let response = await client
+  const { data, error } = await client
     .from("establishments")
     .update(preparedPayload)
     .eq("id", id)
     .select()
     .single();
 
-  if (response.error && isMissingColumnError(response.error, "plan_name")) {
-    delete preparedPayload.plan_name;
-    response = await client
-      .from("establishments")
-      .update(preparedPayload)
-      .eq("id", id)
-      .select()
-      .single();
-  }
-
-  if (response.error && isMissingColumnError(response.error, "plan_id")) {
-    delete preparedPayload.plan_id;
-    response = await client
-      .from("establishments")
-      .update(preparedPayload)
-      .eq("id", id)
-      .select()
-      .single();
-  }
-
-  if (response.error) throw response.error;
+  if (error) throw error;
 
   if (payload.plan_id !== undefined) {
-    await syncEstablishmentPlan(client, id, planId);
+    await syncActiveSubscription(id, payload.plan_id || null);
   }
 
-  return normalizeStore({
-    ...response.data,
-    plan_id: planId || response.data?.plan_id || null,
-    current_plan_id: planId || response.data?.plan_id || null
-  });
+  return normalizeStore(data);
 }
 
 async function deleteStore(id, options = {}) {
@@ -682,10 +578,10 @@ async function sendTicketMessage(ticketId, payload) {
 window.DookiData = {
   getSnapshot,
   createStore,
-  createEstablishment: createStore,
   updateStore,
-  updateEstablishment: updateStore,
   deleteStore,
+  createEstablishment: createStore,
+  updateEstablishment: updateStore,
   deleteEstablishment: deleteStore,
   createPlan,
   updatePlan,

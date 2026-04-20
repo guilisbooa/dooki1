@@ -168,6 +168,7 @@
     return String(
       state.plan?.plan_name ||
       state.plan?.plan_display_name ||
+      state.establishment?.plan_name ||
       state.establishment?.plan ||
       state.establishment?.current_plan_name ||
       "Standard"
@@ -186,7 +187,14 @@
   }
 
   function getPlanLabel() {
-    return state.plan?.plan_display_name || state.plan?.plan_name || state.establishment?.plan || "Standard";
+    return (
+      state.plan?.plan_display_name ||
+      state.plan?.plan_name ||
+      state.establishment?.plan_name ||
+      state.establishment?.plan ||
+      state.establishment?.current_plan_name ||
+      "Standard"
+    );
   }
 
   function getCommissionPercent() {
@@ -313,6 +321,13 @@
       });
     }
 
+    const previewProductsButton = document.getElementById("menu-preview-go-products");
+    if (previewProductsButton) {
+      previewProductsButton.addEventListener("click", function () {
+        openScreen("products");
+      });
+    }
+
     document.querySelectorAll("[data-screen]").forEach(function (button) {
       button.addEventListener("click", function () {
         const featureKey = button.dataset.feature;
@@ -373,6 +388,8 @@
     renderFinance();
     renderSupport();
     fillSettingsForm();
+    refreshMenuPreview();
+    startAutoRefresh();
   }
 
   async function loadAllData() {
@@ -382,59 +399,31 @@
     const [
       establishmentRes,
       planRes,
+      directPlanRes,
       featuresRes,
       ordersRes,
       productsRes,
       categoriesRes,
       ticketsRes,
       tablesRes,
-      movementsRes,
-      subscriptionsRes,
-      plansRes
+      movementsRes
     ] = await Promise.all([
       client.from("establishments").select("*").eq("id", establishmentId).single(),
       safeView("v_establishment_active_plan", "establishment_id", establishmentId, true),
+      safeActivePlan(establishmentId),
       safeView("v_establishment_features", "establishment_id", establishmentId, false),
       safeTable("orders", establishmentId),
       safeTable("products", establishmentId),
       safeTable("categories", establishmentId),
       safeTable("support_tickets", establishmentId),
       safeTable("establishment_tables", establishmentId),
-      safeTable("inventory_movements", establishmentId),
-      client.from("establishment_subscriptions").select("*").eq("establishment_id", establishmentId).order("created_at", { ascending: false }),
-      client.from("plans").select("id, name")
+      safeTable("inventory_movements", establishmentId)
     ]);
 
     if (establishmentRes.error) throw establishmentRes.error;
 
     state.establishment = establishmentRes.data || null;
-
-    const subscriptions = subscriptionsRes.error ? [] : (subscriptionsRes.data || []);
-    const activeSubscription = subscriptions[0] || null;
-    const planNameById = new Map(((plansRes.error ? [] : plansRes.data) || []).map((plan) => [String(plan.id), plan.name]));
-    const fallbackPlan = activeSubscription
-      ? {
-          ...activeSubscription,
-          plan_id: activeSubscription.plan_id || state.establishment?.plan_id || null,
-          plan_name:
-            activeSubscription.plan_name ||
-            planNameById.get(String(activeSubscription.plan_id || state.establishment?.plan_id || "")) ||
-            state.establishment?.plan_name ||
-            state.establishment?.current_plan_name ||
-            state.establishment?.plan ||
-            null,
-          plan_display_name:
-            activeSubscription.plan_display_name ||
-            activeSubscription.plan_name ||
-            planNameById.get(String(activeSubscription.plan_id || state.establishment?.plan_id || "")) ||
-            state.establishment?.plan_name ||
-            state.establishment?.current_plan_name ||
-            state.establishment?.plan ||
-            null
-        }
-      : null;
-
-    state.plan = planRes || fallbackPlan || null;
+    state.plan = planRes || directPlanRes || derivePlanFromEstablishment(state.establishment) || null;
     state.features = normalizeFeatures(featuresRes || [], state.establishment, state.plan);
     state.orders = ordersRes || [];
     state.products = productsRes || [];
@@ -443,6 +432,69 @@
     state.tables = tablesRes || [];
     state.inventoryMovements = movementsRes || [];
     state.finance = computeFinance();
+  }
+
+
+  async function safeActivePlan(establishmentId) {
+    const client = getClient();
+
+    try {
+      const { data, error } = await client
+        .from("establishment_subscriptions")
+        .select(`
+          establishment_id,
+          plan_id,
+          status,
+          started_at,
+          expires_at,
+          commission_percent_snapshot,
+          watermark_enabled_snapshot,
+          support_level_snapshot,
+          plans ( id, name, commission_percent, watermark_enabled, support_level )
+        `)
+        .eq("establishment_id", establishmentId)
+        .eq("status", "active")
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data) return null;
+
+      return {
+        establishment_id: data.establishment_id,
+        plan_id: data.plan_id,
+        plan_name: data.plans?.name || null,
+        plan_display_name: data.plans?.name || null,
+        commission_percent: data.commission_percent_snapshot ?? data.plans?.commission_percent ?? 0,
+        watermark_enabled: data.watermark_enabled_snapshot ?? data.plans?.watermark_enabled ?? true,
+        support_level: data.support_level_snapshot ?? data.plans?.support_level ?? "ticket",
+        status: data.status,
+        started_at: data.started_at,
+        expires_at: data.expires_at
+      };
+    } catch (error) {
+      console.warn("Falha ao consultar subscription ativa.", error);
+      return null;
+    }
+  }
+
+  function derivePlanFromEstablishment(establishment) {
+    if (!establishment) return null;
+
+    const planName = establishment.plan_name || establishment.current_plan_name || establishment.plan || null;
+    const planId = establishment.plan_id || establishment.current_plan_id || null;
+
+    if (!planName && !planId) return null;
+
+    return {
+      establishment_id: establishment.id,
+      plan_id: planId,
+      plan_name: planName || "Standard",
+      plan_display_name: planName || "Standard",
+      commission_percent: establishment.current_commission_percent ?? 0,
+      watermark_enabled: establishment.watermark_enabled ?? true,
+      support_level: establishment.support_level || "ticket"
+    };
   }
 
   async function safeTable(tableName, establishmentId) {
@@ -500,6 +552,7 @@
     const rawPlan = String(
       plan?.plan_name ||
       plan?.plan_display_name ||
+      establishment?.plan_name ||
       establishment?.plan ||
       establishment?.current_plan_name ||
       "standard"
@@ -570,9 +623,11 @@
     }
 
     document.querySelectorAll('[data-establishment-logo]').forEach(function (img) {
-      img.src = "/assets/logo-dooki.png";
-      img.alt = "Dooki";
+      img.src = state.establishment?.logo_url || "/assets/logo-dooki.png";
+      img.alt = state.establishment?.name || "Dooki";
     });
+
+    renderMenuPreview();
   }
 
   function renderSidebar() {
@@ -914,11 +969,11 @@
             </div>
 
             <div class="pro-store-row-right">
-              <span class="pro-status-badge ${product.active === false ? "neutral" : "success"}">
-                ${product.active === false ? "Inativo" : "Ativo"}
+              <span class="pro-status-badge ${isProductActive(product) ? "success" : "neutral"}">
+                ${isProductActive(product) ? "Ativo" : "Inativo"}
               </span>
 
-              <strong>${formatMoney(product.sale_price || 0)}</strong>
+              <strong>${formatMoney(getProductPrice(product))}</strong>
 
               <div class="pro-action-group">
                 <button
@@ -1255,6 +1310,320 @@ function renderCategories() {
     return "neutral";
   }
 
+
+  function getProductPrice(product) {
+    return Number(
+      product?.sale_price ??
+      product?.price ??
+      product?.unit_price ??
+      0
+    );
+  }
+
+  function isProductActive(product) {
+    if (product?.active != null) return product.active !== false;
+    if (product?.is_active != null) return product.is_active !== false;
+    return true;
+  }
+
+  function getCategoryNameById(categoryId) {
+    const category = state.categories.find(function (item) {
+      return String(item.id) === String(categoryId);
+    });
+    return category?.name || "";
+  }
+
+  async function createProductRecord(payload) {
+    if (window.DookiData?.createProduct) {
+      return window.DookiData.createProduct(payload, state.categories);
+    }
+
+    const client = getClient();
+    const { data, error } = await client.from("products").insert([payload]).select().single();
+    if (error) throw error;
+    return data;
+  }
+
+  async function updateProductRecord(productId, payload) {
+    if (window.DookiData?.updateProduct) {
+      return window.DookiData.updateProduct(productId, payload, state.categories);
+    }
+
+    const client = getClient();
+    const { data, error } = await client
+      .from("products")
+      .update(payload)
+      .eq("id", productId)
+      .eq("establishment_id", state.membership.establishment_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async function deleteProductRecord(productId) {
+    if (window.DookiData?.deleteProduct) {
+      return window.DookiData.deleteProduct(productId, state.membership.establishment_id);
+    }
+
+    const client = getClient();
+    const { error } = await client
+      .from("products")
+      .delete()
+      .eq("id", productId)
+      .eq("establishment_id", state.membership.establishment_id);
+
+    if (error) throw error;
+    return true;
+  }
+
+  async function createCategoryRecord(payload) {
+    if (window.DookiData?.createCategory) {
+      return window.DookiData.createCategory(payload);
+    }
+
+    const client = getClient();
+    const { data, error } = await client.from("categories").insert([payload]).select().single();
+    if (error) throw error;
+    return data;
+  }
+
+  async function updateCategoryRecord(categoryId, payload) {
+    if (window.DookiData?.updateCategory) {
+      return window.DookiData.updateCategory(categoryId, payload, state.membership.establishment_id);
+    }
+
+    const client = getClient();
+    const { data, error } = await client
+      .from("categories")
+      .update(payload)
+      .eq("id", categoryId)
+      .eq("establishment_id", state.membership.establishment_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async function deleteCategoryRecord(categoryId) {
+    if (window.DookiData?.deleteCategory) {
+      return window.DookiData.deleteCategory(categoryId, state.membership.establishment_id);
+    }
+
+    const client = getClient();
+    const { error } = await client
+      .from("categories")
+      .delete()
+      .eq("id", categoryId)
+      .eq("establishment_id", state.membership.establishment_id);
+
+    if (error) throw error;
+    return true;
+  }
+
+  function getPublicMenuUrl() {
+    const establishmentId = state.membership?.establishment_id || state.establishment?.id || "";
+    const search = establishmentId ? `?establishment=${encodeURIComponent(establishmentId)}` : "";
+    return `/menu/menu.html${search}`;
+  }
+
+  function refreshMenuPreview() {
+    const activeCategoryId = document.getElementById("menu-preview-tabs")?.dataset?.activeCategoryId || "";
+    renderMenuPreview(activeCategoryId);
+  }
+
+  function renderMenuPreview(activeCategoryId) {
+    const banner = document.getElementById("menu-preview-banner");
+    const logo = document.getElementById("menu-preview-logo");
+    const name = document.getElementById("menu-preview-name");
+    const city = document.getElementById("menu-preview-city");
+    const description = document.getElementById("menu-preview-description");
+    const tabs = document.getElementById("menu-preview-tabs");
+    const list = document.getElementById("menu-preview-list");
+    const openLink = document.getElementById("menu-preview-open");
+
+    if (!banner || !logo || !name || !city || !description || !tabs || !list) return;
+
+    const bannerUrl = state.establishment?.banner_url || "";
+    const logoUrl = state.establishment?.logo_url || "/assets/logo-dooki.png";
+
+    banner.style.backgroundImage = bannerUrl
+      ? `linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.02)), url("${bannerUrl}")`
+      : 'linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.02)), linear-gradient(135deg, rgba(218, 165, 32, 0.38), rgba(184, 134, 11, 0.52))';
+    logo.src = logoUrl;
+    name.textContent = state.establishment?.name || "Minha Loja";
+    city.textContent = state.establishment?.city || "Cidade não informada";
+    description.textContent = state.establishment?.description || `Plano ${getPlanLabel()} • ${state.products.length} produto(s) cadastrado(s)`;
+
+    if (openLink) {
+      openLink.href = getPublicMenuUrl();
+    }
+
+    const categories = [...state.categories]
+      .filter(function (category) { return category.active !== false; })
+      .sort(function (a, b) {
+        return Number(a.sort_order || 0) - Number(b.sort_order || 0) ||
+          String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+      });
+
+    const visibleProducts = state.products.filter(function (product) {
+      return isProductActive(product);
+    });
+
+    const groups = categories.map(function (category) {
+      const items = visibleProducts.filter(function (product) {
+        return String(product.category_id || "") === String(category.id);
+      });
+      return { category, items };
+    }).filter(function (group) {
+      return group.items.length > 0;
+    });
+
+    const uncategorized = visibleProducts.filter(function (product) {
+      return !product.category_id || !groups.some(function (group) {
+        return group.items.some(function (item) { return String(item.id) === String(product.id); });
+      });
+    });
+
+    if (uncategorized.length) {
+      groups.push({
+        category: { id: "__sem_categoria__", name: "Mais pedidos" },
+        items: uncategorized
+      });
+    }
+
+    const currentCategoryId = activeCategoryId || tabs.dataset.activeCategoryId || groups[0]?.category?.id || "";
+
+    tabs.innerHTML = groups.length
+      ? groups.map(function (group) {
+          const active = String(group.category.id) === String(currentCategoryId);
+          return `<button type="button" class="menu-preview-tab ${active ? "active" : ""}" data-preview-category-id="${group.category.id}">${group.category.name}</button>`;
+        }).join("")
+      : "";
+
+    tabs.dataset.activeCategoryId = currentCategoryId;
+
+    const selectedGroups = groups.length
+      ? groups.filter(function (group) {
+          return !currentCategoryId || String(group.category.id) === String(currentCategoryId);
+        })
+      : [];
+
+    list.innerHTML = selectedGroups.length
+      ? selectedGroups.map(function (group) {
+          return `
+            <section class="menu-preview-category">
+              <div class="menu-preview-category-title">${group.category.name}</div>
+              ${group.items.slice(0, 8).map(function (product) {
+                return `
+                  <article class="menu-preview-item">
+                    <div>
+                      <strong>${product.name || "Produto"}</strong>
+                      <p>${product.description || "Descrição não informada."}</p>
+                    </div>
+                    <div class="menu-preview-price">${formatMoney(getProductPrice(product))}</div>
+                  </article>
+                `;
+              }).join("")}
+            </section>
+          `;
+        }).join("")
+      : `<div class="menu-preview-empty">Cadastre categorias e produtos para visualizar o cardápio digital aqui.</div>`;
+
+    tabs.querySelectorAll("[data-preview-category-id]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        renderMenuPreview(button.dataset.previewCategoryId);
+      });
+    });
+  }
+
+  function rerenderAllPanels() {
+    renderHeader();
+    renderSidebar();
+    renderDashboard();
+    renderProducts();
+    renderCategories();
+    renderInventory();
+    renderTables();
+    renderFinance();
+    renderSupport();
+    fillSettingsForm();
+    refreshMenuPreview();
+  }
+
+  async function refreshAllData(options = {}) {
+    if (state.refreshInFlight) return;
+    state.refreshInFlight = true;
+
+    try {
+      await loadAllData();
+      rerenderAllPanels();
+    } catch (error) {
+      if (!options.silent) {
+        console.error("Erro ao atualizar painel do estabelecimento:", error);
+      }
+    } finally {
+      state.refreshInFlight = false;
+    }
+  }
+
+  function startAutoRefresh() {
+    if (state.refreshHandle) return;
+
+    const client = getClient();
+    const establishmentId = state.membership?.establishment_id;
+
+    if (client?.channel && establishmentId) {
+      try {
+        const channel = client
+          .channel(`establishment-live-${establishmentId}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "establishments", filter: `id=eq.${establishmentId}` },
+            function () { refreshAllData({ silent: true }); }
+          )
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "establishment_subscriptions", filter: `establishment_id=eq.${establishmentId}` },
+            function () { refreshAllData({ silent: true }); }
+          )
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "categories", filter: `establishment_id=eq.${establishmentId}` },
+            function () { refreshAllData({ silent: true }); }
+          )
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "products", filter: `establishment_id=eq.${establishmentId}` },
+            function () { refreshAllData({ silent: true }); }
+          )
+          .subscribe();
+
+        state.refreshChannel = channel;
+      } catch (error) {
+        console.warn("Realtime do estabelecimento indisponível, usando atualização periódica.", error);
+      }
+    }
+
+    state.refreshHandle = window.setInterval(function () {
+      if (!document.hidden) {
+        refreshAllData({ silent: true });
+      }
+    }, 12000);
+
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) {
+        refreshAllData({ silent: true });
+      }
+    });
+
+    window.addEventListener("focus", function () {
+      refreshAllData({ silent: true });
+    });
+  }
+
   async function handleCreateProduct(event) {
   event.preventDefault();
 
@@ -1325,6 +1694,7 @@ function renderCategories() {
     renderProducts();
     renderDashboard();
     renderInventory();
+    refreshMenuPreview();
 
     alert(editingId ? "Produto atualizado com sucesso." : "Produto cadastrado com sucesso.");
   } catch (error) {
@@ -1429,16 +1799,8 @@ async function deleteProduct(productId) {
   const confirmed = window.confirm(`Deseja excluir o produto "${product.name}"?`);
   if (!confirmed) return;
 
-  const client = getClient();
-
   try {
-    const { error } = await client
-      .from("products")
-      .delete()
-      .eq("id", productId)
-      .eq("establishment_id", state.membership.establishment_id);
-
-    if (error) throw error;
+    await deleteProductRecord(productId);
 
     state.products = state.products.filter(function (item) {
       return item.id !== productId;
@@ -1449,6 +1811,7 @@ async function deleteProduct(productId) {
     renderProducts();
     renderDashboard();
     renderInventory();
+    refreshMenuPreview();
     resetProductFormMode();
 
     alert("Produto excluído com sucesso.");
@@ -1461,7 +1824,6 @@ async function deleteProduct(productId) {
  async function handleCreateCategory(event) {
   event.preventDefault();
 
-  const client = getClient();
   const form = event.target;
   const formData = new FormData(form);
 
@@ -1480,37 +1842,14 @@ async function deleteProduct(productId) {
   }
 
   try {
-    let error = null;
-
     if (editingId) {
-      const response = await client
-        .from("categories")
-        .update({
-          name: payload.name,
-          description: payload.description
-        })
-        .eq("id", editingId)
-        .eq("establishment_id", state.membership.establishment_id);
-
-      error = response.error || null;
+      await updateCategoryRecord(editingId, {
+        name: payload.name,
+        description: payload.description,
+        active: payload.active
+      });
     } else {
-      const response = await client
-        .from("categories")
-        .insert([payload])
-        .select();
-
-      error = response.error || null;
-
-      if (!error && response.data?.length) {
-        state.categories = [response.data[0], ...state.categories];
-      }
-    }
-
-    if (error) {
-      if (error.message && error.message.includes("categories_establishment_id_name_key")) {
-        throw new Error("Já existe uma categoria com esse nome na sua loja.");
-      }
-      throw error;
+      await createCategoryRecord(payload);
     }
 
     form.reset();
@@ -1522,6 +1861,7 @@ async function deleteProduct(productId) {
     renderCategories();
     renderProducts();
     renderDashboard();
+    refreshMenuPreview();
 
     alert(editingId ? "Categoria atualizada com sucesso." : "Categoria cadastrada com sucesso.");
   } catch (error) {
@@ -1616,16 +1956,8 @@ async function deleteCategory(categoryId) {
   const confirmed = window.confirm(`Deseja excluir a categoria "${category.name}"?`);
   if (!confirmed) return;
 
-  const client = getClient();
-
   try {
-    const { error } = await client
-      .from("categories")
-      .delete()
-      .eq("id", categoryId)
-      .eq("establishment_id", state.membership.establishment_id);
-
-    if (error) throw error;
+    await deleteCategoryRecord(categoryId);
 
     state.categories = state.categories.filter(function (item) {
       return item.id !== categoryId;
@@ -1636,6 +1968,7 @@ async function deleteCategory(categoryId) {
     renderCategories();
     renderProducts();
     renderDashboard();
+    refreshMenuPreview();
     resetCategoryFormMode();
 
     alert("Categoria excluída com sucesso.");
@@ -1749,6 +2082,7 @@ async function deleteCategory(categoryId) {
       await loadAllData();
       renderHeader();
       fillSettingsForm();
+      refreshMenuPreview();
       alert("Dados do estabelecimento atualizados com sucesso.");
     } catch (error) {
       console.error("Erro ao salvar configurações:", error);

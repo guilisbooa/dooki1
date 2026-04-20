@@ -413,8 +413,12 @@
       safeActivePlan(establishmentId),
       safeView("v_establishment_features", "establishment_id", establishmentId, false),
       safeTable("orders", establishmentId),
-      safeTable("products", establishmentId),
-      safeTable("categories", establishmentId),
+      window.DookiData?.getProductsByEstablishment
+        ? window.DookiData.getProductsByEstablishment(establishmentId)
+        : safeTable("products", establishmentId),
+      window.DookiData?.getCategoriesByEstablishment
+        ? window.DookiData.getCategoriesByEstablishment(establishmentId)
+        : safeTable("categories", establishmentId),
       safeTable("support_tickets", establishmentId),
       safeTable("establishment_tables", establishmentId),
       safeTable("inventory_movements", establishmentId)
@@ -1664,7 +1668,6 @@ function renderCategories() {
   async function handleCreateProduct(event) {
   event.preventDefault();
 
-  const client = getClient();
   const form = event.target;
   const formData = new FormData(form);
   const editingId = form.dataset.editingId || null;
@@ -1687,39 +1690,19 @@ function renderCategories() {
   }
 
   try {
-    let error = null;
-
     if (editingId) {
-      const response = await client
-        .from("products")
-        .update({
-          name: payload.name,
-          category_id: payload.category_id,
-          description: payload.description,
-          sale_price: payload.sale_price,
-          cost_price: payload.cost_price,
-          stock_quantity: payload.stock_quantity,
-          stock_min_quantity: payload.stock_min_quantity
-        })
-        .eq("id", editingId)
-        .eq("establishment_id", state.membership.establishment_id);
-
-      error = response.error || null;
+      await updateProductRecord(editingId, {
+        name: payload.name,
+        category_id: payload.category_id,
+        description: payload.description,
+        sale_price: payload.sale_price,
+        cost_price: payload.cost_price,
+        stock_quantity: payload.stock_quantity,
+        stock_min_quantity: payload.stock_min_quantity,
+        active: true
+      });
     } else {
-      const response = await client
-        .from("products")
-        .insert([payload])
-        .select();
-
-      error = response.error || null;
-
-      if (!error && response.data?.length) {
-        state.products = [response.data[0], ...state.products];
-      }
-    }
-
-    if (error) {
-      throw error;
+      await createProductRecord(payload);
     }
 
     form.reset();

@@ -128,6 +128,221 @@ function normalizeMessage(row) {
   };
 }
 
+function normalizeCategory(row) {
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    establishment_id: row.establishment_id || row.store_id || row.restaurant_id || null,
+    name: row.name || row.title || 'Categoria',
+    description: row.description || row.details || '',
+    active: row.active ?? row.is_active ?? true,
+    sort_order: Number(row.sort_order ?? row.position ?? row.display_order ?? 0),
+    raw: row
+  };
+}
+
+function normalizeProduct(row) {
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    establishment_id: row.establishment_id || row.store_id || row.restaurant_id || null,
+    category_id: row.category_id || row.product_category_id || row.menu_category_id || null,
+    name: row.name || row.title || 'Produto',
+    description: row.description || row.details || '',
+    sale_price: Number(row.sale_price ?? row.price ?? row.unit_price ?? 0),
+    cost_price: Number(row.cost_price ?? row.cost ?? 0),
+    stock_quantity: Number(row.stock_quantity ?? row.stock ?? row.quantity ?? 0),
+    stock_min_quantity: Number(row.stock_min_quantity ?? row.minimum_stock ?? 0),
+    image_url: row.image_url || row.photo_url || row.image || null,
+    active: row.active ?? row.is_active ?? true,
+    sort_order: Number(row.sort_order ?? row.position ?? row.display_order ?? 0),
+    raw: row
+  };
+}
+
+async function fetchTableRows(tableName, establishmentId) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase não configurado.');
+
+  const { data, error } = await client
+    .from(tableName)
+    .select('*')
+    .eq('establishment_id', establishmentId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+async function fetchOptionalTableRows(tableName, establishmentId) {
+  try {
+    return await fetchTableRows(tableName, establishmentId);
+  } catch (error) {
+    console.warn(`Tabela ${tableName} indisponível para estabelecimento ${establishmentId}.`, error?.message || error);
+    return [];
+  }
+}
+
+async function getCategoriesByEstablishment(establishmentId) {
+  const rows = await fetchOptionalTableRows('categories', establishmentId);
+  if (rows.length) return rows.map(normalizeCategory);
+
+  const fallbackRows = await fetchOptionalTableRows('product_categories', establishmentId);
+  return fallbackRows.map(normalizeCategory);
+}
+
+async function getProductsByEstablishment(establishmentId) {
+  const rows = await fetchOptionalTableRows('products', establishmentId);
+  return rows.map(normalizeProduct);
+}
+
+async function createCategory(payload) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase não configurado.');
+
+  const preparedPayload = {
+    establishment_id: payload.establishment_id,
+    name: payload.name || 'Nova categoria',
+    description: payload.description || '',
+    active: payload.active ?? true,
+    sort_order: Number(payload.sort_order || 0)
+  };
+
+  let result = await client.from('categories').insert([preparedPayload]).select().single();
+  if (result.error) {
+    const fallbackPayload = {
+      establishment_id: preparedPayload.establishment_id,
+      name: preparedPayload.name,
+      description: preparedPayload.description,
+      active: preparedPayload.active
+    };
+    result = await client.from('product_categories').insert([fallbackPayload]).select().single();
+    if (result.error) throw result.error;
+  }
+
+  return normalizeCategory(result.data);
+}
+
+async function updateCategory(categoryId, payload, establishmentId) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase não configurado.');
+
+  const preparedPayload = {
+    ...(payload.name !== undefined ? { name: payload.name } : {}),
+    ...(payload.description !== undefined ? { description: payload.description } : {}),
+    ...(payload.active !== undefined ? { active: payload.active } : {}),
+    ...(payload.sort_order !== undefined ? { sort_order: Number(payload.sort_order || 0) } : {})
+  };
+
+  let result = await client.from('categories').update(preparedPayload).eq('id', categoryId).eq('establishment_id', establishmentId).select().single();
+  if (result.error) {
+    const fallbackPayload = { ...preparedPayload };
+    delete fallbackPayload.sort_order;
+    result = await client.from('product_categories').update(fallbackPayload).eq('id', categoryId).eq('establishment_id', establishmentId).select().single();
+    if (result.error) throw result.error;
+  }
+
+  return normalizeCategory(result.data);
+}
+
+async function deleteCategory(categoryId, establishmentId) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase não configurado.');
+
+  let result = await client.from('categories').delete().eq('id', categoryId).eq('establishment_id', establishmentId);
+  if (result.error) {
+    result = await client.from('product_categories').delete().eq('id', categoryId).eq('establishment_id', establishmentId);
+    if (result.error) throw result.error;
+  }
+
+  return true;
+}
+
+async function createProduct(payload) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase não configurado.');
+
+  const preparedPayload = {
+    establishment_id: payload.establishment_id,
+    category_id: payload.category_id || null,
+    name: payload.name || 'Novo produto',
+    description: payload.description || '',
+    sale_price: Number(payload.sale_price ?? payload.price ?? 0),
+    cost_price: Number(payload.cost_price ?? 0),
+    stock_quantity: Number(payload.stock_quantity ?? 0),
+    stock_min_quantity: Number(payload.stock_min_quantity ?? 0),
+    active: payload.active ?? true,
+    image_url: payload.image_url || null,
+    sort_order: Number(payload.sort_order || 0)
+  };
+
+  const primary = await client.from('products').insert([preparedPayload]).select().single();
+  if (primary.error) {
+    const fallbackPayload = {
+      establishment_id: preparedPayload.establishment_id,
+      category_id: preparedPayload.category_id,
+      name: preparedPayload.name,
+      description: preparedPayload.description,
+      price: preparedPayload.sale_price,
+      cost_price: preparedPayload.cost_price,
+      stock_quantity: preparedPayload.stock_quantity,
+      stock_min_quantity: preparedPayload.stock_min_quantity,
+      active: preparedPayload.active,
+      image_url: preparedPayload.image_url
+    };
+    const fallback = await client.from('products').insert([fallbackPayload]).select().single();
+    if (fallback.error) throw primary.error;
+    return normalizeProduct(fallback.data);
+  }
+
+  return normalizeProduct(primary.data);
+}
+
+async function updateProduct(productId, payload, establishmentId) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase não configurado.');
+
+  const preparedPayload = {
+    ...(payload.category_id !== undefined ? { category_id: payload.category_id || null } : {}),
+    ...(payload.name !== undefined ? { name: payload.name } : {}),
+    ...(payload.description !== undefined ? { description: payload.description } : {}),
+    ...(payload.sale_price !== undefined ? { sale_price: Number(payload.sale_price || 0) } : {}),
+    ...(payload.price !== undefined ? { sale_price: Number(payload.price || 0) } : {}),
+    ...(payload.cost_price !== undefined ? { cost_price: Number(payload.cost_price || 0) } : {}),
+    ...(payload.stock_quantity !== undefined ? { stock_quantity: Number(payload.stock_quantity || 0) } : {}),
+    ...(payload.stock_min_quantity !== undefined ? { stock_min_quantity: Number(payload.stock_min_quantity || 0) } : {}),
+    ...(payload.active !== undefined ? { active: payload.active } : {}),
+    ...(payload.image_url !== undefined ? { image_url: payload.image_url } : {}),
+    ...(payload.sort_order !== undefined ? { sort_order: Number(payload.sort_order || 0) } : {})
+  };
+
+  let result = await client.from('products').update(preparedPayload).eq('id', productId).eq('establishment_id', establishmentId).select().single();
+  if (result.error) {
+    const fallbackPayload = { ...preparedPayload };
+    if (fallbackPayload.sale_price !== undefined) {
+      fallbackPayload.price = fallbackPayload.sale_price;
+      delete fallbackPayload.sale_price;
+    }
+    delete fallbackPayload.sort_order;
+    result = await client.from('products').update(fallbackPayload).eq('id', productId).eq('establishment_id', establishmentId).select().single();
+    if (result.error) throw result.error;
+  }
+
+  return normalizeProduct(result.data);
+}
+
+async function deleteProduct(productId, establishmentId) {
+  const client = getSupabaseClient();
+  if (!client) throw new Error('Supabase não configurado.');
+
+  const { error } = await client.from('products').delete().eq('id', productId).eq('establishment_id', establishmentId);
+  if (error) throw error;
+  return true;
+}
+
+
 async function getSnapshot() {
   const client = getSupabaseClient();
 
@@ -641,5 +856,13 @@ window.DookiData = {
   createSupportTicket,
   updateSupportTicket,
   getTicketMessages,
-  sendTicketMessage
+  sendTicketMessage,
+  getCategoriesByEstablishment,
+  getProductsByEstablishment,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  createProduct,
+  updateProduct,
+  deleteProduct
 };

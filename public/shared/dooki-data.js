@@ -17,98 +17,18 @@ function normalizeStore(row) {
     email: row.email || null,
     whatsapp: row.whatsapp || row.phone || null,
     phone: row.phone || row.whatsapp || null,
+    owner_name: row.owner_name || row.responsible_name || null,
     plan_id: row.plan_id || row.current_plan_id || null,
     plan: row.plan || row.plan_name || row.current_plan_name || null,
     plan_name: row.plan_name || row.current_plan_name || row.plan || null,
-    current_plan_name: row.current_plan_name || row.plan_name || row.plan || null,
     current_plan_id: row.current_plan_id || row.plan_id || null,
+    current_plan_name: row.current_plan_name || row.plan_name || row.plan || null,
     logo_url: row.logo_url || row.logo || null,
     banner_url: row.banner_url || row.banner || null,
-    description: row.description || "",
     code: row.code || row.establishment_code || null,
     created_at: row.created_at || null,
     raw: row
   };
-}
-
-
-async function getPlanRecordById(planId) {
-  const client = getSupabaseClient();
-  if (!client || !planId) return null;
-
-  const { data, error } = await client
-    .from("plans")
-    .select("*")
-    .eq("id", planId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data || null;
-}
-
-async function syncEstablishmentSubscription(establishmentId, planId, planRow = null) {
-  const client = getSupabaseClient();
-  if (!client || !establishmentId || !planId) return null;
-
-  const resolvedPlan = planRow || await getPlanRecordById(planId);
-  const commissionPercent = Number(
-    resolvedPlan?.commission_percent ??
-    resolvedPlan?.commission ??
-    resolvedPlan?.commission_rate ??
-    0
-  );
-  const watermarkEnabled = resolvedPlan?.watermark_enabled ?? resolvedPlan?.watermarkEnabled ?? true;
-  const supportLevel = resolvedPlan?.support_level || resolvedPlan?.supportLevel || "ticket";
-
-  const subscriptionPayload = {
-    plan_id: planId,
-    status: "active",
-    started_at: new Date().toISOString(),
-    expires_at: null,
-    commission_percent_snapshot: commissionPercent,
-    watermark_enabled_snapshot: watermarkEnabled,
-    support_level_snapshot: supportLevel
-  };
-
-  const { data: activeRow, error: activeError } = await client
-    .from("establishment_subscriptions")
-    .select("id")
-    .eq("establishment_id", establishmentId)
-    .eq("status", "active")
-    .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (activeError) throw activeError;
-
-  if (activeRow?.id) {
-    const { data, error } = await client
-      .from("establishment_subscriptions")
-      .update(subscriptionPayload)
-      .eq("id", activeRow.id)
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data || null;
-  }
-
-  const { error: deactivateError } = await client
-    .from("establishment_subscriptions")
-    .update({ status: "inactive" })
-    .eq("establishment_id", establishmentId)
-    .neq("status", "inactive");
-
-  if (deactivateError) throw deactivateError;
-
-  const { data, error } = await client
-    .from("establishment_subscriptions")
-    .insert([{ establishment_id: establishmentId, ...subscriptionPayload }])
-    .select()
-    .maybeSingle();
-
-  if (error) throw error;
-  return data || null;
 }
 
 function normalizePlan(row) {
@@ -211,6 +131,135 @@ function normalizeMessage(row) {
   };
 }
 
+function isMissingColumnError(error, columnName) {
+  if (!error) return false;
+  const message = String(error.message || error.details || error.hint || "").toLowerCase();
+  const target = String(columnName || "").toLowerCase();
+  return message.includes("column") && message.includes(target);
+}
+
+function pickLatestSubscription(subscriptions) {
+  if (!Array.isArray(subscriptions) || !subscriptions.length) return null;
+
+  const priority = {
+    active: 4,
+    trialing: 3,
+    trial: 3,
+    pending: 2,
+    overdue: 1,
+    canceled: 0,
+    cancelled: 0,
+    inactive: 0,
+    expired: 0
+  };
+
+  return [...subscriptions].sort((a, b) => {
+    const scoreA = priority[String(a.status || "").toLowerCase()] ?? -1;
+    const scoreB = priority[String(b.status || "").toLowerCase()] ?? -1;
+    if (scoreA !== scoreB) return scoreB - scoreA;
+
+    const dateA = new Date(a.updated_at || a.created_at || a.started_at || 0).getTime();
+    const dateB = new Date(b.updated_at || b.created_at || b.started_at || 0).getTime();
+    return dateB - dateA;
+  })[0] || null;
+}
+
+async function enrichStoresWithPlans(client, stores, plans) {
+  if (!client || !Array.isArray(stores) || !stores.length) return stores || [];
+
+  const establishmentIds = stores.map((store) => store.id).filter(Boolean);
+  if (!establishmentIds.length) return stores;
+
+  try {
+    const { data, error } = await client
+      .from("establishment_subscriptions")
+      .select("*")
+      .in("establishment_id", establishmentIds)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    const grouped = new Map();
+    (data || []).forEach((row) => {
+      const key = String(row.establishment_id || "");
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(row);
+    });
+
+    const planNameById = new Map((plans || []).map((plan) => [String(plan.id), plan.name]));
+
+    return stores.map((store) => {
+      const subscription = pickLatestSubscription(grouped.get(String(store.id)) || []);
+      if (!subscription) return store;
+
+      const planId = subscription.plan_id || store.plan_id || store.current_plan_id || null;
+      const planName =
+        subscription.plan_name ||
+        planNameById.get(String(planId || "")) ||
+        store.plan_name ||
+        store.current_plan_name ||
+        store.plan ||
+        null;
+
+      return normalizeStore({
+        ...store.raw,
+        ...store,
+        plan_id: planId,
+        current_plan_id: planId,
+        plan_name: planName,
+        current_plan_name: planName
+      });
+    });
+  } catch (error) {
+    console.warn("Não foi possível enriquecer estabelecimentos com assinaturas.", error);
+    return stores;
+  }
+}
+
+async function syncEstablishmentPlan(client, establishmentId, planId) {
+  if (!client || !establishmentId) return null;
+
+  try {
+    const { data: existingRows, error: existingError } = await client
+      .from("establishment_subscriptions")
+      .select("id, establishment_id, plan_id, status")
+      .eq("establishment_id", establishmentId)
+      .order("created_at", { ascending: false });
+
+    if (existingError) throw existingError;
+
+    const existing = pickLatestSubscription(existingRows || []);
+
+    if (existing?.id) {
+      const { error: updateError } = await client
+        .from("establishment_subscriptions")
+        .update({
+          plan_id: planId,
+          status: existing.status || "active",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", existing.id);
+
+      if (updateError) throw updateError;
+      return true;
+    }
+
+    const { error: insertError } = await client
+      .from("establishment_subscriptions")
+      .insert([{
+        establishment_id: establishmentId,
+        plan_id: planId,
+        status: "active"
+      }]);
+
+    if (insertError) throw insertError;
+    return true;
+  } catch (error) {
+    console.warn("Não foi possível sincronizar assinatura do estabelecimento.", error);
+    return null;
+  }
+}
+
 async function getSnapshot() {
   const client = getSupabaseClient();
 
@@ -246,9 +295,13 @@ async function getSnapshot() {
     if (paymentsRes.error) throw paymentsRes.error;
     if (ticketsRes.error) throw ticketsRes.error;
 
+    const normalizedPlans = (plansRes.data || []).map(normalizePlan);
+    const normalizedStores = (establishmentsRes.data || []).map(normalizeStore);
+    const enrichedStores = await enrichStoresWithPlans(client, normalizedStores, normalizedPlans);
+
     return {
-      establishments: (establishmentsRes.data || []).map(normalizeStore),
-      plans: (plansRes.data || []).map(normalizePlan),
+      establishments: enrichedStores,
+      plans: normalizedPlans,
       orders: ordersRes.data || [],
       payments: (paymentsRes.data || []).map(normalizePayment),
       tickets: (ticketsRes.data || []).map(normalizeTicket)
@@ -263,64 +316,53 @@ async function createStore(payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
 
+  const planId = payload.plan_id || payload.current_plan_id || null;
+
   const preparedPayload = {
     name: payload.name || "Nova loja",
     city: payload.city || null,
     status: payload.status || "active",
     email: payload.email || null,
     whatsapp: payload.whatsapp || payload.phone || null,
+    owner_name: payload.owner_name || null,
     logo_url: payload.logo_url || payload.logoUrl || null,
-    banner_url: payload.banner_url || payload.bannerUrl || null
+    banner_url: payload.banner_url || payload.bannerUrl || null,
+    ...(planId ? { plan_id: planId } : {})
   };
 
-  if (payload.plan_id !== undefined) {
-    preparedPayload.plan_id = payload.plan_id || null;
-  }
-
-  if (payload.plan || payload.plan_name) {
-    preparedPayload.plan_name = payload.plan_name || payload.plan;
-  }
-
-  let { data, error } = await client
+  let response = await client
     .from("establishments")
     .insert([preparedPayload])
     .select()
     .single();
 
-  if (error) throw error;
-
-  if (preparedPayload.plan_id) {
-    const planRow = await getPlanRecordById(preparedPayload.plan_id);
-
-    if (planRow?.name) {
-      const { data: syncedStore, error: syncStoreError } = await client
-        .from("establishments")
-        .update({ plan_name: planRow.name })
-        .eq("id", data.id)
-        .select()
-        .single();
-
-      if (syncStoreError) throw syncStoreError;
-      data = syncedStore;
-    }
-
-    await syncEstablishmentSubscription(data.id, preparedPayload.plan_id, planRow);
+  if (response.error && isMissingColumnError(response.error, "plan_id")) {
+    delete preparedPayload.plan_id;
+    response = await client
+      .from("establishments")
+      .insert([preparedPayload])
+      .select()
+      .single();
   }
 
-  return normalizeStore(data);
+  if (response.error) throw response.error;
+
+  if (planId && response.data?.id) {
+    await syncEstablishmentPlan(client, response.data.id, planId);
+  }
+
+  return normalizeStore({
+    ...response.data,
+    plan_id: planId || response.data?.plan_id || null,
+    current_plan_id: planId || response.data?.plan_id || null
+  });
 }
 
 async function updateStore(id, payload) {
   const client = getSupabaseClient();
   if (!client) throw new Error("Supabase não configurado.");
 
-  const { data: existingStore, error: existingError } = await client
-    .from("establishments")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (existingError) throw existingError;
+  const planId = payload.plan_id || payload.current_plan_id || null;
 
   const preparedPayload = {
     ...(payload.name !== undefined ? { name: payload.name } : {}),
@@ -329,85 +371,52 @@ async function updateStore(id, payload) {
     ...(payload.email !== undefined ? { email: payload.email } : {}),
     ...(payload.whatsapp !== undefined ? { whatsapp: payload.whatsapp } : {}),
     ...(payload.phone !== undefined ? { whatsapp: payload.phone } : {}),
+    ...(payload.owner_name !== undefined ? { owner_name: payload.owner_name } : {}),
     ...(payload.logo_url !== undefined ? { logo_url: payload.logo_url } : {}),
     ...(payload.logoUrl !== undefined ? { logo_url: payload.logoUrl } : {}),
     ...(payload.banner_url !== undefined ? { banner_url: payload.banner_url } : {}),
-    ...(payload.bannerUrl !== undefined ? { banner_url: payload.bannerUrl } : {})
+    ...(payload.bannerUrl !== undefined ? { banner_url: payload.bannerUrl } : {}),
+    ...(payload.plan_id !== undefined ? { plan_id: payload.plan_id } : {})
   };
 
-  if (payload.plan_id !== undefined) {
-    preparedPayload.plan_id = payload.plan_id || null;
-  }
-
-  if (payload.plan !== undefined || payload.plan_name !== undefined) {
-    preparedPayload.plan_name = payload.plan_name || payload.plan || null;
-  }
-
-  if (Object.prototype.hasOwnProperty.call(existingStore || {}, "phone") && payload.phone !== undefined) {
-    preparedPayload.phone = payload.phone || null;
-  }
-
-  let resolvedPlan = null;
-
-  if (payload.plan_id) {
-    resolvedPlan = await getPlanRecordById(payload.plan_id);
-    const resolvedPlanName = resolvedPlan?.name || payload.plan_name || payload.plan || null;
-
-    if (resolvedPlanName) {
-      preparedPayload.plan_name = resolvedPlanName;
-
-      if (Object.prototype.hasOwnProperty.call(existingStore || {}, "plan")) {
-        preparedPayload.plan = resolvedPlanName;
-      }
-
-      if (Object.prototype.hasOwnProperty.call(existingStore || {}, "current_plan_name")) {
-        preparedPayload.current_plan_name = resolvedPlanName;
-      }
-    }
-
-    if (Object.prototype.hasOwnProperty.call(existingStore || {}, "current_plan_id")) {
-      preparedPayload.current_plan_id = payload.plan_id;
-    }
-  } else if (payload.plan_id === null || payload.plan_id === "") {
-    preparedPayload.plan_name = null;
-
-    if (Object.prototype.hasOwnProperty.call(existingStore || {}, "plan")) {
-      preparedPayload.plan = null;
-    }
-
-    if (Object.prototype.hasOwnProperty.call(existingStore || {}, "current_plan_name")) {
-      preparedPayload.current_plan_name = null;
-    }
-
-    if (Object.prototype.hasOwnProperty.call(existingStore || {}, "current_plan_id")) {
-      preparedPayload.current_plan_id = null;
-    }
-  }
-
-  let { data, error } = await client
+  let response = await client
     .from("establishments")
     .update(preparedPayload)
     .eq("id", id)
     .select()
     .single();
 
-  if (error) throw error;
-
-  if (payload.plan_id !== undefined) {
-    if (payload.plan_id) {
-      await syncEstablishmentSubscription(id, payload.plan_id, resolvedPlan);
-    } else {
-      const { error: subscriptionError } = await client
-        .from("establishment_subscriptions")
-        .update({ status: "inactive" })
-        .eq("establishment_id", id)
-        .neq("status", "inactive");
-
-      if (subscriptionError) throw subscriptionError;
-    }
+  if (response.error && isMissingColumnError(response.error, "plan_name")) {
+    delete preparedPayload.plan_name;
+    response = await client
+      .from("establishments")
+      .update(preparedPayload)
+      .eq("id", id)
+      .select()
+      .single();
   }
 
-  return normalizeStore(data);
+  if (response.error && isMissingColumnError(response.error, "plan_id")) {
+    delete preparedPayload.plan_id;
+    response = await client
+      .from("establishments")
+      .update(preparedPayload)
+      .eq("id", id)
+      .select()
+      .single();
+  }
+
+  if (response.error) throw response.error;
+
+  if (payload.plan_id !== undefined) {
+    await syncEstablishmentPlan(client, id, planId);
+  }
+
+  return normalizeStore({
+    ...response.data,
+    plan_id: planId || response.data?.plan_id || null,
+    current_plan_id: planId || response.data?.plan_id || null
+  });
 }
 
 async function deleteStore(id, options = {}) {
@@ -670,235 +679,6 @@ async function sendTicketMessage(ticketId, payload) {
   return normalizeMessage(data);
 }
 
-
-function normalizeCategory(row) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    establishment_id: row.establishment_id || null,
-    name: row.name || "Categoria",
-    description: row.description || "",
-    sort_order: Number(row.sort_order || 0),
-    active: row.active !== false,
-    created_at: row.created_at || null,
-    raw: row
-  };
-}
-
-function normalizeProduct(row) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    establishment_id: row.establishment_id || null,
-    category_id: row.category_id || null,
-    name: row.name || "Produto",
-    description: row.description || "",
-    sale_price: Number(row.sale_price ?? row.price ?? 0),
-    price: Number(row.price ?? row.sale_price ?? 0),
-    cost_price: Number(row.cost_price || 0),
-    stock_quantity: Number(row.stock_quantity || 0),
-    stock_min_quantity: Number(row.stock_min_quantity || 0),
-    active: row.active ?? row.is_active ?? true,
-    is_active: row.is_active ?? row.active ?? true,
-    image_url: row.image_url || "",
-    created_at: row.created_at || null,
-    raw: row
-  };
-}
-
-function shouldRetryLegacyColumn(error, columnNames) {
-  const message = String(error?.message || error?.details || "");
-  return columnNames.some(function (column) {
-    return message.includes(column);
-  });
-}
-
-async function createCategory(payload) {
-  const client = getSupabaseClient();
-  if (!client) throw new Error("Supabase não configurado.");
-
-  const attempt = await client
-    .from("categories")
-    .insert([{
-      establishment_id: payload.establishment_id,
-      name: payload.name,
-      description: payload.description || "",
-      active: payload.active !== false,
-      sort_order: Number(payload.sort_order || 0)
-    }])
-    .select()
-    .single();
-
-  if (attempt.error && shouldRetryLegacyColumn(attempt.error, ["sort_order", "active", "description"])) {
-    const fallback = await client
-      .from("categories")
-      .insert([{
-        establishment_id: payload.establishment_id,
-        name: payload.name
-      }])
-      .select()
-      .single();
-
-    if (fallback.error) {
-      if (String(fallback.error.message || "").includes("categories_establishment_id_name_key")) {
-        throw new Error("Já existe uma categoria com esse nome na sua loja.");
-      }
-      throw fallback.error;
-    }
-
-    return normalizeCategory(fallback.data);
-  }
-
-  if (attempt.error) {
-    if (String(attempt.error.message || "").includes("categories_establishment_id_name_key")) {
-      throw new Error("Já existe uma categoria com esse nome na sua loja.");
-    }
-    throw attempt.error;
-  }
-
-  return normalizeCategory(attempt.data);
-}
-
-async function updateCategory(id, payload, establishmentId = null) {
-  const client = getSupabaseClient();
-  if (!client) throw new Error("Supabase não configurado.");
-
-  const prepared = {
-    ...(payload.name !== undefined ? { name: payload.name } : {}),
-    ...(payload.description !== undefined ? { description: payload.description } : {}),
-    ...(payload.active !== undefined ? { active: payload.active } : {}),
-    ...(payload.sort_order !== undefined ? { sort_order: Number(payload.sort_order || 0) } : {})
-  };
-
-  let query = client.from("categories").update(prepared).eq("id", id);
-  if (establishmentId) query = query.eq("establishment_id", establishmentId);
-  let result = await query.select().single();
-
-  if (result.error && shouldRetryLegacyColumn(result.error, ["sort_order", "active", "description"])) {
-    const fallbackPrepared = {
-      ...(payload.name !== undefined ? { name: payload.name } : {})
-    };
-    let fallbackQuery = client.from("categories").update(fallbackPrepared).eq("id", id);
-    if (establishmentId) fallbackQuery = fallbackQuery.eq("establishment_id", establishmentId);
-    result = await fallbackQuery.select().single();
-  }
-
-  if (result.error) throw result.error;
-  return normalizeCategory(result.data);
-}
-
-async function deleteCategory(id, establishmentId = null) {
-  const client = getSupabaseClient();
-  if (!client) throw new Error("Supabase não configurado.");
-
-  let query = client.from("categories").delete().eq("id", id);
-  if (establishmentId) query = query.eq("establishment_id", establishmentId);
-  const { error } = await query;
-  if (error) throw error;
-  return true;
-}
-
-async function createProduct(payload, categories = []) {
-  const client = getSupabaseClient();
-  if (!client) throw new Error("Supabase não configurado.");
-
-  const categoryName = categories.find(function (item) {
-    return String(item.id) === String(payload.category_id || "");
-  })?.name || "Categoria";
-
-  const modernPayload = {
-    establishment_id: payload.establishment_id,
-    category_id: payload.category_id || null,
-    name: payload.name,
-    description: payload.description || "",
-    sale_price: Number(payload.sale_price || 0),
-    cost_price: Number(payload.cost_price || 0),
-    stock_quantity: Number(payload.stock_quantity || 0),
-    stock_min_quantity: Number(payload.stock_min_quantity || 0),
-    active: payload.active !== false
-  };
-
-  let result = await client.from("products").insert([modernPayload]).select().single();
-
-  if (result.error && shouldRetryLegacyColumn(result.error, ["sale_price", "cost_price", "stock_quantity", "stock_min_quantity", "active", "category_id"])) {
-    const legacyPayload = {
-      establishment_id: payload.establishment_id,
-      name: payload.name,
-      category: categoryName,
-      description: payload.description || "",
-      price: Number(payload.sale_price || 0),
-      is_active: payload.active !== false
-    };
-
-    result = await client.from("products").insert([legacyPayload]).select().single();
-  }
-
-  if (result.error) throw result.error;
-  return normalizeProduct(result.data);
-}
-
-async function updateProduct(id, payload, categories = []) {
-  const client = getSupabaseClient();
-  if (!client) throw new Error("Supabase não configurado.");
-
-  const categoryName = categories.find(function (item) {
-    return String(item.id) === String(payload.category_id || "");
-  })?.name || "Categoria";
-
-  const prepared = {
-    ...(payload.name !== undefined ? { name: payload.name } : {}),
-    ...(payload.category_id !== undefined ? { category_id: payload.category_id || null } : {}),
-    ...(payload.description !== undefined ? { description: payload.description } : {}),
-    ...(payload.sale_price !== undefined ? { sale_price: Number(payload.sale_price || 0) } : {}),
-    ...(payload.cost_price !== undefined ? { cost_price: Number(payload.cost_price || 0) } : {}),
-    ...(payload.stock_quantity !== undefined ? { stock_quantity: Number(payload.stock_quantity || 0) } : {}),
-    ...(payload.stock_min_quantity !== undefined ? { stock_min_quantity: Number(payload.stock_min_quantity || 0) } : {}),
-    ...(payload.active !== undefined ? { active: payload.active } : {})
-  };
-
-  let query = client
-    .from("products")
-    .update(prepared)
-    .eq("id", id);
-
-  if (payload.establishment_id) {
-    query = query.eq("establishment_id", payload.establishment_id);
-  }
-
-  let result = await query.select().single();
-
-  if (result.error && shouldRetryLegacyColumn(result.error, ["sale_price", "cost_price", "stock_quantity", "stock_min_quantity", "active", "category_id"])) {
-    const fallbackPrepared = {
-      ...(payload.name !== undefined ? { name: payload.name } : {}),
-      ...(payload.description !== undefined ? { description: payload.description } : {}),
-      ...(payload.sale_price !== undefined ? { price: Number(payload.sale_price || 0) } : {}),
-      ...(payload.active !== undefined ? { is_active: payload.active } : {}),
-      ...(payload.category_id !== undefined ? { category: categoryName } : {})
-    };
-
-    result = await client
-      .from("products")
-      .update(fallbackPrepared)
-      .eq("id", id)
-      .select()
-      .single();
-  }
-
-  if (result.error) throw result.error;
-  return normalizeProduct(result.data);
-}
-
-async function deleteProduct(id, establishmentId = null) {
-  const client = getSupabaseClient();
-  if (!client) throw new Error("Supabase não configurado.");
-
-  let query = client.from("products").delete().eq("id", id);
-  if (establishmentId) query = query.eq("establishment_id", establishmentId);
-  const { error } = await query;
-  if (error) throw error;
-  return true;
-}
-
 window.DookiData = {
   getSnapshot,
   createStore,
@@ -915,11 +695,5 @@ window.DookiData = {
   createSupportTicket,
   updateSupportTicket,
   getTicketMessages,
-  sendTicketMessage,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  createProduct,
-  updateProduct,
-  deleteProduct
+  sendTicketMessage
 };

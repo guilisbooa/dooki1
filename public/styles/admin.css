@@ -223,14 +223,17 @@ body.admin-app-body {
   top: 0;
   height: 100vh;
   overflow-y: auto;
-  background: rgba(255, 255, 255, 0.92);
-  border-right: 1px solid rgba(15, 23, 42, 0.06);
+  background:
+    radial-gradient(circle at top left, rgba(218, 165, 32, 0.10), transparent 26%),
+    linear-gradient(180deg, #111827 0%, #0f172a 42%, #020617 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(12px);
   padding: 18px 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 16px;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
 }
 
 .admin-sidebar-top {
@@ -249,10 +252,11 @@ body.admin-app-body {
   width: fit-content;
   padding: 7px 12px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.06);
-  color: var(--admin-text);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
   font-size: 0.76rem;
   font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .sidebar-brand-copy h2 {
@@ -260,11 +264,12 @@ body.admin-app-body {
   font-family: "Space Grotesk", sans-serif;
   font-size: 1.55rem;
   line-height: 1;
+  color: #f8fafc;
 }
 
 .sidebar-copy {
   margin: 8px 0 0;
-  color: var(--admin-text-soft);
+  color: #94a3b8;
   line-height: 1.55;
   font-size: 0.9rem;
 }
@@ -278,26 +283,29 @@ body.admin-app-body {
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: 16px;
   cursor: pointer;
   text-align: left;
-  color: var(--admin-text);
+  color: #dbe4f0;
   font-size: 0.92rem;
   font-weight: 700;
   transition: all 0.18s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .admin-nav-item:hover {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.10);
   transform: translateY(-1px);
 }
 
 .admin-nav-item.active {
-  background: linear-gradient(135deg, rgba(218, 165, 32, 0.18), rgba(218, 165, 32, 0.08));
-  border-color: rgba(218, 165, 32, 0.34);
-  color: #5f4700;
+  background: linear-gradient(135deg, rgba(218, 165, 32, 0.95), rgba(234, 179, 8, 0.84));
+  border-color: rgba(250, 204, 21, 0.55);
+  color: #3f2d00;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.20), 0 8px 18px rgba(218, 165, 32, 0.18);
 }
 
 .admin-hidden-nav {
@@ -308,7 +316,7 @@ body.admin-app-body {
   display: grid;
   gap: 12px;
   padding-top: 10px;
-  border-top: 1px solid rgba(15, 23, 42, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .sidebar-user {
@@ -318,11 +326,12 @@ body.admin-app-body {
 
 .sidebar-user strong {
   font-size: 0.92rem;
+  color: #f8fafc;
 }
 
 .sidebar-user span {
   font-size: 0.8rem;
-  color: var(--admin-text-soft);
+  color: #94a3b8;
   word-break: break-word;
 }
 
@@ -334,11 +343,13 @@ body.admin-app-body {
 }
 
 .admin-topbar {
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid var(--admin-border);
+  background:
+    radial-gradient(circle at top right, rgba(218, 165, 32, 0.10), transparent 22%),
+    linear-gradient(135deg, #111827, #1f2937 58%, #243244 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 24px;
   padding: 22px;
-  box-shadow: var(--admin-shadow-soft);
+  box-shadow: 0 18px 44px rgba(2, 6, 23, 0.20);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -350,6 +361,7 @@ body.admin-app-body {
   font-family: "Space Grotesk", sans-serif;
   font-size: clamp(1.8rem, 3vw, 2.6rem);
   line-height: 1;
+  color: #f8fafc;
 }
 
 .panel-kicker {
@@ -359,15 +371,16 @@ body.admin-app-body {
   justify-content: center;
   border-radius: 999px;
   padding: 8px 14px;
-  background: var(--admin-primary-soft);
-  color: #7a5b00;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.18), rgba(218, 165, 32, 0.28));
+  color: #fde68a;
+  border: 1px solid rgba(250, 204, 21, 0.16);
   font-size: 0.8rem;
   font-weight: 800;
 }
 
 .panel-copy {
   margin: 0;
-  color: var(--admin-text-soft);
+  color: #9fb0c8;
   line-height: 1.65;
 }
 
@@ -384,16 +397,18 @@ body.admin-app-body {
   min-height: 38px;
   border-radius: 999px;
   padding: 8px 14px;
-  background: rgba(15, 23, 42, 0.06);
-  color: var(--admin-text);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e5edf7;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 0.82rem;
   font-weight: 800;
   white-space: nowrap;
 }
 
 .status-pill.alt {
-  background: var(--admin-primary-soft);
-  color: #6e5200;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.95), rgba(234, 179, 8, 0.84));
+  color: #3f2d00;
+  border-color: rgba(250, 204, 21, 0.55);
 }
 
 .sidebar-toggle {
@@ -943,59 +958,4 @@ body.admin-app-body {
   .admin-topbar {
     padding: 18px;
   }
-}
-
-/* ===== Admin premium upgrade: categorias e produtos ===== */
-.pro-store-row--premium {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 18px;
-  padding: 14px 16px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,247,239,0.92));
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-}
-
-.pro-store-row--premium:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
-  border-color: rgba(184, 134, 11, 0.22);
-}
-
-.pro-store-row-left--premium {
-  gap: 14px;
-}
-
-.pro-store-row--premium .pro-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #f7e8b5, #e0b84f);
-  color: #3b2c08;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45);
-}
-
-.pro-store-row--premium .pro-store-row-content strong {
-  font-size: 1rem;
-}
-
-.pro-store-row--premium .pro-store-row-content span {
-  color: #6b7280;
-}
-
-#admin-store-categories-list,
-#admin-store-products-list {
-  display: grid;
-  gap: 12px;
-}
-
-#admin-product-form,
-#admin-category-form {
-  border-radius: 24px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(251,249,244,0.96));
-}
-
-#admin-product-form .ghost-button.small,
-#admin-store-products-list .ghost-button.small,
-#admin-store-categories-list .ghost-button.small {
-  border-radius: 999px;
 }

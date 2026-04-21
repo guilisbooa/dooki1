@@ -242,17 +242,31 @@
       </section>
 
       <section class="admin-screen" data-screen-panel="plans">
-        <div class="content-grid two-large">
+        <div class="plans-showcase" data-dooki-plan-suggestions></div>
+
+        <div class="content-grid two-large plans-layout-grid">
           <article class="panel">
             <div class="panel-head">
               <div>
                 <span class="panel-kicker">Monetização</span>
-                <h3>Planos ativos</h3>
+                <h3>Planos cadastrados no banco</h3>
               </div>
             </div>
             <div class="table-list" data-plans-table></div>
           </article>
 
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Estratégia de receita</span>
+                <h3>Simulação mensal</h3>
+              </div>
+            </div>
+            <div class="plans-revenue-grid" data-plan-revenue-summary></div>
+          </article>
+        </div>
+
+        <div class="content-grid two-large plans-layout-grid">
           <article class="panel">
             <div class="panel-head">
               <div>
@@ -264,12 +278,22 @@
             <form class="form-grid admin-form" data-plan-form id="plan-form">
               <label class="field">
                 <span>Nome do plano</span>
-                <input class="input" name="name" placeholder="Ex: Premium" required>
+                <input class="input" name="name" placeholder="Ex: Pro" required>
               </label>
 
               <label class="field">
                 <span>Mensalidade</span>
                 <input class="input" type="number" step="0.01" min="0" name="price" placeholder="0.00" required>
+              </label>
+
+              <label class="field">
+                <span>Preço anual</span>
+                <input class="input" type="number" step="0.01" min="0" name="annual_price" placeholder="0.00">
+              </label>
+
+              <label class="field">
+                <span>Dias de teste</span>
+                <input class="input" type="number" min="0" name="trial_days" placeholder="0">
               </label>
 
               <label class="field">
@@ -286,6 +310,33 @@
                 <button class="primary-button" type="submit">Salvar plano</button>
               </div>
             </form>
+          </article>
+
+          <article class="panel panel-dark-callout">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">Próximo nível</span>
+                <h3>Como cobrar melhor com a Dooki</h3>
+              </div>
+            </div>
+            <div class="plan-guidance-stack">
+              <div class="plan-guidance-item">
+                <strong>Starter em volume</strong>
+                <span>Use como porta de entrada para cidades pequenas e operação simples.</span>
+              </div>
+              <div class="plan-guidance-item">
+                <strong>Pro como principal</strong>
+                <span>Empurre o Pro como melhor custo-benefício e plano mais vendido.</span>
+              </div>
+              <div class="plan-guidance-item">
+                <strong>Business para escala</strong>
+                <span>Deixe recursos de gestão e financeiro mais fortes nesse nível.</span>
+              </div>
+              <div class="plan-guidance-item">
+                <strong>Enterprise para margem</strong>
+                <span>Remoção da marca Dooki, suporte prioritário e personalização.</span>
+              </div>
+            </div>
           </article>
         </div>
       </section>

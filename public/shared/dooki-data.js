@@ -856,6 +856,101 @@ async function sendTicketMessage(ticketId, payload) {
   return normalizeMessage(data);
 }
 
+
+
+const DOOKI_PLAN_CATALOG = {
+  starter: {
+    slug: 'starter',
+    name: 'Starter',
+    monthlyPrice: 29,
+    annualPrice: 290,
+    trialDays: 7,
+    commissionPercent: 2,
+    badge: 'Entrada',
+    aliases: ['starter', 'advanced', 'basic', 'standard'],
+    description: 'Plano ideal para começar com cardápio digital, QR code e operação enxuta.',
+    features: [
+      'Cardápio digital',
+      'Produtos e categorias ilimitados',
+      'QR Code do cardápio',
+      'Pedidos e gestão básica',
+      'Suporte por ticket'
+    ]
+  },
+  pro: {
+    slug: 'pro',
+    name: 'Pro',
+    monthlyPrice: 49,
+    annualPrice: 490,
+    trialDays: 10,
+    commissionPercent: 1.5,
+    badge: 'Mais vendido',
+    aliases: ['pro', 'premium'],
+    description: 'Melhor custo-benefício para lojas que querem vender mais com controle operacional.',
+    features: [
+      'Tudo do Starter',
+      'Estoque completo',
+      'Pedidos por mesa',
+      'QR por mesa',
+      'Análise de resultados'
+    ]
+  },
+  business: {
+    slug: 'business',
+    name: 'Business',
+    monthlyPrice: 79,
+    annualPrice: 790,
+    trialDays: 14,
+    commissionPercent: 1.2,
+    badge: 'Escala',
+    aliases: ['business', 'elite'],
+    description: 'Perfeito para operação com maior volume, gestão e visão financeira.',
+    features: [
+      'Tudo do Pro',
+      'Financeiro avançado',
+      'Múltiplos usuários',
+      'Relatórios operacionais',
+      'Prioridade no suporte'
+    ]
+  },
+  enterprise: {
+    slug: 'enterprise',
+    name: 'Enterprise',
+    monthlyPrice: 119,
+    annualPrice: 1190,
+    trialDays: 14,
+    commissionPercent: 1,
+    badge: 'Margem alta',
+    aliases: ['enterprise', 'infinity'],
+    description: 'Plano premium para restaurantes que querem personalização e máxima margem.',
+    features: [
+      'Tudo do Business',
+      'Sem marca Dooki',
+      'Suporte prioritário',
+      'Pedidos em grupo',
+      'Divisão de conta'
+    ]
+  }
+};
+
+function normalizePlanSlug(planName) {
+  if (!planName) return 'starter';
+  const normalized = String(planName).trim().toLowerCase();
+  for (const plan of Object.values(DOOKI_PLAN_CATALOG)) {
+    if (plan.aliases.includes(normalized)) return plan.slug;
+  }
+  return normalized;
+}
+
+function getDookiPlanCatalog() {
+  return Object.values(DOOKI_PLAN_CATALOG).map((plan) => ({ ...plan }));
+}
+
+function resolveDookiPlan(planName) {
+  const slug = normalizePlanSlug(planName);
+  return DOOKI_PLAN_CATALOG[slug] ? { ...DOOKI_PLAN_CATALOG[slug] } : { ...DOOKI_PLAN_CATALOG.starter };
+}
+
 window.DookiData = {
   getSnapshot,
   createStore,
@@ -880,5 +975,8 @@ window.DookiData = {
   deleteCategory,
   createProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  getDookiPlanCatalog,
+  resolveDookiPlan,
+  normalizePlanSlug
 };

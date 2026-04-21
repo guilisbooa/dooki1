@@ -959,3 +959,144 @@ body.admin-app-body {
     padding: 18px;
   }
 }
+
+.plans-showcase {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.plan-suggestion-card,
+.plan-revenue-card,
+.plan-db-card {
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: 0 12px 26px rgba(15,23,42,0.06);
+}
+
+.plan-suggestion-card.is-featured,
+.plan-revenue-card.is-featured {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,247,214,0.96));
+  border-color: rgba(218, 165, 32, 0.28);
+}
+
+.plan-suggestion-top,
+.plan-db-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.plan-suggestion-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #6e5200;
+  background: rgba(218, 165, 32, 0.14);
+}
+
+.plan-suggestion-price {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.plan-suggestion-price small {
+  font-size: 0.88rem;
+  color: var(--admin-text-soft);
+  margin-left: 4px;
+}
+
+.plan-suggestion-card p,
+.plan-guidance-item span,
+.plan-db-copy span,
+.plan-db-meta span {
+  color: var(--admin-text-soft);
+}
+
+.plan-suggestion-card ul,
+.upgrade-plan-card ul {
+  padding-left: 18px;
+  margin: 14px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.plan-db-main,
+.plans-revenue-grid,
+.plan-guidance-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.plan-db-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.plan-db-meta span {
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(15,23,42,0.05);
+  font-size: 0.8rem;
+}
+
+.plan-revenue-card {
+  display: grid;
+  gap: 6px;
+}
+
+.plan-revenue-card b {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.3rem;
+}
+
+.plan-revenue-card.total {
+  background: linear-gradient(135deg, #111827, #1f2937);
+  color: #fff;
+}
+
+.plan-revenue-card.total span {
+  color: rgba(255,255,255,0.72);
+}
+
+.panel-dark-callout {
+  background: linear-gradient(135deg, #0f172a, #111827);
+  color: #fff;
+}
+
+.panel-dark-callout .panel-kicker,
+.panel-dark-callout .plan-guidance-item span {
+  color: rgba(255,255,255,0.72);
+}
+
+.plan-guidance-item {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255,255,255,0.04);
+}
+
+@media (max-width: 1100px) {
+  .plans-showcase {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .plans-showcase {
+    grid-template-columns: 1fr;
+  }
+}

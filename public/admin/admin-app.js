@@ -347,6 +347,13 @@ const api = {
   }
 };
 
+function getSuggestedPlanCatalog() {
+  if (typeof window.DookiData?.getDookiPlanCatalog === "function") {
+    return window.DookiData.getDookiPlanCatalog();
+  }
+  return [];
+}
+
 // =============================
 // INIT
 // =============================
@@ -1066,23 +1073,82 @@ async function handleStoreDelete() {
 
 function renderPlans() {
   const container = document.querySelector("[data-plans-table]");
-  if (!container) return;
-
+  const showcase = document.querySelector("[data-dooki-plan-suggestions]");
+  const revenueSummary = document.querySelector("[data-plan-revenue-summary]");
   const plans = state.snapshot.plans || [];
+  const suggestedPlans = getSuggestedPlanCatalog();
 
-  container.innerHTML = plans.length
-    ? plans.map((plan) => `
-        <article class="pro-list-card">
-          <div class="pro-list-main">
-            <div class="pro-list-content">
-              <strong>${plan.name || "Plano"}</strong>
-              <span>${plan.benefits || plan.description || "Sem benefícios cadastrados"}</span>
-            </div>
-            <span class="pro-status-badge neutral">${formatMoney(plan.price || plan.monthlyPrice || 0)}</span>
+  if (showcase) {
+    showcase.innerHTML = suggestedPlans.map((plan) => {
+      return `
+        <article class="plan-suggestion-card ${plan.slug === 'pro' ? 'is-featured' : ''}">
+          <div class="plan-suggestion-top">
+            <span class="plan-suggestion-badge">${plan.badge}</span>
+            <strong>${plan.name}</strong>
           </div>
+          <div class="plan-suggestion-price">${formatMoney(plan.monthlyPrice)}<small>/mês</small></div>
+          <p>${plan.description}</p>
+          <ul>
+            ${plan.features.map((feature) => `<li>${feature}</li>`).join("")}
+          </ul>
         </article>
-      `).join("")
-    : `<div class="pro-empty-state"><strong>Nenhum plano</strong><span>Sem planos cadastrados no snapshot.</span></div>`;
+      `;
+    }).join("");
+  }
+
+  if (container) {
+    container.innerHTML = plans.length
+      ? plans.map((plan) => `
+          <article class="plan-db-card">
+            <div class="plan-db-main">
+              <div class="plan-db-copy">
+                <div class="plan-db-headline">
+                  <strong>${plan.name || "Plano"}</strong>
+                  <span class="pro-status-badge neutral">${formatMoney(plan.price || plan.monthlyPrice || 0)}</span>
+                </div>
+                <span>${plan.benefits || plan.description || "Sem benefícios cadastrados"}</span>
+              </div>
+              <div class="plan-db-meta">
+                <span>Anual: ${formatMoney(plan.annualPrice || plan.annual_price || 0)}</span>
+                <span>Trial: ${Number(plan.trialDays || plan.trial_days || 0)} dias</span>
+                <span>Taxa: ${Number(plan.discount || 0).toFixed(2)}%</span>
+              </div>
+            </div>
+          </article>
+        `).join("")
+      : `<div class="pro-empty-state"><strong>Nenhum plano</strong><span>Sem planos cadastrados no snapshot.</span></div>`;
+  }
+
+  if (revenueSummary) {
+    const simulated = suggestedPlans.map((plan) => {
+      const base = {
+        starter: 40,
+        pro: 25,
+        business: 12,
+        enterprise: 5
+      }[plan.slug] || 0;
+      return {
+        ...plan,
+        stores: base,
+        revenue: base * Number(plan.monthlyPrice || 0)
+      };
+    });
+    const total = simulated.reduce((sum, item) => sum + item.revenue, 0);
+
+    revenueSummary.innerHTML = simulated.map((plan) => `
+      <article class="plan-revenue-card ${plan.slug === 'pro' ? 'is-featured' : ''}">
+        <strong>${plan.name}</strong>
+        <span>${plan.stores} lojas x ${formatMoney(plan.monthlyPrice)}</span>
+        <b>${formatMoney(plan.revenue)}</b>
+      </article>
+    `).join("") + `
+      <article class="plan-revenue-card total">
+        <strong>Receita estimada</strong>
+        <span>Simulação com 82 estabelecimentos</span>
+        <b>${formatMoney(total)}</b>
+      </article>
+    `;
+  }
 }
 
 async function handlePlanCreate(event) {
@@ -1094,6 +1160,8 @@ async function handlePlanCreate(event) {
     name: form.name.value.trim(),
     price: Number(form.price.value || 0),
     discount: Number(form.discount.value || 0),
+    annualPrice: Number(form.annual_price?.value || 0),
+    trialDays: Number(form.trial_days?.value || 0),
     description: normalizeTextareaLines(form.description.value),
     benefits: normalizeTextareaLines(form.description.value)
   };

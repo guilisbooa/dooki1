@@ -53,20 +53,8 @@
     }
   };
 
-  const PLAN_ALIASES = {
-    standard: 'starter',
-    advanced: 'starter',
-    starter: 'starter',
-    premium: 'pro',
-    pro: 'pro',
-    business: 'business',
-    elite: 'business',
-    enterprise: 'enterprise',
-    infinity: 'enterprise'
-  };
-
   const PLAN_FEATURES_FALLBACK = {
-    starter: [
+    standard: [
       "digital_menu",
       "delivery_orders",
       "establishment_panel",
@@ -76,7 +64,7 @@
       "menu_qr_code",
       "dooki_watermark"
     ],
-    pro: [
+    premium: [
       "digital_menu",
       "delivery_orders",
       "establishment_panel",
@@ -87,20 +75,6 @@
       "table_qr_code",
       "table_ordering",
       "profit_analysis",
-      "dooki_watermark"
-    ],
-    business: [
-      "digital_menu",
-      "delivery_orders",
-      "establishment_panel",
-      "full_dashboard",
-      "inventory_management",
-      "ticket_support",
-      "menu_qr_code",
-      "table_qr_code",
-      "table_ordering",
-      "profit_analysis",
-      "group_orders",
       "dooki_watermark"
     ],
     enterprise: [
@@ -124,23 +98,23 @@
 
   const FEATURE_UPGRADE_RULES = {
     inventory_management: {
-      minPlan: "starter",
+      minPlan: "standard",
       label: "Gestão de estoque"
     },
     ticket_support: {
-      minPlan: "starter",
+      minPlan: "standard",
       label: "Suporte por ticket"
     },
     table_qr_code: {
-      minPlan: "pro",
+      minPlan: "premium",
       label: "QR code por mesa"
     },
     table_ordering: {
-      minPlan: "pro",
+      minPlan: "premium",
       label: "Pedidos por mesa"
     },
     profit_analysis: {
-      minPlan: "pro",
+      minPlan: "premium",
       label: "Análise de gastos e ganhos"
     },
     split_bill: {
@@ -148,7 +122,7 @@
       label: "Divisão de conta"
     },
     group_orders: {
-      minPlan: "business",
+      minPlan: "enterprise",
       label: "Pedidos interligados por grupo"
     },
     support_24h: {
@@ -174,7 +148,6 @@
       state.membership = context.membership;
 
       bindBaseEvents();
-      bindUpgradeEvents();
       await bootstrap();
       openScreen("dashboard");
     } catch (error) {
@@ -203,15 +176,13 @@
   }
 
   function getPlanKey() {
-    const raw = getPlanName().toLowerCase();
-    return PLAN_ALIASES[raw] || raw;
+    return getPlanName().toLowerCase();
   }
 
   function getPlanLevel(planKey) {
-    if (planKey === "starter") return 1;
-    if (planKey === "pro") return 2;
-    if (planKey === "business") return 3;
-    if (planKey === "enterprise") return 4;
+    if (planKey === "standard") return 1;
+    if (planKey === "premium") return 2;
+    if (planKey === "enterprise") return 3;
     return 0;
   }
 
@@ -231,9 +202,8 @@
     if (raw != null && raw !== "") return Number(raw || 0);
 
     const planKey = getPlanKey();
-    if (planKey === "starter") return 2;
-    if (planKey === "pro") return 1.5;
-    if (planKey === "business") return 1.2;
+    if (planKey === "standard") return 2;
+    if (planKey === "premium") return 1.5;
     if (planKey === "enterprise") return 1;
     return 0;
   }
@@ -248,8 +218,7 @@
     const rule = FEATURE_UPGRADE_RULES[featureKey];
     if (!rule) return "Upgrade";
 
-    if (rule.minPlan === "pro") return "Pro";
-    if (rule.minPlan === "business") return "Business";
+    if (rule.minPlan === "premium") return "Premium";
     if (rule.minPlan === "enterprise") return "Enterprise";
     return "Upgrade";
   }
@@ -262,13 +231,11 @@
     }
 
     const minPlanLabel =
-      rule.minPlan === "pro"
-        ? "Pro"
-        : rule.minPlan === "business"
-          ? "Business"
-          : rule.minPlan === "enterprise"
-            ? "Enterprise"
-            : "Starter";
+      rule.minPlan === "premium"
+        ? "Premium"
+        : rule.minPlan === "enterprise"
+          ? "Enterprise"
+          : "Standard";
 
     return `${rule.label} disponível a partir do plano ${minPlanLabel}. Seu plano atual: ${getPlanLabel()}.`;
   }
@@ -494,8 +461,8 @@
       return {
         establishment_id: establishmentId,
         plan_id: data.id,
-        plan_name: data.name || "Starter",
-        plan_display_name: data.name || "Starter",
+        plan_name: data.name || "Standard",
+        plan_display_name: data.name || "Standard",
         commission_percent: data.commission_percent ?? 0,
         watermark_enabled: data.watermark_enabled ?? true,
         support_level: data.support_level || "ticket",
@@ -563,8 +530,8 @@
     return {
       establishment_id: establishment.id,
       plan_id: planId,
-      plan_name: planName || "Starter",
-      plan_display_name: planName || "Starter",
+      plan_name: planName || "Standard",
+      plan_display_name: planName || "Standard",
       commission_percent: establishment.current_commission_percent ?? 0,
       watermark_enabled: establishment.watermark_enabled ?? true,
       support_level: establishment.support_level || "ticket"
@@ -629,10 +596,10 @@
       establishment?.plan_name ||
       establishment?.plan ||
       establishment?.current_plan_name ||
-      "starter"
+      "standard"
     ).toLowerCase();
 
-    const fallback = PLAN_FEATURES_FALLBACK[PLAN_ALIASES[rawPlan] || rawPlan] || PLAN_FEATURES_FALLBACK.starter;
+    const fallback = PLAN_FEATURES_FALLBACK[rawPlan] || PLAN_FEATURES_FALLBACK.standard;
 
     return fallback.map(function (key) {
       return {
@@ -673,6 +640,32 @@
     };
   }
 
+
+  function resolveMediaUrl(value, fallback) {
+    const raw = value == null ? "" : String(value).trim();
+    const safeFallback = fallback || "/assets/logo-dooki.png";
+
+    if (!raw || raw === "undefined" || raw === "null") return safeFallback;
+    if (/^(https?:)?\/\//i.test(raw) || raw.startsWith("data:") || raw.startsWith("blob:")) return raw;
+    if (raw.startsWith("/assets/") || raw.startsWith("./") || raw.startsWith("../")) return raw;
+    if (raw.startsWith("/storage/v1/object/public/")) return `https://lvnhwtmdpzwjfjktkmtd.supabase.co${raw}`;
+    if (raw.startsWith("storage/v1/object/public/")) return `https://lvnhwtmdpzwjfjktkmtd.supabase.co/${raw}`;
+    if (raw.includes("/")) return `https://lvnhwtmdpzwjfjktkmtd.supabase.co/storage/v1/object/public/${raw.replace(/^\/+/, "")}`;
+    return raw;
+  }
+
+  function applyImageWithFallback(img, src, fallback) {
+    if (!img) return;
+    const resolvedFallback = fallback || "/assets/logo-dooki.png";
+    img.onerror = function () {
+      if (img.dataset.fallbackApplied === "true") return;
+      img.dataset.fallbackApplied = "true";
+      img.src = resolvedFallback;
+    };
+    img.dataset.fallbackApplied = "false";
+    img.src = resolveMediaUrl(src, resolvedFallback);
+  }
+
   function renderHeader() {
     const storeName = state.establishment?.name || "Minha Loja";
     const userEmail = state.user?.email || "—";
@@ -697,7 +690,7 @@
     }
 
     document.querySelectorAll('[data-establishment-logo]').forEach(function (img) {
-      img.src = state.establishment?.logo_url || "/assets/logo-dooki.png";
+      applyImageWithFallback(img, state.establishment?.logo_url, "/assets/logo-dooki.png");
       img.alt = state.establishment?.name || "Dooki";
     });
 
@@ -759,7 +752,7 @@
     if (screen === "inventory") {
       const panel = document.querySelector('[data-panel="inventory"]');
       if (!hasFeature("inventory_management")) {
-        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("inventory_management"), "inventory_management");
+        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("inventory_management"));
         return;
       }
       renderInventory();
@@ -768,7 +761,7 @@
     if (screen === "tables") {
       const panel = document.querySelector('[data-panel="tables"]');
       if (!hasFeature("table_qr_code")) {
-        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("table_qr_code"), "table_qr_code");
+        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("table_qr_code"));
         return;
       }
       renderTables();
@@ -776,8 +769,8 @@
 
     if (screen === "finance") {
       const panel = document.querySelector('[data-panel="finance"]');
-      if (!hasFeature("profit_analysis") && getPlanKey() === "starter") {
-        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("profit_analysis"), "profit_analysis");
+      if (!hasFeature("profit_analysis") && getPlanKey() === "standard") {
+        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("profit_analysis"));
         return;
       }
       renderFinance();
@@ -786,7 +779,7 @@
     if (screen === "support") {
       const panel = document.querySelector('[data-panel="support"]');
       if (!hasFeature("ticket_support")) {
-        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("ticket_support"), "ticket_support");
+        if (panel) panel.innerHTML = lockedFeatureCard(getUpgradeMessage("ticket_support"));
         return;
       }
       renderSupport();
@@ -1129,7 +1122,7 @@ function renderCategories() {
     if (!inventoryTable || !movementsList) return;
 
     if (!hasFeature("inventory_management")) {
-      inventoryTable.innerHTML = lockedFeatureCard("Este recurso faz parte do plano Starter e superiores.", "inventory_management");
+      inventoryTable.innerHTML = lockedFeatureCard("Este recurso faz parte do plano Standard e superiores.");
       movementsList.innerHTML = "";
       return;
     }
@@ -1180,7 +1173,7 @@ function renderCategories() {
     if (!tablesTable) return;
 
     if (!hasFeature("table_qr_code")) {
-      tablesTable.innerHTML = lockedFeatureCard("O módulo de mesas fica disponível a partir do plano Pro.", "table_qr_code");
+      tablesTable.innerHTML = lockedFeatureCard("O módulo de mesas fica disponível a partir do plano Premium.");
       return;
     }
 
@@ -1248,7 +1241,7 @@ function renderCategories() {
     if (!table) return;
 
     if (!hasFeature("ticket_support")) {
-      table.innerHTML = lockedFeatureCard("O suporte por ticket não está disponível para este plano.", "ticket_support");
+      table.innerHTML = lockedFeatureCard("O suporte por ticket não está disponível para este plano.");
       return;
     }
 
@@ -1317,114 +1310,13 @@ function renderCategories() {
     `;
   }
 
-  function lockedFeatureCard(message, featureKey = null) {
+  function lockedFeatureCard(message) {
     return `
       <div class="locked-feature-card">
-        <span class="locked-feature-pill">Upgrade disponível</span>
         <h3>Recurso indisponível no seu plano</h3>
         <p>${message}</p>
-        <div class="locked-feature-actions">
-          <button type="button" class="primary-button" data-open-upgrade-modal="${featureKey || ''}">Ver planos</button>
-        </div>
       </div>
     `;
-  }
-
-  function getUpgradePlanCards() {
-    return [
-      {
-        key: 'starter',
-        name: 'Starter',
-        price: 'R$ 29/mês',
-        tag: 'Entrada',
-        items: ['Cardápio digital', 'QR Code do cardápio', 'Pedidos e suporte básico']
-      },
-      {
-        key: 'pro',
-        name: 'Pro',
-        price: 'R$ 49/mês',
-        tag: 'Mais vendido',
-        items: ['Tudo do Starter', 'Estoque', 'Pedidos por mesa', 'Análises básicas']
-      },
-      {
-        key: 'business',
-        name: 'Business',
-        price: 'R$ 79/mês',
-        tag: 'Escala',
-        items: ['Tudo do Pro', 'Financeiro', 'Múltiplos usuários', 'Mais gestão']
-      },
-      {
-        key: 'enterprise',
-        name: 'Enterprise',
-        price: 'R$ 119/mês',
-        tag: 'Premium',
-        items: ['Tudo do Business', 'Sem marca Dooki', 'Suporte prioritário']
-      }
-    ];
-  }
-
-  function ensureUpgradeModal() {
-    let modal = document.getElementById('upgrade-plan-modal');
-    if (modal) return modal;
-
-    modal = document.createElement('div');
-    modal.id = 'upgrade-plan-modal';
-    modal.className = 'upgrade-plan-modal';
-    modal.innerHTML = `
-      <div class="upgrade-plan-backdrop" data-close-upgrade-modal></div>
-      <div class="upgrade-plan-dialog">
-        <button type="button" class="upgrade-plan-close" data-close-upgrade-modal aria-label="Fechar">×</button>
-        <div class="upgrade-plan-head">
-          <span class="locked-feature-pill">Upgrade de plano</span>
-          <h3>Destrave mais recursos na Dooki</h3>
-          <p data-upgrade-modal-copy>Veja os planos e escolha o melhor custo-benefício para sua operação.</p>
-        </div>
-        <div class="upgrade-plan-grid">
-          ${getUpgradePlanCards().map((plan) => `
-            <article class="upgrade-plan-card ${plan.key === 'pro' ? 'is-featured' : ''}">
-              <span class="upgrade-plan-tag">${plan.tag}</span>
-              <strong>${plan.name}</strong>
-              <b>${plan.price}</b>
-              <ul>${plan.items.map((item) => `<li>${item}</li>`).join('')}</ul>
-            </article>
-          `).join('')}
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-    return modal;
-  }
-
-  function openUpgradeModal(featureKey = null) {
-    const modal = ensureUpgradeModal();
-    const copy = modal.querySelector('[data-upgrade-modal-copy]');
-    copy.textContent = featureKey ? getUpgradeMessage(featureKey) : `Seu plano atual é ${getPlanLabel()}. Faça upgrade para liberar mais recursos.`;
-    modal.classList.add('active');
-    document.body.classList.add('has-upgrade-modal');
-  }
-
-  function closeUpgradeModal() {
-    const modal = document.getElementById('upgrade-plan-modal');
-    if (!modal) return;
-    modal.classList.remove('active');
-    document.body.classList.remove('has-upgrade-modal');
-  }
-
-  function bindUpgradeEvents() {
-    document.addEventListener('click', function (event) {
-      const openButton = event.target.closest('[data-open-upgrade-modal]');
-      if (openButton) {
-        event.preventDefault();
-        openUpgradeModal(openButton.getAttribute('data-open-upgrade-modal') || null);
-        return;
-      }
-
-      const closeButton = event.target.closest('[data-close-upgrade-modal]');
-      if (closeButton) {
-        event.preventDefault();
-        closeUpgradeModal();
-      }
-    });
   }
 
   function humanizeFeature(key) {
@@ -1621,13 +1513,13 @@ function renderCategories() {
 
     if (!banner || !logo || !name || !city || !description || !tabs || !list) return;
 
-    const bannerUrl = state.establishment?.banner_url || "";
-    const logoUrl = state.establishment?.logo_url || "/assets/logo-dooki.png";
+    const bannerUrl = resolveMediaUrl(state.establishment?.banner_url, "");
+    const logoUrl = resolveMediaUrl(state.establishment?.logo_url, "/assets/logo-dooki.png");
 
-    banner.style.backgroundImage = bannerUrl
+    banner.style.backgroundImage = bannerUrl && bannerUrl !== "/assets/logo-dooki.png"
       ? `linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.02)), url("${bannerUrl}")`
       : 'linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.02)), linear-gradient(135deg, rgba(218, 165, 32, 0.38), rgba(184, 134, 11, 0.52))';
-    logo.src = logoUrl;
+    applyImageWithFallback(logo, logoUrl, "/assets/logo-dooki.png");
     name.textContent = state.establishment?.name || "Minha Loja";
     city.textContent = state.establishment?.city || "Cidade não informada";
     description.textContent = state.establishment?.description || `Plano ${getPlanLabel()} • ${state.products.length} produto(s) cadastrado(s)`;

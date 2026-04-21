@@ -6,6 +6,37 @@ function getSupabaseClient() {
   return window.supabaseClient || window.DookiSupabase?.client || null;
 }
 
+
+const SUPABASE_PUBLIC_STORAGE_BASE = "https://lvnhwtmdpzwjfjktkmtd.supabase.co/storage/v1/object/public/";
+
+function normalizeMediaField(value) {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  if (!normalized || normalized === 'undefined' || normalized === 'null') return null;
+
+  if (/^(https?:)?\/\//i.test(normalized) || normalized.startsWith('data:') || normalized.startsWith('blob:')) {
+    return normalized;
+  }
+
+  if (normalized.startsWith('/assets/') || normalized.startsWith('./') || normalized.startsWith('../')) {
+    return normalized;
+  }
+
+  if (normalized.startsWith('/storage/v1/object/public/')) {
+    return `https://lvnhwtmdpzwjfjktkmtd.supabase.co${normalized}`;
+  }
+
+  if (normalized.startsWith('storage/v1/object/public/')) {
+    return `https://lvnhwtmdpzwjfjktkmtd.supabase.co/${normalized}`;
+  }
+
+  if (normalized.includes('/')) {
+    return `${SUPABASE_PUBLIC_STORAGE_BASE}${normalized.replace(/^\/+/, '')}`;
+  }
+
+  return normalized;
+}
+
 function sanitizeEntityId(value) {
   if (value === undefined || value === null) return null;
   const normalized = String(value).trim();
@@ -32,8 +63,8 @@ function normalizeStore(row) {
     plan: row.plan || row.plan_name || row.current_plan_name || null,
     plan_name: row.plan_name || row.current_plan_name || row.plan || null,
     current_plan_name: row.current_plan_name || row.plan_name || row.plan || null,
-    logo_url: row.logo_url || row.logo || null,
-    banner_url: row.banner_url || row.banner || null,
+    logo_url: normalizeMediaField(row.logo_url || row.logo || row.logo_path || row.logoPath),
+    banner_url: normalizeMediaField(row.banner_url || row.banner || row.banner_path || row.bannerPath),
     code: row.code || row.establishment_code || null,
     created_at: row.created_at || null,
     raw: row
@@ -542,8 +573,8 @@ async function createStore(payload) {
     status: payload.status || "active",
     email: payload.email || null,
     whatsapp: payload.whatsapp || payload.phone || null,
-    logo_url: payload.logo_url || payload.logoUrl || null,
-    banner_url: payload.banner_url || payload.bannerUrl || null,
+    logo_url: normalizeMediaField(payload.logo_url || payload.logoUrl),
+    banner_url: normalizeMediaField(payload.banner_url || payload.bannerUrl),
     ...(payload.plan_id !== undefined ? { plan_id: payload.plan_id || null } : {})
   };
 
@@ -573,10 +604,10 @@ async function updateStore(id, payload) {
     ...(payload.email !== undefined ? { email: payload.email } : {}),
     ...(payload.whatsapp !== undefined ? { whatsapp: payload.whatsapp } : {}),
     ...(payload.phone !== undefined ? { whatsapp: payload.phone } : {}),
-    ...(payload.logo_url !== undefined ? { logo_url: payload.logo_url } : {}),
-    ...(payload.logoUrl !== undefined ? { logo_url: payload.logoUrl } : {}),
-    ...(payload.banner_url !== undefined ? { banner_url: payload.banner_url } : {}),
-    ...(payload.bannerUrl !== undefined ? { banner_url: payload.bannerUrl } : {}),
+    ...(payload.logo_url !== undefined ? { logo_url: normalizeMediaField(payload.logo_url) } : {}),
+    ...(payload.logoUrl !== undefined ? { logo_url: normalizeMediaField(payload.logoUrl) } : {}),
+    ...(payload.banner_url !== undefined ? { banner_url: normalizeMediaField(payload.banner_url) } : {}),
+    ...(payload.bannerUrl !== undefined ? { banner_url: normalizeMediaField(payload.bannerUrl) } : {}),
     ...(payload.plan_id !== undefined ? { plan_id: payload.plan_id || null } : {})
   };
 
@@ -856,101 +887,6 @@ async function sendTicketMessage(ticketId, payload) {
   return normalizeMessage(data);
 }
 
-
-
-const DOOKI_PLAN_CATALOG = {
-  starter: {
-    slug: 'starter',
-    name: 'Starter',
-    monthlyPrice: 29,
-    annualPrice: 290,
-    trialDays: 7,
-    commissionPercent: 2,
-    badge: 'Entrada',
-    aliases: ['starter', 'advanced', 'basic', 'standard'],
-    description: 'Plano ideal para começar com cardápio digital, QR code e operação enxuta.',
-    features: [
-      'Cardápio digital',
-      'Produtos e categorias ilimitados',
-      'QR Code do cardápio',
-      'Pedidos e gestão básica',
-      'Suporte por ticket'
-    ]
-  },
-  pro: {
-    slug: 'pro',
-    name: 'Pro',
-    monthlyPrice: 49,
-    annualPrice: 490,
-    trialDays: 10,
-    commissionPercent: 1.5,
-    badge: 'Mais vendido',
-    aliases: ['pro', 'premium'],
-    description: 'Melhor custo-benefício para lojas que querem vender mais com controle operacional.',
-    features: [
-      'Tudo do Starter',
-      'Estoque completo',
-      'Pedidos por mesa',
-      'QR por mesa',
-      'Análise de resultados'
-    ]
-  },
-  business: {
-    slug: 'business',
-    name: 'Business',
-    monthlyPrice: 79,
-    annualPrice: 790,
-    trialDays: 14,
-    commissionPercent: 1.2,
-    badge: 'Escala',
-    aliases: ['business', 'elite'],
-    description: 'Perfeito para operação com maior volume, gestão e visão financeira.',
-    features: [
-      'Tudo do Pro',
-      'Financeiro avançado',
-      'Múltiplos usuários',
-      'Relatórios operacionais',
-      'Prioridade no suporte'
-    ]
-  },
-  enterprise: {
-    slug: 'enterprise',
-    name: 'Enterprise',
-    monthlyPrice: 119,
-    annualPrice: 1190,
-    trialDays: 14,
-    commissionPercent: 1,
-    badge: 'Margem alta',
-    aliases: ['enterprise', 'infinity'],
-    description: 'Plano premium para restaurantes que querem personalização e máxima margem.',
-    features: [
-      'Tudo do Business',
-      'Sem marca Dooki',
-      'Suporte prioritário',
-      'Pedidos em grupo',
-      'Divisão de conta'
-    ]
-  }
-};
-
-function normalizePlanSlug(planName) {
-  if (!planName) return 'starter';
-  const normalized = String(planName).trim().toLowerCase();
-  for (const plan of Object.values(DOOKI_PLAN_CATALOG)) {
-    if (plan.aliases.includes(normalized)) return plan.slug;
-  }
-  return normalized;
-}
-
-function getDookiPlanCatalog() {
-  return Object.values(DOOKI_PLAN_CATALOG).map((plan) => ({ ...plan }));
-}
-
-function resolveDookiPlan(planName) {
-  const slug = normalizePlanSlug(planName);
-  return DOOKI_PLAN_CATALOG[slug] ? { ...DOOKI_PLAN_CATALOG[slug] } : { ...DOOKI_PLAN_CATALOG.starter };
-}
-
 window.DookiData = {
   getSnapshot,
   createStore,
@@ -975,8 +911,5 @@ window.DookiData = {
   deleteCategory,
   createProduct,
   updateProduct,
-  deleteProduct,
-  getDookiPlanCatalog,
-  resolveDookiPlan,
-  normalizePlanSlug
+  deleteProduct
 };

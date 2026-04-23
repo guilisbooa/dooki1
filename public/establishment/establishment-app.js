@@ -11,7 +11,8 @@
     tickets: [],
     tables: [],
     inventoryMovements: [],
-    finance: null
+    finance: null,
+    manualOrderItems: []
   };
 
   const screenMeta = {
@@ -1117,6 +1118,200 @@
     }
   }
 
+
+  function getManualOrderTotal() {
+    return state.manualOrderItems.reduce(function (acc, item) {
+      return acc + (getProductPrice(item.product) * Number(item.quantity || 1));
+    }, 0);
+  }
+
+  function renderManualOrderItems() {
+    if (!state.manualOrderItems.length) {
+      return `<div class="manual-order-empty">Nenhum item adicionado ao pedido.</div>`;
+    }
+
+    return state.manualOrderItems.map(function (item, index) {
+      return `
+        <div class="manual-order-item">
+          <div>
+            <strong>${item.product.name || "Produto"}</strong>
+            <span>${Number(item.quantity || 1)} x ${formatMoney(getProductPrice(item.product))}</span>
+          </div>
+
+          <b>${formatMoney(getProductPrice(item.product) * Number(item.quantity || 1))}</b>
+
+          <button type="button" class="manual-order-remove" onclick="window.EstablishmentPanel.removeManualOrderItem(${index})">
+            Remover
+          </button>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderManualOrderForm() {
+    const activeProducts = sortProductsForMenu(
+      state.products.filter(function (product) {
+        return isProductActive(product);
+      })
+    );
+
+    const options = activeProducts.map(function (product) {
+      const stock = getProductStock(product);
+      const category = getCategoryDisplayName(product.category_id);
+
+      return `
+        <option value="${normalizeUuidValue(product.id)}">
+          ${product.name || "Produto"} • ${category} • ${formatMoney(getProductPrice(product))} • Estoque: ${stock}
+        </option>
+      `;
+    }).join("");
+
+    return `
+      <section class="manual-order-panel">
+        <div class="manual-order-head">
+          <div>
+            <span class="panel-kicker">Pedido manual</span>
+            <h3>Adicionar pedido balcão/telefone</h3>
+            <p>Inclua pedidos manualmente e atualize receita, estoque e indicadores.</p>
+          </div>
+
+          <strong>${formatMoney(getManualOrderTotal())}</strong>
+        </div>
+
+        <form class="manual-order-form" onsubmit="event.preventDefault(); window.EstablishmentPanel.createManualOrder(this);">
+          <div class="manual-order-grid">
+            <label class="field">
+              <span>Cliente</span>
+              <input class="input" name="customer_name" placeholder="Nome do cliente" />
+            </label>
+
+            <label class="field">
+              <span>Telefone</span>
+              <input class="input" name="customer_phone" placeholder="WhatsApp ou telefone" />
+            </label>
+          </div>
+
+          <div class="manual-order-add-row">
+            <label class="field">
+              <span>Produto</span>
+              <select class="input" id="manual-order-product-select">
+                <option value="">Selecione um produto</option>
+                ${options}
+              </select>
+            </label>
+
+            <label class="field manual-order-qty">
+              <span>Qtd.</span>
+              <input class="input" id="manual-order-quantity" type="number" min="1" value="1" />
+            </label>
+
+            <button type="button" class="ghost-button manual-order-add-button" onclick="window.EstablishmentPanel.addManualOrderItem()">
+              Adicionar item
+            </button>
+          </div>
+
+          <div class="manual-order-items">
+            ${renderManualOrderItems()}
+          </div>
+
+          <label class="field">
+            <span>Observações</span>
+            <textarea class="input" name="notes" placeholder="Ex.: retirar cebola, pagamento no balcão..."></textarea>
+          </label>
+
+          <div class="manual-order-footer">
+            <span>Total: <strong>${formatMoney(getManualOrderTotal())}</strong></span>
+            <button type="submit" class="primary-button">
+              Salvar pedido
+            </button>
+          </div>
+        </form>
+      </section>
+    `;
+  }
+
+  function addManualOrderItem() {
+    const select = document.getElementById("manual-order-product-select");
+    const qtyInput = document.getElementById("manual-order-quantity");
+
+    const productId = normalizeUuidValue(select?.value);
+    const quantity = Math.max(1, Number(qtyInput?.value || 1));
+
+    if (!productId) {
+      alert("Selecione um produto.");
+      return;
+    }
+
+    const product = state.products.find(function (item) {
+      return String(normalizeUuidValue(item.id)) === String(productId);
+    });
+
+    if (!product) {
+      alert("Produto não encontrado.");
+      return;
+    }
+
+    const currentStock = getProductStock(product);
+    if (currentStock > 0 && quantity > currentStock) {
+      const confirmed = window.confirm(`O estoque atual é ${currentStock}. Deseja adicionar mesmo assim?`);
+      if (!confirmed) return;
+    }
+
+    const existing = state.manualOrderItems.find(function (item) {
+      return String(normalizeUuidValue(item.product.id)) === String(productId);
+    });
+
+    if (existing) {
+      existing.quantity = Number(existing.quantity || 1) + quantity;
+    } else {
+      state.manualOrderItems.push({ product, quantity });
+    }
+
+    renderOrders(document.getElementById("orders-search")?.value || "");
+  }
+
+  function removeManualOrderItem(index) {
+    state.manualOrderItems.splice(index, 1);
+    renderOrders(document.getElementById("orders-search")?.value || "");
+  }
+
+  async function createManualOrder(form) {
+    if (!state.manualOrderItems.length) {
+      alert("Adicione ao menos um produto ao pedido.");
+      return;
+    }
+
+    const formData = new FormData(form);
+    const customerName = String(formData.get("customer_name") || "").trim();
+    const customerPhone = String(formData.get("customer_phone") || "").trim();
+    const notes = String(formData.get("notes") || "").trim();
+    const totalAmount = getManualOrderTotal();
+
+    try {
+      const order = await insertOrderWithFallback(
+        buildManualOrderPayload(customerName, customerPhone, notes, totalAmount)
+      );
+
+      await insertOrderItemsWithFallback(order?.id, state.manualOrderItems);
+      await decrementProductStock(state.manualOrderItems);
+
+      state.manualOrderItems = [];
+      form.reset();
+
+      await loadAllData();
+      renderOrders();
+      renderDashboard();
+      renderInventory();
+      renderFinance();
+      refreshMenuPreview();
+
+      alert("Pedido manual cadastrado com sucesso.");
+    } catch (error) {
+      console.error("Erro ao criar pedido manual:", error);
+      alert(error.message || "Não foi possível criar o pedido manual.");
+    }
+  }
+
   function renderOrders(searchTerm) {
     const table = document.getElementById("orders-table");
     if (!table) return;
@@ -1206,7 +1401,7 @@
         }).join("")
       : emptyState("Nenhum pedido encontrado.");
 
-    table.innerHTML = summaryHTML + `<div class="orders-list">${listHTML}</div>`;
+    table.innerHTML = renderManualOrderForm() + summaryHTML + `<div class="orders-list">${listHTML}</div>`;
   }
 
  function renderProducts() {
@@ -1686,6 +1881,126 @@ function renderCategories() {
     );
   }
 
+  function getProductStock(product) {
+    return Number(product?.stock_quantity ?? product?.stock ?? 0);
+  }
+
+  function getProductMinStock(product) {
+    return Number(product?.stock_min_quantity ?? product?.min_stock ?? 0);
+  }
+
+  function buildManualOrderPayload(customerName, customerPhone, notes, totalAmount) {
+    return {
+      establishment_id: state.membership.establishment_id,
+      customer_name: customerName || "Pedido manual",
+      customer_phone: customerPhone || null,
+      status: "completed",
+      source: "manual",
+      notes: notes || null,
+      total_amount: totalAmount,
+      completed_at: new Date().toISOString()
+    };
+  }
+
+  function isMissingColumnError(error) {
+    const message = String(error?.message || "").toLowerCase();
+    return message.includes("column") || message.includes("schema cache") || message.includes("could not find");
+  }
+
+  async function insertOrderWithFallback(payload) {
+    const client = getClient();
+
+    let { data, error } = await client
+      .from("orders")
+      .insert([payload])
+      .select()
+      .single();
+
+    if (!error) return data;
+
+    if (!isMissingColumnError(error)) throw error;
+
+    const fallbackPayload = {
+      establishment_id: payload.establishment_id,
+      customer_name: payload.customer_name,
+      customer_phone: payload.customer_phone,
+      status: payload.status,
+      total_amount: payload.total_amount
+    };
+
+    const retry = await client
+      .from("orders")
+      .insert([fallbackPayload])
+      .select()
+      .single();
+
+    if (retry.error) throw retry.error;
+    return retry.data;
+  }
+
+  async function insertOrderItemsWithFallback(orderId, items) {
+    const client = getClient();
+    if (!orderId || !items.length) return;
+
+    const rows = items.map(function (item) {
+      return {
+        order_id: orderId,
+        establishment_id: state.membership.establishment_id,
+        product_id: normalizeUuidValue(item.product.id),
+        product_name: item.product.name || "Produto",
+        quantity: Number(item.quantity || 1),
+        unit_price: getProductPrice(item.product),
+        total_price: getProductPrice(item.product) * Number(item.quantity || 1)
+      };
+    });
+
+    const { error } = await client.from("order_items").insert(rows);
+
+    if (!error) return;
+
+    if (!isMissingColumnError(error)) {
+      console.warn("Não foi possível salvar itens do pedido.", error);
+      return;
+    }
+
+    const fallbackRows = rows.map(function (row) {
+      return {
+        order_id: row.order_id,
+        product_id: row.product_id,
+        quantity: row.quantity,
+        unit_price: row.unit_price,
+        total_price: row.total_price
+      };
+    });
+
+    const retry = await client.from("order_items").insert(fallbackRows);
+    if (retry.error) {
+      console.warn("Não foi possível salvar itens do pedido com fallback.", retry.error);
+    }
+  }
+
+  async function decrementProductStock(items) {
+    const client = getClient();
+
+    for (const item of items) {
+      const productId = normalizeUuidValue(item.product.id);
+      if (!productId) continue;
+
+      const currentStock = getProductStock(item.product);
+      const nextStock = Math.max(0, currentStock - Number(item.quantity || 1));
+
+      const { error } = await client
+        .from("products")
+        .update({ stock_quantity: nextStock })
+        .eq("id", productId)
+        .eq("establishment_id", state.membership.establishment_id);
+
+      if (error) {
+        console.warn("Não foi possível atualizar estoque do produto.", error);
+      }
+    }
+  }
+
   function isProductActive(product) {
     if (product?.active != null) return product.active !== false;
     if (product?.is_active != null) return product.is_active !== false;
@@ -2024,11 +2339,16 @@ function renderCategories() {
   const form = event.target;
   const formData = new FormData(form);
   const editingId = form.dataset.editingId || null;
+  const selectedCategoryId = normalizeUuidValue(
+    formData.get("category_id") ||
+    document.getElementById("product-category-select")?.value ||
+    form.querySelector('[name="category_id"]')?.value
+  );
 
   const payload = {
     establishment_id: state.membership.establishment_id,
     name: String(formData.get("name") || "").trim(),
-    category_id: normalizeUuidValue(formData.get("category_id")),
+    category_id: selectedCategoryId,
     description: String(formData.get("description") || "").trim(),
     sale_price: Number(formData.get("sale_price") || 0),
     cost_price: Number(formData.get("cost_price") || 0),
@@ -2569,6 +2889,9 @@ async function deleteCategory(categoryId) {
   editProduct,
   deleteProduct,
   moveProduct,
-  moveCategory
+  moveCategory,
+  addManualOrderItem,
+  removeManualOrderItem,
+  createManualOrder
 };
 })();

@@ -1907,3 +1907,151 @@ body.has-upgrade-modal {
     align-items: center;
   }
 }
+
+
+/* =========================
+   PEDIDO MANUAL
+========================= */
+
+.manual-order-panel {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  margin-bottom: 18px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(218,165,32,0.12), transparent 28%),
+    rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 14px 34px rgba(2, 6, 23, 0.14);
+}
+
+.manual-order-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.manual-order-head h3 {
+  margin: 8px 0 4px;
+  color: #f8fafc;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.2rem;
+}
+
+.manual-order-head p {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.manual-order-head > strong {
+  font-family: "Space Grotesk", sans-serif;
+  color: #f8fafc;
+  font-size: 1.4rem;
+  white-space: nowrap;
+}
+
+.manual-order-form {
+  display: grid;
+  gap: 14px;
+}
+
+.manual-order-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.manual-order-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.manual-order-add-button {
+  min-height: 52px;
+}
+
+.manual-order-items {
+  display: grid;
+  gap: 8px;
+}
+
+.manual-order-empty {
+  border: 1px dashed rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  padding: 14px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.manual-order-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.manual-order-item strong {
+  display: block;
+  color: #f8fafc;
+  margin-bottom: 4px;
+}
+
+.manual-order-item span {
+  color: #94a3b8;
+  font-size: 0.86rem;
+}
+
+.manual-order-item b {
+  color: #f8fafc;
+  white-space: nowrap;
+}
+
+.manual-order-remove {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.16);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.manual-order-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.manual-order-footer span {
+  color: #cbd5e1;
+}
+
+.manual-order-footer strong {
+  color: #f8fafc;
+}
+
+@media (max-width: 900px) {
+  .manual-order-grid,
+  .manual-order-add-row {
+    grid-template-columns: 1fr;
+  }
+
+  .manual-order-head {
+    flex-direction: column;
+  }
+
+  .manual-order-item {
+    grid-template-columns: 1fr;
+  }
+}

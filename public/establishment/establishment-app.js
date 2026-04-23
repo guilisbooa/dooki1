@@ -651,9 +651,7 @@
       if (parsed && typeof parsed === "object") {
         return normalizeUuidValue(parsed.id ?? parsed.value ?? parsed.category_id ?? null);
       }
-    } catch (_) {
-      // não era JSON, mantém como string
-    }
+    } catch (_) {}
 
     return raw;
   }
@@ -736,6 +734,7 @@
         ? "Com marca Dooki"
         : "Sem marca d’água";
     }
+
 
     renderMenuPreview();
   }
@@ -1068,13 +1067,21 @@
         });
 
         return `
-          <article class="pro-store-row product-row-enhanced">
-            <div class="pro-store-row-left">
-              <div class="pro-avatar product-avatar-enhanced">${(product.name || "P").charAt(0).toUpperCase()}</div>
+          <article class="catalog-card product-row-enhanced">
+            <div class="catalog-card-left">
+              <div class="catalog-avatar product-avatar-enhanced">
+                ${(product.name || "P").charAt(0).toUpperCase()}
+              </div>
 
-              <div class="pro-store-row-content">
-                <strong>${product.name || "Produto"}</strong>
-                <div class="pro-store-row-meta">
+              <div class="catalog-card-content">
+                <div class="catalog-card-title-row">
+                  <strong>${product.name || "Produto"}</strong>
+                  <span class="pro-status-badge ${isProductActive(product) ? "success" : "neutral"}">
+                    ${isProductActive(product) ? "Ativo" : "Inativo"}
+                  </span>
+                </div>
+
+                <div class="catalog-meta">
                   <span>${category?.name || "Sem categoria"}</span>
                   <span>•</span>
                   <span>${product.description || "Sem descrição"}</span>
@@ -1082,17 +1089,13 @@
               </div>
             </div>
 
-            <div class="pro-store-row-right">
+            <div class="catalog-card-right">
               <div class="product-price-block">
                 <small>Preço</small>
                 <strong>${formatMoney(getProductPrice(product))}</strong>
               </div>
 
-              <span class="pro-status-badge ${isProductActive(product) ? "success" : "neutral"}">
-                ${isProductActive(product) ? "Ativo" : "Inativo"}
-              </span>
-
-              <div class="pro-action-group">
+              <div class="catalog-actions">
                 <button
                   type="button"
                   class="ghost-button small"
@@ -1131,13 +1134,21 @@ function renderCategories() {
         }).length;
 
         return `
-          <article class="pro-store-row category-row-enhanced">
-            <div class="pro-store-row-left">
-              <div class="pro-avatar category-avatar-enhanced">${(category.name || "C").charAt(0).toUpperCase()}</div>
+          <article class="catalog-card category-row-enhanced">
+            <div class="catalog-card-left">
+              <div class="catalog-avatar category-avatar-enhanced">
+                ${(category.name || "C").charAt(0).toUpperCase()}
+              </div>
 
-              <div class="pro-store-row-content">
-                <strong>${category.name || "Categoria"}</strong>
-                <div class="pro-store-row-meta">
+              <div class="catalog-card-content">
+                <div class="catalog-card-title-row">
+                  <strong>${category.name || "Categoria"}</strong>
+                  <span class="pro-status-badge ${category.active === false ? "neutral" : "success"}">
+                    ${category.active === false ? "Inativa" : "Ativa"}
+                  </span>
+                </div>
+
+                <div class="catalog-meta">
                   <span>${category.description || "Sem descrição"}</span>
                   <span>•</span>
                   <span>${linkedProducts} produto(s)</span>
@@ -1145,12 +1156,8 @@ function renderCategories() {
               </div>
             </div>
 
-            <div class="pro-store-row-right">
-              <span class="pro-status-badge ${category.active === false ? "neutral" : "success"}">
-                ${category.active === false ? "Inativa" : "Ativa"}
-              </span>
-
-              <div class="pro-action-group">
+            <div class="catalog-card-right">
+              <div class="catalog-actions">
                 <button
                   type="button"
                   class="ghost-button small"
@@ -1459,37 +1466,42 @@ function renderCategories() {
   }
 
   async function createProductRecord(payload) {
+    const client = getClient();
     const safePayload = {
       ...payload,
       category_id: normalizeUuidValue(payload.category_id)
     };
 
-    if (window.DookiData?.createProduct) {
-      return window.DookiData.createProduct(safePayload);
-    }
+    const { data, error } = await client
+      .from("products")
+      .insert([safePayload])
+      .select()
+      .single();
 
-    const client = getClient();
-    const { data, error } = await client.from("products").insert([safePayload]).select().single();
     if (error) throw error;
     return data;
   }
 
   async function updateProductRecord(productId, payload) {
+    const client = getClient();
     const safeProductId = normalizeUuidValue(productId);
-    const safePayload = {
-      ...payload,
-      category_id: normalizeUuidValue(payload.category_id)
-    };
+    const safeCategoryId = normalizeUuidValue(payload.category_id);
 
     if (!safeProductId) {
       throw new Error("ID do produto inválido.");
     }
 
-    if (window.DookiData?.updateProduct) {
-      return window.DookiData.updateProduct(safeProductId, safePayload);
-    }
+    const safePayload = {
+      name: payload.name,
+      category_id: safeCategoryId,
+      description: payload.description,
+      sale_price: Number(payload.sale_price || 0),
+      cost_price: Number(payload.cost_price || 0),
+      stock_quantity: Number(payload.stock_quantity || 0),
+      stock_min_quantity: Number(payload.stock_min_quantity || 0),
+      active: payload.active !== false
+    };
 
-    const client = getClient();
     const { data, error } = await client
       .from("products")
       .update(safePayload)
@@ -1503,17 +1515,13 @@ function renderCategories() {
   }
 
   async function deleteProductRecord(productId) {
+    const client = getClient();
     const safeProductId = normalizeUuidValue(productId);
 
     if (!safeProductId) {
       throw new Error("ID do produto inválido.");
     }
 
-    if (window.DookiData?.deleteProduct) {
-      return window.DookiData.deleteProduct(safeProductId, state.membership.establishment_id);
-    }
-
-    const client = getClient();
     const { error } = await client
       .from("products")
       .delete()

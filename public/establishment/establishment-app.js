@@ -214,26 +214,81 @@
     });
   }
 
+
+  function getOrderStorageKey(type, scope) {
+    const establishmentId = state.membership?.establishment_id || state.establishment?.id || "global";
+    return `dooki:${establishmentId}:${type}:${scope || "all"}:order`;
+  }
+
+  function readStoredOrder(type, scope) {
+    try {
+      const raw = localStorage.getItem(getOrderStorageKey(type, scope));
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveStoredOrder(type, records, scope) {
+    try {
+      const order = records
+        .map(function (item) { return normalizeUuidValue(item.id); })
+        .filter(Boolean)
+        .map(String);
+
+      localStorage.setItem(getOrderStorageKey(type, scope), JSON.stringify(order));
+    } catch (_) {}
+  }
+
+  function applyStoredOrder(records, type, scope) {
+    const storedOrder = readStoredOrder(type, scope);
+
+    if (!storedOrder.length) return [...records];
+
+    return [...records].sort(function (a, b) {
+      const aId = String(normalizeUuidValue(a.id));
+      const bId = String(normalizeUuidValue(b.id));
+      const aIndex = storedOrder.indexOf(aId);
+      const bIndex = storedOrder.indexOf(bId);
+
+      if (aIndex >= 0 && bIndex >= 0) return aIndex - bIndex;
+      if (aIndex >= 0) return -1;
+      if (bIndex >= 0) return 1;
+
+      return getSortableNumber(a.sort_order, 999999) - getSortableNumber(b.sort_order, 999999) ||
+        String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+    });
+  }
+
   function getSortableNumber(value, fallback) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
   function sortCategoriesForMenu(categories) {
-    return [...categories].sort(function (a, b) {
+    const base = [...categories].sort(function (a, b) {
       return getSortableNumber(a.sort_order, 999999) - getSortableNumber(b.sort_order, 999999) ||
         String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
     });
+
+    return applyStoredOrder(base, "categories", "all");
   }
 
   function sortProductsForMenu(products) {
-    return [...products].sort(function (a, b) {
+    const base = [...products].sort(function (a, b) {
       return getSortableNumber(a.sort_order, 999999) - getSortableNumber(b.sort_order, 999999) ||
         String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
     });
+
+    const scope = products.length ? getProductOrderScope(products[0]) : "all";
+    return applyStoredOrder(base, "products", scope);
   }
 
-  async function updateSortOrder(tableName, records) {
+  async function updateSortOrder(tableName, records, scope) {
+    const type = tableName === "products" ? "products" : "categories";
+    saveStoredOrder(type, records, scope || "all");
+
     const client = getClient();
 
     for (let index = 0; index < records.length; index += 1) {
@@ -247,8 +302,23 @@
         .eq("id", id)
         .eq("establishment_id", state.membership.establishment_id);
 
-      if (error) throw error;
+      if (error) {
+        const message = String(error.message || "").toLowerCase();
+
+        if (
+          message.includes("sort_order") ||
+          message.includes("schema cache") ||
+          message.includes("column")
+        ) {
+          console.warn(`Coluna sort_order ausente em ${tableName}. Ordem salva localmente neste navegador.`);
+          return { persistedLocallyOnly: true };
+        }
+
+        throw error;
+      }
     }
+
+    return { persistedLocallyOnly: false };
   }
 
   function moveItemInList(list, itemId, direction) {
@@ -1225,10 +1295,8 @@
                         </div>
 
                         <div class="catalog-meta">
-                          <span>${getCategoryDisplayName(product.category_id)}</span>
-                          <span>•</span>
-                          <span>${product.description || "Sem descrição"}</span>
-                        </div>
+                  <span>${getCategoryDisplayName(product.category_id)}</span>
+                </div>
                       </div>
                     </div>
 
@@ -1633,9 +1701,17 @@ function renderCategories() {
 
   async function createProductRecord(payload) {
     const client = getClient();
+
     const safePayload = {
-      ...payload,
-      category_id: normalizeUuidValue(payload.category_id)
+      establishment_id: payload.establishment_id,
+      name: payload.name,
+      category_id: normalizeUuidValue(payload.category_id),
+      description: payload.description,
+      sale_price: Number(payload.sale_price || 0),
+      cost_price: Number(payload.cost_price || 0),
+      stock_quantity: Number(payload.stock_quantity || 0),
+      stock_min_quantity: Number(payload.stock_min_quantity || 0),
+      active: payload.active !== false
     };
 
     const { data, error } = await client
@@ -1651,7 +1727,6 @@ function renderCategories() {
   async function updateProductRecord(productId, payload) {
     const client = getClient();
     const safeProductId = normalizeUuidValue(productId);
-    const safeCategoryId = normalizeUuidValue(payload.category_id);
 
     if (!safeProductId) {
       throw new Error("ID do produto inválido.");
@@ -1659,7 +1734,7 @@ function renderCategories() {
 
     const safePayload = {
       name: payload.name,
-      category_id: safeCategoryId,
+      category_id: normalizeUuidValue(payload.category_id),
       description: payload.description,
       sale_price: Number(payload.sale_price || 0),
       cost_price: Number(payload.cost_price || 0),
@@ -2404,7 +2479,7 @@ async function deleteCategory(categoryId) {
     if (reorderedScope === sameScopeProducts) return;
 
     try {
-      await updateSortOrder("products", reorderedScope);
+      await updateSortOrder("products", reorderedScope, getProductOrderScope(current));
 
       state.products = state.products.map(function (product) {
         const updatedIndex = reorderedScope.findIndex(function (item) {
@@ -2431,7 +2506,7 @@ async function deleteCategory(categoryId) {
     if (reordered === categories) return;
 
     try {
-      await updateSortOrder("categories", reordered);
+      await updateSortOrder("categories", reordered, "all");
 
       state.categories = state.categories.map(function (category) {
         const updatedIndex = reordered.findIndex(function (item) {

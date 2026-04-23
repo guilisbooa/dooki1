@@ -1789,3 +1789,121 @@ body.has-upgrade-modal {
     grid-template-columns: repeat(2, 34px);
   }
 }
+
+
+/* =========================
+   LISTA COMPACTA + ORDENAÇÃO
+========================= */
+
+.catalog-order-group {
+  gap: 10px;
+}
+
+.catalog-order-head {
+  padding: 0 4px 2px;
+}
+
+.catalog-order-head strong {
+  font-size: 0.96rem;
+}
+
+.catalog-card {
+  min-height: auto;
+  padding: 12px 14px;
+  border-radius: 18px;
+  gap: 12px;
+}
+
+.catalog-card + .catalog-card {
+  margin-top: 8px;
+}
+
+.catalog-order-list {
+  gap: 8px;
+}
+
+.catalog-card-left {
+  gap: 10px;
+}
+
+.catalog-avatar {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+}
+
+.catalog-card-content {
+  gap: 4px;
+}
+
+.catalog-card-title-row {
+  gap: 8px;
+}
+
+.catalog-card-title-row strong {
+  font-size: 0.98rem;
+}
+
+.catalog-meta {
+  font-size: 0.82rem;
+}
+
+.catalog-card-right {
+  gap: 10px;
+}
+
+.product-price-block {
+  min-width: 86px;
+}
+
+.product-price-block small {
+  font-size: 0.66rem;
+}
+
+.product-price-block strong {
+  font-size: 1rem;
+}
+
+.catalog-actions {
+  gap: 8px;
+}
+
+.catalog-actions .ghost-button.small {
+  min-width: 86px;
+  height: 34px;
+  padding: 0 12px;
+}
+
+.catalog-card .pro-status-badge {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 0.74rem;
+}
+
+.catalog-order-controls {
+  gap: 4px;
+}
+
+.order-icon-button {
+  width: 30px;
+  height: 26px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+.product-row-enhanced,
+.category-row-enhanced {
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.08);
+}
+
+@media (max-width: 980px) {
+  .catalog-card {
+    grid-template-columns: 1fr;
+  }
+
+  .catalog-card-right {
+    align-items: center;
+  }
+}

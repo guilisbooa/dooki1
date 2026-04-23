@@ -1312,97 +1312,363 @@
     }
   }
 
+
+  function normalizeOrderStatus(status) {
+    const value = String(status || "pending").toLowerCase();
+
+    const map = {
+      pendente: "pending",
+      pending: "pending",
+      recebido: "pending",
+      accepted: "confirmed",
+      aprovado: "confirmed",
+      confirmed: "confirmed",
+      confirmado: "confirmed",
+      kitchen: "kitchen",
+      cozinha: "kitchen",
+      preparing: "preparing",
+      preparo: "preparing",
+      pronto: "ready",
+      ready: "ready",
+      delivery: "delivery",
+      entregador: "delivery",
+      delivering: "delivery",
+      delivered: "delivered",
+      entregue: "delivered",
+      completed: "completed",
+      concluido: "completed",
+      concluído: "completed",
+      cancelled: "cancelled",
+      cancelado: "cancelled",
+      refused: "refused",
+      recusado: "refused"
+    };
+
+    return map[value] || value;
+  }
+
+  function getOrderStatusLabel(status) {
+    const value = normalizeOrderStatus(status);
+
+    const map = {
+      pending: "Pendente",
+      confirmed: "Aceito",
+      kitchen: "Na cozinha",
+      preparing: "Preparando",
+      ready: "Pronto",
+      delivery: "Com entregador",
+      delivered: "Entregue",
+      completed: "Concluído",
+      cancelled: "Cancelado",
+      refused: "Recusado"
+    };
+
+    return map[value] || status || "Pendente";
+  }
+
+  function isHistoryOrder(order) {
+    const status = normalizeOrderStatus(order.status);
+    return ["completed", "delivered", "cancelled", "refused"].includes(status);
+  }
+
+  function getOrderSourceLabel(order) {
+    const source = String(order.source || order.order_source || "").toLowerCase();
+
+    if (source === "manual") return "Pedido manual";
+    if (source === "balcao" || source === "balcão") return "Balcão";
+    if (source === "delivery") return "Delivery";
+    if (source === "table") return "Mesa";
+
+    return source ? source : "Cardápio digital";
+  }
+
+  function getActiveOrderTab() {
+    return document.getElementById("orders-workspace")?.dataset?.activeTab || "active";
+  }
+
+  function setOrdersTab(tab) {
+    const workspace = document.getElementById("orders-workspace");
+    if (workspace) workspace.dataset.activeTab = tab;
+    renderOrders(document.getElementById("orders-search")?.value || "");
+  }
+
+  async function safeReadOrderItems(orderId) {
+    const client = getClient();
+    const safeOrderId = normalizeUuidValue(orderId);
+
+    if (!safeOrderId) return [];
+
+    try {
+      const { data, error } = await client
+        .from("order_items")
+        .select("*")
+        .eq("order_id", safeOrderId);
+
+      if (error) {
+        console.warn("Itens do pedido indisponíveis.", error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.warn("Falha ao consultar itens do pedido.", error);
+      return [];
+    }
+  }
+
+  async function showOrderDetails(orderId) {
+    const order = state.orders.find(function (item) {
+      return String(normalizeUuidValue(item.id)) === String(normalizeUuidValue(orderId));
+    });
+
+    if (!order) {
+      alert("Pedido não encontrado.");
+      return;
+    }
+
+    const items = await safeReadOrderItems(order.id);
+    const modal = ensureOrderDetailsModal();
+    const body = modal.querySelector(".order-details-body");
+
+    const itemsHtml = items.length
+      ? items.map(function (item) {
+          const itemName = item.product_name || item.name || "Produto";
+          const quantity = Number(item.quantity || 1);
+          const unitPrice = Number(item.unit_price || item.price || 0);
+          const total = Number(item.total_price || item.total_amount || (quantity * unitPrice));
+
+          return `
+            <div class="order-detail-item">
+              <div>
+                <strong>${itemName}</strong>
+                <span>${quantity} x ${formatMoney(unitPrice)}</span>
+              </div>
+              <b>${formatMoney(total)}</b>
+            </div>
+          `;
+        }).join("")
+      : `<div class="order-detail-empty">Nenhum item detalhado foi encontrado para esse pedido.</div>`;
+
+    body.innerHTML = `
+      <div class="order-details-head">
+        <div>
+          <span class="panel-kicker">${getOrderSourceLabel(order)}</span>
+          <h3>Pedido #${String(order.id).slice(0, 8)}</h3>
+          <p>${formatDate(order.created_at)}</p>
+        </div>
+        <span class="order-status ${getOrderStatusClass(order.status)}">${getOrderStatusLabel(order.status)}</span>
+      </div>
+
+      <div class="order-details-grid">
+        <div>
+          <span>Cliente</span>
+          <strong>${order.customer_name || "Cliente não informado"}</strong>
+        </div>
+        <div>
+          <span>Telefone</span>
+          <strong>${order.customer_phone || "—"}</strong>
+        </div>
+        <div>
+          <span>Valor total</span>
+          <strong>${formatMoney(order.total_amount || 0)}</strong>
+        </div>
+        <div>
+          <span>Data</span>
+          <strong>${formatDate(order.created_at)}</strong>
+        </div>
+      </div>
+
+      <div class="order-details-section">
+        <h4>Itens</h4>
+        <div class="order-detail-items">${itemsHtml}</div>
+      </div>
+
+      <div class="order-details-section">
+        <h4>Observações</h4>
+        <p>${order.notes || order.observations || "Sem observações."}</p>
+      </div>
+
+      <div class="order-details-actions">
+        ${getOrderActionButtons(order)}
+      </div>
+    `;
+
+    modal.classList.add("active");
+    document.body.classList.add("has-order-details-modal");
+  }
+
+  function closeOrderDetails() {
+    const modal = document.getElementById("order-details-modal");
+    if (modal) modal.classList.remove("active");
+    document.body.classList.remove("has-order-details-modal");
+  }
+
+  function ensureOrderDetailsModal() {
+    let modal = document.getElementById("order-details-modal");
+
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "order-details-modal";
+      modal.className = "order-details-modal";
+      modal.innerHTML = `
+        <div class="order-details-backdrop" onclick="window.EstablishmentPanel.closeOrderDetails()"></div>
+        <div class="order-details-dialog">
+          <button type="button" class="order-details-close" onclick="window.EstablishmentPanel.closeOrderDetails()">×</button>
+          <div class="order-details-body"></div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    return modal;
+  }
+
+  function getOrderActionButtons(order) {
+    const status = normalizeOrderStatus(order.status);
+    const id = order.id;
+
+    if (["completed", "delivered", "cancelled", "refused"].includes(status)) {
+      return `<span class="order-flow-note">Pedido finalizado no histórico.</span>`;
+    }
+
+    const buttons = [];
+
+    if (status === "pending") {
+      buttons.push(`<button class="primary-button small" onclick="window.EstablishmentPanel.updateOrderStatus('${id}','confirmed')">Aceitar</button>`);
+      buttons.push(`<button class="ghost-button small danger" onclick="window.EstablishmentPanel.updateOrderStatus('${id}','refused')">Recusar</button>`);
+    }
+
+    if (["pending", "confirmed"].includes(status)) {
+      buttons.push(`<button class="ghost-button small" onclick="window.EstablishmentPanel.updateOrderStatus('${id}','kitchen')">Enviar cozinha</button>`);
+    }
+
+    if (["confirmed", "kitchen"].includes(status)) {
+      buttons.push(`<button class="ghost-button small" onclick="window.EstablishmentPanel.updateOrderStatus('${id}','preparing')">Preparando</button>`);
+    }
+
+    if (["kitchen", "preparing"].includes(status)) {
+      buttons.push(`<button class="ghost-button small" onclick="window.EstablishmentPanel.updateOrderStatus('${id}','ready')">Pronto</button>`);
+    }
+
+    if (["ready", "preparing"].includes(status)) {
+      buttons.push(`<button class="ghost-button small" onclick="window.EstablishmentPanel.updateOrderStatus('${id}','delivery')">Entregador</button>`);
+    }
+
+    if (["ready", "delivery"].includes(status)) {
+      buttons.push(`<button class="ghost-button small success" onclick="window.EstablishmentPanel.updateOrderStatus('${id}','completed')">Concluir</button>`);
+    }
+
+    return buttons.join("");
+  }
+
   function renderOrders(searchTerm) {
     const table = document.getElementById("orders-table");
     if (!table) return;
 
     const term = String(searchTerm || "").trim().toLowerCase();
+    const activeTab = getActiveOrderTab();
 
-    const filteredOrders = state.orders.filter(function (order) {
+    const searchedOrders = state.orders.filter(function (order) {
       if (!term) return true;
 
       const haystack = [
         order.id,
         order.customer_name,
         order.status,
-        order.customer_phone
+        order.customer_phone,
+        getOrderSourceLabel(order)
       ].join(" ").toLowerCase();
 
       return haystack.includes(term);
     });
 
-    const pending = filteredOrders.filter(o => ["pending", "pendente"].includes(String(o.status).toLowerCase())).length;
-    const preparing = filteredOrders.filter(o => ["preparing", "confirmed"].includes(String(o.status).toLowerCase())).length;
-    const completed = filteredOrders.filter(o => ["completed", "delivered"].includes(String(o.status).toLowerCase())).length;
+    const activeOrders = searchedOrders.filter(function (order) {
+      return !isHistoryOrder(order);
+    });
+
+    const historyOrders = searchedOrders.filter(function (order) {
+      return isHistoryOrder(order);
+    });
+
+    const visibleOrders = activeTab === "history" ? historyOrders : activeOrders;
+
+    const pending = activeOrders.filter(o => normalizeOrderStatus(o.status) === "pending").length;
+    const kitchen = activeOrders.filter(o => ["kitchen", "preparing"].includes(normalizeOrderStatus(o.status))).length;
+    const ready = activeOrders.filter(o => ["ready", "delivery"].includes(normalizeOrderStatus(o.status))).length;
+    const completedToday = historyOrders.filter(o => ["completed", "delivered"].includes(normalizeOrderStatus(o.status))).length;
 
     const summaryHTML = `
       <div class="orders-summary">
         <div class="orders-summary-card warning">
           <strong>${pending}</strong>
-          <span>Pendentes</span>
+          <span>Aguardando</span>
         </div>
         <div class="orders-summary-card info">
-          <strong>${preparing}</strong>
-          <span>Em preparo</span>
+          <strong>${kitchen}</strong>
+          <span>Cozinha</span>
         </div>
         <div class="orders-summary-card success">
-          <strong>${completed}</strong>
-          <span>Concluídos</span>
+          <strong>${ready}</strong>
+          <span>Prontos/entrega</span>
+        </div>
+        <div class="orders-summary-card neutral">
+          <strong>${completedToday}</strong>
+          <span>Histórico</span>
         </div>
       </div>
     `;
 
-    const listHTML = filteredOrders.length
-      ? filteredOrders.map(function (order) {
-          const status = String(order.status || "pendente").toLowerCase();
+    const tabsHTML = `
+      <div class="orders-tabs" id="orders-workspace" data-active-tab="${activeTab}">
+        <button type="button" class="${activeTab === "active" ? "active" : ""}" onclick="window.EstablishmentPanel.setOrdersTab('active')">
+          Gestão de pedidos
+          <span>${activeOrders.length}</span>
+        </button>
+
+        <button type="button" class="${activeTab === "history" ? "active" : ""}" onclick="window.EstablishmentPanel.setOrdersTab('history')">
+          Histórico de pedidos
+          <span>${historyOrders.length}</span>
+        </button>
+      </div>
+    `;
+
+    const listHTML = visibleOrders.length
+      ? visibleOrders.map(function (order) {
+          const status = normalizeOrderStatus(order.status);
 
           return `
-            <article class="order-card">
+            <article class="order-card order-management-card">
               <div class="order-left">
                 <div class="order-avatar">#</div>
 
                 <div class="order-content">
                   <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
-                  <span>${order.customer_name || "Cliente"} • ${formatDate(order.created_at)}</span>
+                  <span>${order.customer_name || "Cliente"} • ${getOrderSourceLabel(order)} • ${formatDate(order.created_at)}</span>
                   <span class="order-price">${formatMoney(order.total_amount || 0)}</span>
                 </div>
               </div>
 
               <div class="order-right">
                 <span class="order-status ${getOrderStatusClass(status)}">
-                  ${status}
+                  ${getOrderStatusLabel(status)}
                 </span>
 
-                <div class="order-actions">
-                  ${status === "pending" ? `
-                    <button class="primary-button small"
-                      onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','confirmed')">
-                      Confirmar
-                    </button>
-                  ` : ""}
+                <div class="order-actions order-flow-actions">
+                  <button class="ghost-button small" onclick="window.EstablishmentPanel.showOrderDetails('${order.id}')">
+                    Detalhes
+                  </button>
 
-                  ${["confirmed", "preparing"].includes(status) ? `
-                    <button class="ghost-button small"
-                      onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','preparing')">
-                      Preparar
-                    </button>
-                  ` : ""}
-
-                  ${status !== "completed" ? `
-                    <button class="ghost-button small success"
-                      onclick="window.EstablishmentPanel.updateOrderStatus('${order.id}','completed')">
-                      Concluir
-                    </button>
-                  ` : ""}
+                  ${activeTab === "active" ? getOrderActionButtons(order) : ""}
                 </div>
               </div>
             </article>
           `;
         }).join("")
-      : emptyState("Nenhum pedido encontrado.");
+      : emptyState(activeTab === "history" ? "Nenhum pedido no histórico." : "Nenhum pedido em andamento.");
 
-    table.innerHTML = renderManualOrderForm() + summaryHTML + `<div class="orders-list">${listHTML}</div>`;
+    table.innerHTML = renderManualOrderForm() + summaryHTML + tabsHTML + `<div class="orders-list">${listHTML}</div>`;
   }
+
 
  function renderProducts() {
   const table = document.getElementById("products-table");
@@ -1894,11 +2160,11 @@ function renderCategories() {
       establishment_id: state.membership.establishment_id,
       customer_name: customerName || "Pedido manual",
       customer_phone: customerPhone || null,
-      status: "completed",
+      status: "pending",
       source: "manual",
       notes: notes || null,
       total_amount: totalAmount,
-      completed_at: new Date().toISOString()
+      completed_at: null
     };
   }
 
@@ -2852,8 +3118,12 @@ async function deleteCategory(categoryId) {
     const client = getClient();
     const payload = { status: status };
 
-    if (status === "completed") {
+    if (["completed", "delivered"].includes(status)) {
       payload.completed_at = new Date().toISOString();
+    }
+
+    if (["cancelled", "refused"].includes(status)) {
+      payload.completed_at = null;
     }
 
     try {
@@ -2892,6 +3162,9 @@ async function deleteCategory(categoryId) {
   moveCategory,
   addManualOrderItem,
   removeManualOrderItem,
-  createManualOrder
+  createManualOrder,
+  setOrdersTab,
+  showOrderDetails,
+  closeOrderDetails
 };
 })();

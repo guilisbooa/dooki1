@@ -214,6 +214,93 @@
     });
   }
 
+  function getSortableNumber(value, fallback) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function sortCategoriesForMenu(categories) {
+    return [...categories].sort(function (a, b) {
+      return getSortableNumber(a.sort_order, 999999) - getSortableNumber(b.sort_order, 999999) ||
+        String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+    });
+  }
+
+  function sortProductsForMenu(products) {
+    return [...products].sort(function (a, b) {
+      return getSortableNumber(a.sort_order, 999999) - getSortableNumber(b.sort_order, 999999) ||
+        String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+    });
+  }
+
+  async function updateSortOrder(tableName, records) {
+    const client = getClient();
+
+    for (let index = 0; index < records.length; index += 1) {
+      const record = records[index];
+      const id = normalizeUuidValue(record.id);
+      if (!id) continue;
+
+      const { error } = await client
+        .from(tableName)
+        .update({ sort_order: index + 1 })
+        .eq("id", id)
+        .eq("establishment_id", state.membership.establishment_id);
+
+      if (error) throw error;
+    }
+  }
+
+  function moveItemInList(list, itemId, direction) {
+    const safeId = normalizeUuidValue(itemId);
+    const index = list.findIndex(function (item) {
+      return String(normalizeUuidValue(item.id)) === String(safeId);
+    });
+
+    if (index < 0) return list;
+
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= list.length) return list;
+
+    const copy = [...list];
+    const temp = copy[index];
+    copy[index] = copy[targetIndex];
+    copy[targetIndex] = temp;
+    return copy;
+  }
+
+  function getProductOrderScope(product) {
+    const categoryId = normalizeUuidValue(product?.category_id);
+    return categoryId || "__sem_categoria__";
+  }
+
+  function getProductsFromSameScope(productId) {
+    const current = state.products.find(function (product) {
+      return String(normalizeUuidValue(product.id)) === String(normalizeUuidValue(productId));
+    });
+
+    if (!current) return [];
+
+    const scope = getProductOrderScope(current);
+
+    return sortProductsForMenu(
+      state.products.filter(function (product) {
+        return getProductOrderScope(product) === scope;
+      })
+    );
+  }
+
+  function getCategoryDisplayName(categoryId) {
+    const safeCategoryId = normalizeUuidValue(categoryId);
+    if (!safeCategoryId) return "Sem categoria";
+
+    const category = state.categories.find(function (item) {
+      return String(normalizeUuidValue(item.id)) === String(safeCategoryId);
+    });
+
+    return category?.name || "Sem categoria";
+  }
+
   function getUpgradeBadgeText(featureKey) {
     const rule = FEATURE_UPGRADE_RULES[featureKey];
     if (!rule) return "Upgrade";
@@ -1056,64 +1143,124 @@
   const table = document.getElementById("products-table");
   if (!table) return;
 
-  const products = [...state.products].sort(function (a, b) {
-    return String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+  const orderedCategories = sortCategoriesForMenu(state.categories);
+  const productsByCategory = [];
+
+  orderedCategories.forEach(function (category) {
+    const categoryId = normalizeUuidValue(category.id);
+    const items = sortProductsForMenu(
+      state.products.filter(function (product) {
+        return String(normalizeUuidValue(product.category_id)) === String(categoryId);
+      })
+    );
+
+    if (items.length) {
+      productsByCategory.push({
+        id: categoryId,
+        name: category.name || "Categoria",
+        items
+      });
+    }
   });
 
-  table.innerHTML = products.length
-    ? products.map(function (product) {
-        const category = state.categories.find(function (item) {
-          return String(normalizeUuidValue(item.id)) === String(normalizeUuidValue(product.category_id));
-        });
+  const uncategorized = sortProductsForMenu(
+    state.products.filter(function (product) {
+      return !normalizeUuidValue(product.category_id);
+    })
+  );
 
+  if (uncategorized.length) {
+    productsByCategory.push({
+      id: "__sem_categoria__",
+      name: "Sem categoria",
+      items: uncategorized
+    });
+  }
+
+  table.innerHTML = productsByCategory.length
+    ? productsByCategory.map(function (group) {
         return `
-          <article class="catalog-card product-row-enhanced">
-            <div class="catalog-card-left">
-              <div class="catalog-avatar product-avatar-enhanced">
-                ${(product.name || "P").charAt(0).toUpperCase()}
-              </div>
-
-              <div class="catalog-card-content">
-                <div class="catalog-card-title-row">
-                  <strong>${product.name || "Produto"}</strong>
-                  <span class="pro-status-badge ${isProductActive(product) ? "success" : "neutral"}">
-                    ${isProductActive(product) ? "Ativo" : "Inativo"}
-                  </span>
-                </div>
-
-                <div class="catalog-meta">
-                  <span>${category?.name || "Sem categoria"}</span>
-                  <span>•</span>
-                  <span>${product.description || "Sem descrição"}</span>
-                </div>
-              </div>
+          <section class="catalog-order-group">
+            <div class="catalog-order-head">
+              <strong>${group.name}</strong>
+              <span>${group.items.length} produto(s)</span>
             </div>
 
-            <div class="catalog-card-right">
-              <div class="product-price-block">
-                <small>Preço</small>
-                <strong>${formatMoney(getProductPrice(product))}</strong>
-              </div>
+            <div class="catalog-order-list">
+              ${group.items.map(function (product, index) {
+                const isFirst = index === 0;
+                const isLast = index === group.items.length - 1;
 
-              <div class="catalog-actions">
-                <button
-                  type="button"
-                  class="ghost-button small"
-                  onclick="window.EstablishmentPanel.editProduct('${product.id}')"
-                >
-                  Editar
-                </button>
+                return `
+                  <article class="catalog-card product-row-enhanced">
+                    <div class="catalog-card-left">
+                      <div class="catalog-order-controls" aria-label="Ordenar produto">
+                        <button
+                          type="button"
+                          class="order-icon-button"
+                          ${isFirst ? "disabled" : ""}
+                          onclick="window.EstablishmentPanel.moveProduct('${product.id}', 'up')"
+                          title="Subir produto"
+                        >↑</button>
 
-                <button
-                  type="button"
-                  class="ghost-button small danger"
-                  onclick="window.EstablishmentPanel.deleteProduct('${product.id}')"
-                >
-                  Excluir
-                </button>
-              </div>
+                        <button
+                          type="button"
+                          class="order-icon-button"
+                          ${isLast ? "disabled" : ""}
+                          onclick="window.EstablishmentPanel.moveProduct('${product.id}', 'down')"
+                          title="Descer produto"
+                        >↓</button>
+                      </div>
+
+                      <div class="catalog-avatar product-avatar-enhanced">
+                        ${(product.name || "P").charAt(0).toUpperCase()}
+                      </div>
+
+                      <div class="catalog-card-content">
+                        <div class="catalog-card-title-row">
+                          <strong>${product.name || "Produto"}</strong>
+                          <span class="pro-status-badge ${isProductActive(product) ? "success" : "neutral"}">
+                            ${isProductActive(product) ? "Ativo" : "Inativo"}
+                          </span>
+                        </div>
+
+                        <div class="catalog-meta">
+                          <span>${getCategoryDisplayName(product.category_id)}</span>
+                          <span>•</span>
+                          <span>${product.description || "Sem descrição"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="catalog-card-right">
+                      <div class="product-price-block">
+                        <small>Preço</small>
+                        <strong>${formatMoney(getProductPrice(product))}</strong>
+                      </div>
+
+                      <div class="catalog-actions">
+                        <button
+                          type="button"
+                          class="ghost-button small"
+                          onclick="window.EstablishmentPanel.editProduct('${product.id}')"
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          type="button"
+                          class="ghost-button small danger"
+                          onclick="window.EstablishmentPanel.deleteProduct('${product.id}')"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                `;
+              }).join("")}
             </div>
-          </article>
+          </section>
         `;
       }).join("")
     : emptyState("Nenhum produto cadastrado.");
@@ -1123,19 +1270,38 @@ function renderCategories() {
   const table = document.getElementById("categories-table");
   if (!table) return;
 
-  const categories = [...state.categories].sort(function (a, b) {
-    return String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
-  });
+  const categories = sortCategoriesForMenu(state.categories);
 
   table.innerHTML = categories.length
-    ? categories.map(function (category) {
+    ? categories.map(function (category, index) {
         const linkedProducts = state.products.filter(function (product) {
           return String(normalizeUuidValue(product.category_id)) === String(normalizeUuidValue(category.id));
         }).length;
 
+        const isFirst = index === 0;
+        const isLast = index === categories.length - 1;
+
         return `
           <article class="catalog-card category-row-enhanced">
             <div class="catalog-card-left">
+              <div class="catalog-order-controls" aria-label="Ordenar categoria">
+                <button
+                  type="button"
+                  class="order-icon-button"
+                  ${isFirst ? "disabled" : ""}
+                  onclick="window.EstablishmentPanel.moveCategory('${category.id}', 'up')"
+                  title="Subir categoria"
+                >↑</button>
+
+                <button
+                  type="button"
+                  class="order-icon-button"
+                  ${isLast ? "disabled" : ""}
+                  onclick="window.EstablishmentPanel.moveCategory('${category.id}', 'down')"
+                  title="Descer categoria"
+                >↓</button>
+              </div>
+
               <div class="catalog-avatar category-avatar-enhanced">
                 ${(category.name || "C").charAt(0).toUpperCase()}
               </div>
@@ -1627,21 +1793,20 @@ function renderCategories() {
       openLink.href = getPublicMenuUrl();
     }
 
-    const categories = [...state.categories]
-      .filter(function (category) { return category.active !== false; })
-      .sort(function (a, b) {
-        return Number(a.sort_order || 0) - Number(b.sort_order || 0) ||
-          String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
-      });
+    const categories = sortCategoriesForMenu(
+      state.categories.filter(function (category) { return category.active !== false; })
+    );
 
     const visibleProducts = state.products.filter(function (product) {
       return isProductActive(product);
     });
 
     const groups = categories.map(function (category) {
-      const items = visibleProducts.filter(function (product) {
-        return String(normalizeUuidValue(product.category_id) || "") === String(normalizeUuidValue(category.id));
-      });
+      const items = sortProductsForMenu(
+        visibleProducts.filter(function (product) {
+          return String(normalizeUuidValue(product.category_id) || "") === String(normalizeUuidValue(category.id));
+        })
+      );
       return { category, items };
     }).filter(function (group) {
       return group.items.length > 0;
@@ -2223,6 +2388,71 @@ async function deleteCategory(categoryId) {
     }
   }
 
+  async function moveProduct(productId, direction) {
+    const current = state.products.find(function (product) {
+      return String(normalizeUuidValue(product.id)) === String(normalizeUuidValue(productId));
+    });
+
+    if (!current) {
+      alert("Produto não encontrado.");
+      return;
+    }
+
+    const sameScopeProducts = getProductsFromSameScope(productId);
+    const reorderedScope = moveItemInList(sameScopeProducts, productId, direction);
+
+    if (reorderedScope === sameScopeProducts) return;
+
+    try {
+      await updateSortOrder("products", reorderedScope);
+
+      state.products = state.products.map(function (product) {
+        const updatedIndex = reorderedScope.findIndex(function (item) {
+          return String(normalizeUuidValue(item.id)) === String(normalizeUuidValue(product.id));
+        });
+
+        return updatedIndex >= 0
+          ? { ...product, sort_order: updatedIndex + 1 }
+          : product;
+      });
+
+      renderProducts();
+      refreshMenuPreview();
+    } catch (error) {
+      console.error("Erro ao ordenar produto:", error);
+      alert(error.message || "Não foi possível ordenar o produto.");
+    }
+  }
+
+  async function moveCategory(categoryId, direction) {
+    const categories = sortCategoriesForMenu(state.categories);
+    const reordered = moveItemInList(categories, categoryId, direction);
+
+    if (reordered === categories) return;
+
+    try {
+      await updateSortOrder("categories", reordered);
+
+      state.categories = state.categories.map(function (category) {
+        const updatedIndex = reordered.findIndex(function (item) {
+          return String(normalizeUuidValue(item.id)) === String(normalizeUuidValue(category.id));
+        });
+
+        return updatedIndex >= 0
+          ? { ...category, sort_order: updatedIndex + 1 }
+          : category;
+      });
+
+      populateCategorySelect();
+      renderCategories();
+      renderProducts();
+      refreshMenuPreview();
+    } catch (error) {
+      console.error("Erro ao ordenar categoria:", error);
+      alert(error.message || "Não foi possível ordenar a categoria.");
+    }
+  }
+
   async function updateOrderStatus(orderId, status) {
     const client = getClient();
     const payload = { status: status };
@@ -2262,6 +2492,8 @@ async function deleteCategory(categoryId) {
   editCategory,
   deleteCategory,
   editProduct,
-  deleteProduct
+  deleteProduct,
+  moveProduct,
+  moveCategory
 };
 })();

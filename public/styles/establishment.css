@@ -1713,3 +1713,79 @@ body.has-upgrade-modal {
     width: 100%;
   }
 }
+
+
+/* =========================
+   ORDENAÇÃO DE PRODUTOS E CATEGORIAS
+========================= */
+
+.catalog-order-group {
+  display: grid;
+  gap: 12px;
+}
+
+.catalog-order-group + .catalog-order-group {
+  margin-top: 18px;
+}
+
+.catalog-order-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+}
+
+.catalog-order-head strong {
+  color: #f8fafc;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.02rem;
+}
+
+.catalog-order-head span {
+  color: #94a3b8;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.catalog-order-list {
+  display: grid;
+  gap: 12px;
+}
+
+.catalog-order-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.order-icon-button {
+  width: 34px;
+  height: 30px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 900;
+  cursor: pointer;
+  transition: 0.18s ease;
+  line-height: 1;
+}
+
+.order-icon-button:hover:not(:disabled) {
+  background: #fff7db;
+  border-color: rgba(218, 165, 32, 0.45);
+  transform: translateY(-1px);
+}
+
+.order-icon-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .catalog-order-controls {
+    grid-template-columns: repeat(2, 34px);
+  }
+}

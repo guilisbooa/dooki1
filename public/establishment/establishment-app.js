@@ -619,6 +619,45 @@
     return nextValue;
   }
 
+  function normalizeUuidValue(value) {
+    if (value == null) return null;
+
+    if (typeof value === "object") {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          const normalized = normalizeUuidValue(item);
+          if (normalized) return normalized;
+        }
+        return null;
+      }
+
+      return normalizeUuidValue(value.id ?? value.value ?? value.category_id ?? null);
+    }
+
+    const raw = String(value).trim();
+
+    if (
+      !raw ||
+      raw === "undefined" ||
+      raw === "null" ||
+      raw === "[object Object]" ||
+      raw.includes("[object Object]")
+    ) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        return normalizeUuidValue(parsed.id ?? parsed.value ?? parsed.category_id ?? null);
+      }
+    } catch (_) {
+      // não era JSON, mantém como string
+    }
+
+    return raw;
+  }
+
   function computeFinance() {
     const completedOrders = state.orders.filter(function (order) {
       return order.completed_at || ["completed", "delivered"].includes(String(order.status || "").toLowerCase());
@@ -698,11 +737,6 @@
         : "Sem marca d’água";
     }
 
-    document.querySelectorAll('[data-establishment-logo]').forEach(function (img) {
-      applyImageWithFallback(img, state.establishment?.logo_url, "/assets/logo-dooki.png");
-      img.alt = state.establishment?.name || "Dooki";
-    });
-
     renderMenuPreview();
   }
 
@@ -733,7 +767,7 @@
     select.innerHTML =
       `<option value="">Sem categoria</option>` +
       state.categories.map(function (category) {
-        return `<option value="${category.id}">${category.name}</option>`;
+        return `<option value="${normalizeUuidValue(category.id) || ""}">${category.name}</option>`;
       }).join("");
   }
 
@@ -1030,26 +1064,33 @@
   table.innerHTML = products.length
     ? products.map(function (product) {
         const category = state.categories.find(function (item) {
-          return item.id === product.category_id;
+          return String(normalizeUuidValue(item.id)) === String(normalizeUuidValue(product.category_id));
         });
 
         return `
-          <article class="pro-store-row">
+          <article class="pro-store-row product-row-enhanced">
             <div class="pro-store-row-left">
-              <div class="pro-avatar">${(product.name || "P").charAt(0).toUpperCase()}</div>
+              <div class="pro-avatar product-avatar-enhanced">${(product.name || "P").charAt(0).toUpperCase()}</div>
 
               <div class="pro-store-row-content">
                 <strong>${product.name || "Produto"}</strong>
-                <span>${category?.name || "Sem categoria"} • ${product.description || "Sem descrição"}</span>
+                <div class="pro-store-row-meta">
+                  <span>${category?.name || "Sem categoria"}</span>
+                  <span>•</span>
+                  <span>${product.description || "Sem descrição"}</span>
+                </div>
               </div>
             </div>
 
             <div class="pro-store-row-right">
+              <div class="product-price-block">
+                <small>Preço</small>
+                <strong>${formatMoney(getProductPrice(product))}</strong>
+              </div>
+
               <span class="pro-status-badge ${isProductActive(product) ? "success" : "neutral"}">
                 ${isProductActive(product) ? "Ativo" : "Inativo"}
               </span>
-
-              <strong>${formatMoney(getProductPrice(product))}</strong>
 
               <div class="pro-action-group">
                 <button
@@ -1085,14 +1126,22 @@ function renderCategories() {
 
   table.innerHTML = categories.length
     ? categories.map(function (category) {
+        const linkedProducts = state.products.filter(function (product) {
+          return String(normalizeUuidValue(product.category_id)) === String(normalizeUuidValue(category.id));
+        }).length;
+
         return `
-          <article class="pro-store-row">
+          <article class="pro-store-row category-row-enhanced">
             <div class="pro-store-row-left">
-              <div class="pro-avatar">${(category.name || "C").charAt(0).toUpperCase()}</div>
+              <div class="pro-avatar category-avatar-enhanced">${(category.name || "C").charAt(0).toUpperCase()}</div>
 
               <div class="pro-store-row-content">
                 <strong>${category.name || "Categoria"}</strong>
-                <span>${category.description || "Sem descrição"}</span>
+                <div class="pro-store-row-meta">
+                  <span>${category.description || "Sem descrição"}</span>
+                  <span>•</span>
+                  <span>${linkedProducts} produto(s)</span>
+                </div>
               </div>
             </div>
 
@@ -1404,32 +1453,47 @@ function renderCategories() {
 
   function getCategoryNameById(categoryId) {
     const category = state.categories.find(function (item) {
-      return String(item.id) === String(categoryId);
+      return String(normalizeUuidValue(item.id)) === String(normalizeUuidValue(categoryId));
     });
     return category?.name || "";
   }
 
   async function createProductRecord(payload) {
+    const safePayload = {
+      ...payload,
+      category_id: normalizeUuidValue(payload.category_id)
+    };
+
     if (window.DookiData?.createProduct) {
-      return window.DookiData.createProduct(payload, state.categories);
+      return window.DookiData.createProduct(safePayload);
     }
 
     const client = getClient();
-    const { data, error } = await client.from("products").insert([payload]).select().single();
+    const { data, error } = await client.from("products").insert([safePayload]).select().single();
     if (error) throw error;
     return data;
   }
 
   async function updateProductRecord(productId, payload) {
+    const safeProductId = normalizeUuidValue(productId);
+    const safePayload = {
+      ...payload,
+      category_id: normalizeUuidValue(payload.category_id)
+    };
+
+    if (!safeProductId) {
+      throw new Error("ID do produto inválido.");
+    }
+
     if (window.DookiData?.updateProduct) {
-      return window.DookiData.updateProduct(productId, payload, state.categories);
+      return window.DookiData.updateProduct(safeProductId, safePayload);
     }
 
     const client = getClient();
     const { data, error } = await client
       .from("products")
-      .update(payload)
-      .eq("id", productId)
+      .update(safePayload)
+      .eq("id", safeProductId)
       .eq("establishment_id", state.membership.establishment_id)
       .select()
       .single();
@@ -1439,15 +1503,21 @@ function renderCategories() {
   }
 
   async function deleteProductRecord(productId) {
+    const safeProductId = normalizeUuidValue(productId);
+
+    if (!safeProductId) {
+      throw new Error("ID do produto inválido.");
+    }
+
     if (window.DookiData?.deleteProduct) {
-      return window.DookiData.deleteProduct(productId, state.membership.establishment_id);
+      return window.DookiData.deleteProduct(safeProductId, state.membership.establishment_id);
     }
 
     const client = getClient();
     const { error } = await client
       .from("products")
       .delete()
-      .eq("id", productId)
+      .eq("id", safeProductId)
       .eq("establishment_id", state.membership.establishment_id);
 
     if (error) throw error;
@@ -1466,15 +1536,21 @@ function renderCategories() {
   }
 
   async function updateCategoryRecord(categoryId, payload) {
+    const safeCategoryId = normalizeUuidValue(categoryId);
+
+    if (!safeCategoryId) {
+      throw new Error("ID da categoria inválido.");
+    }
+
     if (window.DookiData?.updateCategory) {
-      return window.DookiData.updateCategory(categoryId, payload, state.membership.establishment_id);
+      return window.DookiData.updateCategory(safeCategoryId, payload, state.membership.establishment_id);
     }
 
     const client = getClient();
     const { data, error } = await client
       .from("categories")
       .update(payload)
-      .eq("id", categoryId)
+      .eq("id", safeCategoryId)
       .eq("establishment_id", state.membership.establishment_id)
       .select()
       .single();
@@ -1484,15 +1560,21 @@ function renderCategories() {
   }
 
   async function deleteCategoryRecord(categoryId) {
+    const safeCategoryId = normalizeUuidValue(categoryId);
+
+    if (!safeCategoryId) {
+      throw new Error("ID da categoria inválido.");
+    }
+
     if (window.DookiData?.deleteCategory) {
-      return window.DookiData.deleteCategory(categoryId, state.membership.establishment_id);
+      return window.DookiData.deleteCategory(safeCategoryId, state.membership.establishment_id);
     }
 
     const client = getClient();
     const { error } = await client
       .from("categories")
       .delete()
-      .eq("id", categoryId)
+      .eq("id", safeCategoryId)
       .eq("establishment_id", state.membership.establishment_id);
 
     if (error) throw error;
@@ -1530,7 +1612,7 @@ function renderCategories() {
       : 'linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.02)), linear-gradient(135deg, rgba(218, 165, 32, 0.38), rgba(184, 134, 11, 0.52))';
     applyImageWithFallback(logo, logoUrl, "/assets/logo-dooki.png");
     name.textContent = state.establishment?.name || "Minha Loja";
-    city.textContent = state.establishment?.city || "Cidade não informada";
+    city.textContent = "";
     description.textContent = state.establishment?.description || "";
 
     if (openLink) {
@@ -1550,7 +1632,7 @@ function renderCategories() {
 
     const groups = categories.map(function (category) {
       const items = visibleProducts.filter(function (product) {
-        return String(product.category_id || "") === String(category.id);
+        return String(normalizeUuidValue(product.category_id) || "") === String(normalizeUuidValue(category.id));
       });
       return { category, items };
     }).filter(function (group) {
@@ -1562,7 +1644,7 @@ function renderCategories() {
 
     tabs.innerHTML = groups.length
       ? groups.map(function (group) {
-          const active = String(group.category.id) === String(currentCategoryId);
+          const active = String(normalizeUuidValue(group.category.id) || group.category.id) === String(normalizeUuidValue(currentCategoryId) || currentCategoryId);
           return `<button type="button" class="menu-preview-tab ${active ? "active" : ""}" data-preview-category-id="${group.category.id}">${group.category.name}</button>`;
         }).join("")
       : "";
@@ -1571,7 +1653,7 @@ function renderCategories() {
 
     const selectedGroups = groups.length
       ? groups.filter(function (group) {
-          return !currentCategoryId || String(group.category.id) === String(currentCategoryId);
+          return !currentCategoryId || String(normalizeUuidValue(group.category.id) || group.category.id) === String(normalizeUuidValue(currentCategoryId) || currentCategoryId);
         })
       : [];
 
@@ -1698,7 +1780,7 @@ function renderCategories() {
   const payload = {
     establishment_id: state.membership.establishment_id,
     name: String(formData.get("name") || "").trim(),
-    category_id: formData.get("category_id") || null,
+    category_id: normalizeUuidValue(formData.get("category_id")),
     description: String(formData.get("description") || "").trim(),
     sale_price: Number(formData.get("sale_price") || 0),
     cost_price: Number(formData.get("cost_price") || 0),
@@ -1791,7 +1873,7 @@ function ensureProductCancelButton() {
 
 function editProduct(productId) {
   const product = state.products.find(function (item) {
-    return item.id === productId;
+    return String(normalizeUuidValue(item.id)) === String(normalizeUuidValue(productId));
   });
 
   if (!product) {
@@ -1812,7 +1894,7 @@ function editProduct(productId) {
   const submitButton = form.querySelector('button[type="submit"]');
 
   if (nameInput) nameInput.value = product.name || "";
-  if (categoryInput) categoryInput.value = product.category_id || "";
+  if (categoryInput) categoryInput.value = normalizeUuidValue(product.category_id) || "";
   if (salePriceInput) salePriceInput.value = product.sale_price ?? 0;
   if (costPriceInput) costPriceInput.value = product.cost_price ?? 0;
   if (stockQuantityInput) stockQuantityInput.value = product.stock_quantity ?? 0;
@@ -1831,7 +1913,7 @@ function editProduct(productId) {
 
 async function deleteProduct(productId) {
   const product = state.products.find(function (item) {
-    return item.id === productId;
+    return String(normalizeUuidValue(item.id)) === String(normalizeUuidValue(productId));
   });
 
   if (!product) {
@@ -1846,7 +1928,7 @@ async function deleteProduct(productId) {
     await deleteProductRecord(productId);
 
     state.products = state.products.filter(function (item) {
-      return item.id !== productId;
+      return String(normalizeUuidValue(item.id)) !== String(normalizeUuidValue(productId));
     });
 
     await loadAllData();
@@ -1958,7 +2040,7 @@ function ensureCategoryCancelButton() {
 
 function editCategory(categoryId) {
   const category = state.categories.find(function (item) {
-    return item.id === categoryId;
+    return String(normalizeUuidValue(item.id)) === String(normalizeUuidValue(categoryId));
   });
 
   if (!category) {
@@ -1988,7 +2070,7 @@ function editCategory(categoryId) {
 
 async function deleteCategory(categoryId) {
   const category = state.categories.find(function (item) {
-    return item.id === categoryId;
+    return String(normalizeUuidValue(item.id)) === String(normalizeUuidValue(categoryId));
   });
 
   if (!category) {
@@ -2003,7 +2085,7 @@ async function deleteCategory(categoryId) {
     await deleteCategoryRecord(categoryId);
 
     state.categories = state.categories.filter(function (item) {
-      return item.id !== categoryId;
+      return String(normalizeUuidValue(item.id)) !== String(normalizeUuidValue(categoryId));
     });
 
     await loadAllData();

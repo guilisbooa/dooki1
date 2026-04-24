@@ -1007,7 +1007,139 @@
     if (screen === "settings") fillSettingsForm();
   }
 
+
+  function getBaseOrigin() {
+    return window.location.origin || "";
+  }
+
+  function getDeliveryMenuLink() {
+    const establishmentId = state.membership?.establishment_id || state.establishment?.id || "";
+    return `${getBaseOrigin()}/menu/menu.html?establishment=${encodeURIComponent(establishmentId)}`;
+  }
+
+  function getTableMenuLink(tableNumber) {
+    const establishmentId = state.membership?.establishment_id || state.establishment?.id || "";
+    const table = tableNumber || 1;
+    return `${getBaseOrigin()}/menu/menu.html?establishment=${encodeURIComponent(establishmentId)}&mode=table&table=${encodeURIComponent(table)}`;
+  }
+
+  function getQrImageUrl(value) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(value)}`;
+  }
+
+  async function copyToClipboard(value, label) {
+    try {
+      await navigator.clipboard.writeText(value);
+      alert(`${label || "Link"} copiado com sucesso.`);
+    } catch (error) {
+      console.warn("Clipboard indisponível.", error);
+      window.prompt("Copie o link:", value);
+    }
+  }
+
+  function copyDeliveryMenuLink() {
+    copyToClipboard(getDeliveryMenuLink(), "Link do cardápio delivery");
+  }
+
+  function copyTableMenuLink(tableNumber) {
+    copyToClipboard(getTableMenuLink(tableNumber), `Link da mesa ${tableNumber || 1}`);
+  }
+
+  function renderMenuLinksPanel() {
+    const deliveryLink = getDeliveryMenuLink();
+    const defaultTable = 1;
+    const tableLink = getTableMenuLink(defaultTable);
+
+    return `
+      <section class="menu-links-panel" id="menu-links-panel">
+        <div class="menu-links-head">
+          <div>
+            <span class="panel-kicker">Links do cardápio</span>
+            <h3>Compartilhe o cardápio da loja</h3>
+            <p>Use o link de delivery para clientes externos e o QR de mesa para pedidos presenciais.</p>
+          </div>
+        </div>
+
+        <div class="menu-links-grid">
+          <article class="menu-link-card">
+            <div>
+              <strong>Delivery via link</strong>
+              <span>Cliente acessa, escolhe os produtos e o pedido chega como delivery.</span>
+            </div>
+
+            <div class="menu-link-url">${deliveryLink}</div>
+
+            <div class="menu-link-actions">
+              <button type="button" class="primary-button small" onclick="window.EstablishmentPanel.copyDeliveryMenuLink()">Copiar link</button>
+              <a class="ghost-button small" href="${deliveryLink}" target="_blank" rel="noopener">Abrir</a>
+            </div>
+          </article>
+
+          <article class="menu-link-card qr-card">
+            <div>
+              <strong>QR Code de mesa</strong>
+              <span>O pedido chega identificado como presencial e com o número da mesa.</span>
+            </div>
+
+            <div class="qr-preview">
+              <img src="${getQrImageUrl(tableLink)}" alt="QR Code Mesa ${defaultTable}">
+            </div>
+
+            <label class="field">
+              <span>Número da mesa</span>
+              <input class="input" id="table-qr-number" type="number" min="1" value="${defaultTable}" oninput="window.EstablishmentPanel.updateTableQrPreview(this.value)">
+            </label>
+
+            <div class="menu-link-url" id="table-qr-link">${tableLink}</div>
+
+            <div class="menu-link-actions">
+              <button type="button" class="primary-button small" onclick="window.EstablishmentPanel.copyCurrentTableMenuLink()">Copiar link da mesa</button>
+              <a class="ghost-button small" id="table-qr-open" href="${tableLink}" target="_blank" rel="noopener">Abrir</a>
+            </div>
+          </article>
+        </div>
+      </section>
+    `;
+  }
+
+  function injectMenuLinksPanel() {
+    const dashboardPanel = document.querySelector('[data-panel="dashboard"]');
+    if (!dashboardPanel) return;
+
+    let panel = document.getElementById("menu-links-panel");
+
+    if (!panel) {
+      dashboardPanel.insertAdjacentHTML("afterbegin", renderMenuLinksPanel());
+      return;
+    }
+
+    panel.outerHTML = renderMenuLinksPanel();
+  }
+
+  function updateTableQrPreview(tableNumber) {
+    const table = tableNumber || 1;
+    const link = getTableMenuLink(table);
+    const qrImage = document.querySelector(".qr-preview img");
+    const linkBox = document.getElementById("table-qr-link");
+    const openLink = document.getElementById("table-qr-open");
+
+    if (qrImage) {
+      qrImage.src = getQrImageUrl(link);
+      qrImage.alt = `QR Code Mesa ${table}`;
+    }
+
+    if (linkBox) linkBox.textContent = link;
+    if (openLink) openLink.href = link;
+  }
+
+  function copyCurrentTableMenuLink() {
+    const tableNumber = document.getElementById("table-qr-number")?.value || 1;
+    copyTableMenuLink(tableNumber);
+  }
+
   function renderDashboard() {
+    injectMenuLinksPanel();
+
     const completedOrdersEl = document.getElementById("kpi-orders-completed");
     if (completedOrdersEl) completedOrdersEl.textContent = String(state.finance.completedOrders);
 
@@ -3243,6 +3375,10 @@ async function deleteCategory(categoryId) {
   createManualOrder,
   setOrdersTab,
   showOrderDetails,
-  closeOrderDetails
+  closeOrderDetails,
+  copyDeliveryMenuLink,
+  copyTableMenuLink,
+  copyCurrentTableMenuLink,
+  updateTableQrPreview
 };
 })();

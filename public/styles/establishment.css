@@ -2563,3 +2563,112 @@ body.orders-focus-mode .establishment-content,
 .incoming-orders-alert + .manual-order-panel {
   margin-top: 18px;
 }
+
+
+/* =========================
+   LINKS DO CARDÁPIO / QR CODE
+========================= */
+
+.menu-links-panel {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(218, 165, 32, 0.12), transparent 32%),
+    rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 18px 42px rgba(2, 6, 23, 0.16);
+}
+
+.menu-links-head h3 {
+  margin: 8px 0 4px;
+  color: #f8fafc;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.35rem;
+}
+
+.menu-links-head p {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.menu-links-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 16px;
+}
+
+.menu-link-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 24px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.08);
+}
+
+.menu-link-card strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #0f172a;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.1rem;
+}
+
+.menu-link-card span {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.menu-link-url {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: #334155;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.menu-link-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.qr-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  border-radius: 22px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.qr-preview img {
+  width: 170px;
+  height: 170px;
+  border-radius: 16px;
+  background: #fff;
+}
+
+@media (max-width: 1100px) {
+  .menu-links-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .menu-links-panel {
+    padding: 16px;
+  }
+
+  .menu-link-actions .primary-button.small,
+  .menu-link-actions .ghost-button.small {
+    width: 100%;
+  }
+}

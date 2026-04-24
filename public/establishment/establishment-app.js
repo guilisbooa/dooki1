@@ -38,8 +38,8 @@
       copy: "Controle quantidades, custos e itens com baixa."
     },
     tables: {
-      title: "Mesas",
-      copy: "Gestão prática para atendimento por QR code."
+      title: "Mesas e Links",
+      copy: "Gere QR Codes de mesa e copie o link de delivery da loja."
     },
     finance: {
       title: "Financeiro",
@@ -1055,8 +1055,8 @@
         <div class="menu-links-head">
           <div>
             <span class="panel-kicker">Links do cardápio</span>
-            <h3>Compartilhe o cardápio da loja</h3>
-            <p>Use o link de delivery para clientes externos e o QR de mesa para pedidos presenciais.</p>
+            <h3>Mesas e Links</h3>
+            <p>Gerencie o link de delivery e gere QR Codes para pedidos presenciais por mesa.</p>
           </div>
         </div>
 
@@ -1103,13 +1103,13 @@
   }
 
   function injectMenuLinksPanel() {
-    const dashboardPanel = document.querySelector('[data-panel="dashboard"]');
-    if (!dashboardPanel) return;
+    const tablesPanel = document.querySelector('[data-panel="tables"]');
+    if (!tablesPanel) return;
 
     let panel = document.getElementById("menu-links-panel");
 
     if (!panel) {
-      dashboardPanel.insertAdjacentHTML("afterbegin", renderMenuLinksPanel());
+      tablesPanel.insertAdjacentHTML("afterbegin", renderMenuLinksPanel());
       return;
     }
 
@@ -1138,8 +1138,6 @@
   }
 
   function renderDashboard() {
-    injectMenuLinksPanel();
-
     const completedOrdersEl = document.getElementById("kpi-orders-completed");
     if (completedOrdersEl) completedOrdersEl.textContent = String(state.finance.completedOrders);
 
@@ -2138,6 +2136,8 @@ function renderCategories() {
   }
 
   function renderTables() {
+    injectMenuLinksPanel();
+
     const tablesTable = document.getElementById("tables-table");
     if (!tablesTable) return;
 

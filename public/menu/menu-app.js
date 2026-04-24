@@ -85,11 +85,29 @@
   }
 
   function getGroups() {
-    return state.categories.map(category => {
+    const groups = state.categories.map(category => {
       const categoryId = normalizeUuidValue(category.id);
       const products = sortByOrderAndName(state.products.filter(product => String(normalizeUuidValue(product.category_id)) === String(categoryId)));
       return { category, products };
     }).filter(group => group.products.length > 0);
+
+    const groupedProductIds = new Set();
+    groups.forEach(group => {
+      group.products.forEach(product => groupedProductIds.add(String(normalizeUuidValue(product.id))));
+    });
+
+    const uncategorized = sortByOrderAndName(
+      state.products.filter(product => !groupedProductIds.has(String(normalizeUuidValue(product.id))))
+    );
+
+    if (uncategorized.length) {
+      groups.push({
+        category: { id: "__todos__", name: "Cardápio" },
+        products: uncategorized
+      });
+    }
+
+    return groups;
   }
 
   function render() {
@@ -97,6 +115,11 @@
     const root = document.getElementById("menu-root");
     const store = state.establishment;
     const groups = getGroups();
+
+    if (!groups.some(group => String(normalizeUuidValue(group.category.id) || group.category.id) === String(state.activeCategoryId))) {
+      state.activeCategoryId = normalizeUuidValue(groups[0]?.category?.id) || groups[0]?.category?.id || "";
+    }
+
     const tableMode = params.mode === "table" || params.mode === "mesa";
     const modeLabel = tableMode ? `Pedido presencial${params.table ? ` • Mesa ${params.table}` : ""}` : "Pedido delivery via link";
 
@@ -117,7 +140,7 @@
 
           <nav class="menu-category-tabs">
             ${groups.map(group => {
-              const id = normalizeUuidValue(group.category.id);
+              const id = normalizeUuidValue(group.category.id) || group.category.id;
               return `<button class="${String(id) === String(state.activeCategoryId) ? "active" : ""}" data-category-id="${id}">${group.category.name}</button>`;
             }).join("")}
           </nav>
@@ -138,7 +161,7 @@
   }
 
   function renderProducts(groups) {
-    const selectedGroups = groups.filter(group => String(normalizeUuidValue(group.category.id)) === String(state.activeCategoryId));
+    const selectedGroups = groups.filter(group => String(normalizeUuidValue(group.category.id) || group.category.id) === String(state.activeCategoryId));
     const groupsToRender = selectedGroups.length ? selectedGroups : groups;
     if (!groupsToRender.length) return `<div class="menu-error"><strong>Cardápio vazio</strong><span>Esta loja ainda não cadastrou produtos ativos.</span></div>`;
 

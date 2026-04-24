@@ -12,7 +12,8 @@
     tables: [],
     inventoryMovements: [],
     finance: null,
-    manualOrderItems: []
+    manualOrderItems: [],
+    currentScreen: "dashboard"
   };
 
   const screenMeta = {
@@ -928,7 +929,25 @@
       }).join("");
   }
 
+  function toggleMenuPreviewByScreen(screen) {
+    const preview = document.querySelector(".menu-preview-sidebar");
+    const content = document.querySelector(".establishment-content");
+
+    if (!preview) return;
+
+    const shouldHide = screen === "orders";
+    preview.classList.toggle("is-hidden-for-orders", shouldHide);
+    document.body.classList.toggle("orders-focus-mode", shouldHide);
+
+    if (content) {
+      content.classList.toggle("orders-focus-content", shouldHide);
+    }
+  }
+
   function openScreen(screen) {
+    state.currentScreen = screen;
+    toggleMenuPreviewByScreen(screen);
+
     document.querySelectorAll(".admin-nav-item").forEach(function (button) {
       button.classList.toggle("active", button.dataset.screen === screen);
     });
@@ -1561,6 +1580,13 @@
     return buttons.join("");
   }
 
+
+  function getActiveOrdersForAlert(orders) {
+    return orders.filter(function (order) {
+      return ["pending", "confirmed"].includes(normalizeOrderStatus(order.status));
+    });
+  }
+
   function renderOrders(searchTerm) {
     const table = document.getElementById("orders-table");
     if (!table) return;
@@ -1590,7 +1616,13 @@
       return isHistoryOrder(order);
     });
 
-    const visibleOrders = activeTab === "history" ? historyOrders : activeOrders;
+    const urgentOrders = getActiveOrdersForAlert(activeOrders);
+
+    const normalActiveOrders = activeOrders.filter(function (order) {
+      return !["pending", "confirmed"].includes(normalizeOrderStatus(order.status));
+    });
+
+    const visibleOrders = activeTab === "history" ? historyOrders : normalActiveOrders;
 
     const pending = activeOrders.filter(o => normalizeOrderStatus(o.status) === "pending").length;
     const kitchen = activeOrders.filter(o => ["kitchen", "preparing"].includes(normalizeOrderStatus(o.status))).length;
@@ -1632,6 +1664,47 @@
       </div>
     `;
 
+    const urgentHTML = activeTab === "active" && urgentOrders.length
+      ? `
+        <section class="incoming-orders-alert">
+          <div class="incoming-orders-head">
+            <div>
+              <span class="panel-kicker">Pedidos chegando</span>
+              <h3>${urgentOrders.length} pedido(s) aguardando ação</h3>
+              <p>Aceite, envie para a cozinha ou recuse rapidamente.</p>
+            </div>
+            <strong>⚡</strong>
+          </div>
+
+          <div class="incoming-orders-list">
+            ${urgentOrders.map(function (order) {
+              const status = normalizeOrderStatus(order.status);
+
+              return `
+                <article class="incoming-order-card">
+                  <div class="incoming-order-main">
+                    <div class="incoming-order-pulse">!</div>
+
+                    <div class="incoming-order-content">
+                      <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
+                      <span>${order.customer_name || "Cliente"} • ${getOrderSourceLabel(order)} • ${formatDate(order.created_at)}</span>
+                      <b>${formatMoney(order.total_amount || 0)}</b>
+                    </div>
+                  </div>
+
+                  <div class="incoming-order-actions">
+                    <span class="order-status ${getOrderStatusClass(status)}">${getOrderStatusLabel(status)}</span>
+                    <button class="ghost-button small" onclick="window.EstablishmentPanel.showOrderDetails('${order.id}')">Detalhes</button>
+                    ${getOrderActionButtons(order)}
+                  </div>
+                </article>
+              `;
+            }).join("")}
+          </div>
+        </section>
+      `
+      : "";
+
     const listHTML = visibleOrders.length
       ? visibleOrders.map(function (order) {
           const status = normalizeOrderStatus(order.status);
@@ -1666,7 +1739,7 @@
         }).join("")
       : emptyState(activeTab === "history" ? "Nenhum pedido no histórico." : "Nenhum pedido em andamento.");
 
-    table.innerHTML = renderManualOrderForm() + summaryHTML + tabsHTML + `<div class="orders-list">${listHTML}</div>`;
+    table.innerHTML = renderManualOrderForm() + summaryHTML + tabsHTML + urgentHTML + `<div class="orders-list">${listHTML}</div>`;
   }
 
 
@@ -2116,9 +2189,10 @@ function renderCategories() {
 
   function getOrderStatusClass(status) {
     const value = String(status || "").toLowerCase();
-    if (["completed", "delivered"].includes(value)) return "success";
-    if (["preparing", "confirmed"].includes(value)) return "info";
+    if (["completed", "delivered", "ready"].includes(value)) return "success";
+    if (["preparing", "confirmed", "kitchen", "delivery"].includes(value)) return "info";
     if (["pending", "pendente"].includes(value)) return "warning";
+    if (["cancelled", "refused"].includes(value)) return "danger";
     return "neutral";
   }
 

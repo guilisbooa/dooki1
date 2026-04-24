@@ -1391,14 +1391,17 @@
   }
 
   function getOrderSourceLabel(order) {
-    const source = String(order.source || order.order_source || "").toLowerCase();
+    const source = String(order.source || order.order_source || order.channel || "").toLowerCase();
+    const tableNumber = order.table_number || order.tableNumber || order.table || null;
 
     if (source === "manual") return "Pedido manual";
     if (source === "balcao" || source === "balcão") return "Balcão";
     if (source === "delivery") return "Delivery";
-    if (source === "table") return "Mesa";
+    if (source === "table" || source === "mesa" || source === "presencial") {
+      return tableNumber ? `Mesa ${tableNumber}` : "Mesa";
+    }
 
-    return source ? source : "Cardápio digital";
+    return tableNumber ? `Mesa ${tableNumber}` : (source ? source : "Cardápio digital");
   }
 
   function getActiveOrderTab() {
@@ -1740,7 +1743,7 @@
         }).join("")
       : emptyState(activeTab === "history" ? "Nenhum pedido no histórico." : "Nenhum pedido em andamento.");
 
-    table.innerHTML = renderManualOrderForm() + summaryHTML + tabsHTML + urgentHTML + `<div class="orders-list">${listHTML}</div>`;
+    table.innerHTML = summaryHTML + tabsHTML + urgentHTML + renderManualOrderForm() + `<div class="orders-list">${listHTML}</div>`;
   }
 
 

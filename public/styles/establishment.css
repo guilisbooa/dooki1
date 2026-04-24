@@ -2554,3 +2554,12 @@ body.orders-focus-mode .establishment-content,
     min-height: 220px;
   }
 }
+
+
+/* =========================
+   PEDIDO MANUAL ABAIXO DO ALERTA
+========================= */
+
+.incoming-orders-alert + .manual-order-panel {
+  margin-top: 18px;
+}

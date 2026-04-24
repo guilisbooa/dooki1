@@ -1119,3 +1119,118 @@ body.admin-app-body {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =========================
+   ADMIN - PRÉVIA DO CARDÁPIO DIGITAL
+========================= */
+
+.admin-menu-preview-card {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+}
+
+.admin-menu-preview-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-menu-preview-toolbar h3 {
+  margin: 6px 0 4px;
+  color: #f8fafc;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.22rem;
+}
+
+.admin-menu-preview-toolbar p {
+  margin: 0;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.admin-menu-preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-menu-preview-actions .ghost-button.active {
+  background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-dark));
+  color: #1f1f1f;
+  border-color: transparent;
+  box-shadow: 0 10px 22px rgba(218, 165, 32, 0.24);
+}
+
+.admin-menu-preview-stage {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 560px;
+  padding: 22px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top, rgba(218, 165, 32, 0.14), transparent 34%),
+    rgba(2, 6, 23, 0.32);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  overflow: auto;
+}
+
+.admin-menu-preview-device {
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 22px 60px rgba(2, 6, 23, 0.34);
+  transition: 0.2s ease;
+}
+
+.admin-menu-preview-stage.is-mobile .admin-menu-preview-device {
+  width: 390px;
+  height: 720px;
+  border: 12px solid #0f172a;
+  border-radius: 34px;
+}
+
+.admin-menu-preview-stage.is-desktop .admin-menu-preview-device {
+  width: 100%;
+  height: 640px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 20px;
+}
+
+.admin-menu-preview-device iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #ffffff;
+}
+
+.detail-card[data-store-profile] {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+@media (max-width: 900px) {
+  .admin-menu-preview-toolbar {
+    flex-direction: column;
+  }
+
+  .admin-menu-preview-actions,
+  .admin-menu-preview-actions .ghost-button.small,
+  .admin-menu-preview-actions .primary-button.small {
+    width: 100%;
+  }
+
+  .admin-menu-preview-stage {
+    padding: 14px;
+  }
+
+  .admin-menu-preview-stage.is-mobile .admin-menu-preview-device {
+    width: min(390px, 100%);
+    height: 680px;
+  }
+}

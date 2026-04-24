@@ -927,6 +927,65 @@ function populateStoreEditForm(store) {
   form.banner_url.value = store.banner_url || "";
 }
 
+
+function getStoreMenuLink(store) {
+  if (!store?.id) return "#";
+  return `${window.location.origin}/menu/menu.html?establishment=${encodeURIComponent(store.id)}`;
+}
+
+function renderAdminMenuPreview(store) {
+  const link = getStoreMenuLink(store);
+
+  return `
+    <div class="admin-menu-preview-card">
+      <div class="admin-menu-preview-toolbar">
+        <div>
+          <span class="panel-kicker">Prévia do cardápio digital</span>
+          <h3>${store.name || "Loja"}</h3>
+          <p>Visualize como o cliente verá o cardápio dessa loja.</p>
+        </div>
+
+        <div class="admin-menu-preview-actions">
+          <button type="button" class="ghost-button small active" data-preview-device-button="mobile" onclick="window.toggleAdminMenuPreviewDevice('mobile')">
+            Mobile
+          </button>
+          <button type="button" class="ghost-button small" data-preview-device-button="desktop" onclick="window.toggleAdminMenuPreviewDevice('desktop')">
+            Desktop
+          </button>
+          <a class="primary-button small" href="${link}" target="_blank" rel="noopener">
+            Abrir cardápio
+          </a>
+        </div>
+      </div>
+
+      <div class="admin-menu-preview-stage is-mobile" id="admin-menu-preview-stage">
+        <div class="admin-menu-preview-device">
+          <iframe
+            id="admin-menu-preview-iframe"
+            title="Prévia do cardápio ${store.name || ""}"
+            src="${link}"
+            loading="lazy"
+          ></iframe>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.toggleAdminMenuPreviewDevice = function toggleAdminMenuPreviewDevice(device) {
+  const stage = document.getElementById("admin-menu-preview-stage");
+  if (!stage) return;
+
+  const isDesktop = device === "desktop";
+  stage.classList.toggle("is-desktop", isDesktop);
+  stage.classList.toggle("is-mobile", !isDesktop);
+
+  document.querySelectorAll("[data-preview-device-button]").forEach(function (button) {
+    button.classList.toggle("active", button.dataset.previewDeviceButton === device);
+  });
+};
+
+
 function renderStoreProfile() {
   const container = document.querySelector("[data-store-profile]");
   const title = document.querySelector("[data-store-profile-title]");
@@ -950,18 +1009,9 @@ function renderStoreProfile() {
     return;
   }
 
-  title.innerText = store.name || "Detalhes do estabelecimento";
+  title.innerText = "Prévia do cardápio";
 
-  container.innerHTML = `
-    <article class="detail-grid">
-      <div class="detail-item"><span>Nome</span><strong>${store.name || "—"}</strong></div>
-      <div class="detail-item"><span>Cidade</span><strong>${store.city || "—"}</strong></div>
-      <div class="detail-item"><span>Plano</span><strong>${getPlanLabelFromStore(store)}</strong></div>
-      <div class="detail-item"><span>Status</span><strong>${store.status || "—"}</strong></div>
-      <div class="detail-item"><span>Email</span><strong>${store.email || "—"}</strong></div>
-      <div class="detail-item"><span>Telefone</span><strong>${store.phone || "—"}</strong></div>
-    </article>
-  `;
+  container.innerHTML = renderAdminMenuPreview(store);
 
   populateStoreEditForm(store);
   fillPlanSelects();

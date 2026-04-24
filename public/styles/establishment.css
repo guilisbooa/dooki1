@@ -2482,3 +2482,75 @@ body.orders-focus-mode .establishment-content,
     width: 100%;
   }
 }
+
+
+/* =========================
+   PEDIDOS EM CARDS QUADRADOS
+========================= */
+
+.incoming-orders-list {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  align-items: stretch;
+}
+
+.incoming-order-card.incoming-order-square {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+}
+
+.incoming-order-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.incoming-order-card.incoming-order-square .incoming-order-content {
+  gap: 8px;
+}
+
+.incoming-order-card.incoming-order-square .incoming-order-content strong {
+  font-size: 1.25rem;
+}
+
+.incoming-order-card.incoming-order-square .incoming-order-content span {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.incoming-order-card.incoming-order-square .incoming-order-content small {
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.incoming-order-card.incoming-order-square .incoming-order-content b {
+  margin-top: 4px;
+  font-size: 1.55rem;
+}
+
+.incoming-order-card.incoming-order-square .incoming-order-actions {
+  width: 100%;
+  max-width: none;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.incoming-order-card.incoming-order-square .incoming-order-actions .ghost-button.small,
+.incoming-order-card.incoming-order-square .incoming-order-actions .primary-button.small {
+  min-width: auto;
+  flex: 1 1 auto;
+}
+
+@media (max-width: 640px) {
+  .incoming-orders-list {
+    grid-template-columns: 1fr;
+  }
+
+  .incoming-order-card.incoming-order-square {
+    min-height: 220px;
+  }
+}

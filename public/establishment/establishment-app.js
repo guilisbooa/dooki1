@@ -1670,8 +1670,8 @@
           <div class="incoming-orders-head">
             <div>
               <span class="panel-kicker">Pedidos chegando</span>
-              <h3>${urgentOrders.length} pedido(s) aguardando ação</h3>
-              <p>Aceite, envie para a cozinha ou recuse rapidamente.</p>
+              <h3>${urgentOrders.length} pedido(s) precisam de atualização</h3>
+              <p>Esses pedidos ficam no topo até serem aceitos, enviados para preparo ou finalizados.</p>
             </div>
             <strong>⚡</strong>
           </div>
@@ -1681,19 +1681,20 @@
               const status = normalizeOrderStatus(order.status);
 
               return `
-                <article class="incoming-order-card">
-                  <div class="incoming-order-main">
+                <article class="incoming-order-card incoming-order-square">
+                  <div class="incoming-order-top">
                     <div class="incoming-order-pulse">!</div>
+                    <span class="order-status ${getOrderStatusClass(status)}">${getOrderStatusLabel(status)}</span>
+                  </div>
 
-                    <div class="incoming-order-content">
-                      <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
-                      <span>${order.customer_name || "Cliente"} • ${getOrderSourceLabel(order)} • ${formatDate(order.created_at)}</span>
-                      <b>${formatMoney(order.total_amount || 0)}</b>
-                    </div>
+                  <div class="incoming-order-content">
+                    <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
+                    <span>${order.customer_name || "Cliente"}</span>
+                    <small>${getOrderSourceLabel(order)} • ${formatDate(order.created_at)}</small>
+                    <b>${formatMoney(order.total_amount || 0)}</b>
                   </div>
 
                   <div class="incoming-order-actions">
-                    <span class="order-status ${getOrderStatusClass(status)}">${getOrderStatusLabel(status)}</span>
                     <button class="ghost-button small" onclick="window.EstablishmentPanel.showOrderDetails('${order.id}')">Detalhes</button>
                     ${getOrderActionButtons(order)}
                   </div>

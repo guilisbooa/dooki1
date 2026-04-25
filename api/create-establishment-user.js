@@ -1,4 +1,8 @@
-const { createClient } = require("@supabase/supabase-js");
+import { createClient } from "@supabase/supabase-js";
+
+function send(res, status, payload) {
+  res.status(status).json(payload);
+}
 
 function getSupabaseUrl() {
   return process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -8,24 +12,26 @@ function getServiceRoleKey() {
   return process.env.SUPABASE_SERVICE_ROLE_KEY;
 }
 
-function send(res, status, payload) {
-  res.statusCode = status;
-  res.setHeader("Content-Type", "application/json");
-  res.end(JSON.stringify(payload));
-}
-
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return send(res, 405, { error: "Método não permitido." });
+    return send(res, 405, {
+      error: "Método não permitido. Use POST."
+    });
   }
 
   try {
     const supabaseUrl = getSupabaseUrl();
     const serviceRoleKey = getServiceRoleKey();
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl) {
       return send(res, 500, {
-        error: "Variáveis SUPABASE_URL/VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY não configuradas no Vercel."
+        error: "SUPABASE_URL não configurada no Vercel."
+      });
+    }
+
+    if (!serviceRoleKey) {
+      return send(res, 500, {
+        error: "SUPABASE_SERVICE_ROLE_KEY não configurada no Vercel."
       });
     }
 
@@ -33,7 +39,9 @@ module.exports = async function handler(req, res) {
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
     if (!token) {
-      return send(res, 401, { error: "Token admin não informado." });
+      return send(res, 401, {
+        error: "Token admin não enviado."
+      });
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
@@ -47,46 +55,70 @@ module.exports = async function handler(req, res) {
     const adminUser = userData?.user;
 
     if (userError || !adminUser) {
-      return send(res, 401, { error: "Sessão admin inválida." });
+      return send(res, 401, {
+        error: userError?.message || "Sessão admin inválida."
+      });
     }
 
     const { data: profile, error: profileError } = await adminClient
       .from("admin_profiles")
-      .select("id,is_active")
+      .select("id, is_active")
       .eq("id", adminUser.id)
       .eq("is_active", true)
       .maybeSingle();
 
-    if (profileError || !profile) {
-      return send(res, 403, { error: "Usuário sem permissão de admin." });
+    if (profileError) {
+      return send(res, 500, {
+        error: `Erro ao validar admin: ${profileError.message}`
+      });
     }
 
-    const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+    if (!profile) {
+      return send(res, 403, {
+        error: "Usuário sem permissão de admin em admin_profiles."
+      });
+    }
+
+    const body = req.body || {};
     const establishmentId = String(body.establishment_id || "").trim();
     const email = String(body.email || "").trim().toLowerCase();
     const password = String(body.password || "").trim();
     const name = String(body.name || "").trim();
 
     if (!establishmentId) {
-      return send(res, 400, { error: "ID do estabelecimento não informado." });
+      return send(res, 400, {
+        error: "ID do estabelecimento não informado."
+      });
     }
 
     if (!email) {
-      return send(res, 400, { error: "Email do usuário não informado." });
+      return send(res, 400, {
+        error: "Email do usuário não informado."
+      });
     }
 
     if (!password || password.length < 6) {
-      return send(res, 400, { error: "A senha precisa ter pelo menos 6 caracteres." });
+      return send(res, 400, {
+        error: "A senha precisa ter pelo menos 6 caracteres."
+      });
     }
 
     const { data: store, error: storeError } = await adminClient
       .from("establishments")
-      .select("id,name,email")
+      .select("id, name, email")
       .eq("id", establishmentId)
       .maybeSingle();
 
-    if (storeError || !store) {
-      return send(res, 404, { error: "Estabelecimento não encontrado." });
+    if (storeError) {
+      return send(res, 500, {
+        error: `Erro ao buscar estabelecimento: ${storeError.message}`
+      });
+    }
+
+    if (!store) {
+      return send(res, 404, {
+        error: "Estabelecimento não encontrado após cadastro."
+      });
     }
 
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({
@@ -101,13 +133,17 @@ module.exports = async function handler(req, res) {
     });
 
     if (createError) {
-      return send(res, 400, { error: createError.message || "Erro ao criar usuário no Auth." });
+      return send(res, 400, {
+        error: `Erro ao criar usuário no Auth: ${createError.message}`
+      });
     }
 
     const authUser = created?.user;
 
     if (!authUser?.id) {
-      return send(res, 500, { error: "Usuário criado sem ID retornado." });
+      return send(res, 500, {
+        error: "Usuário criado no Auth, mas sem ID retornado."
+      });
     }
 
     const { error: membershipError } = await adminClient
@@ -121,7 +157,10 @@ module.exports = async function handler(req, res) {
 
     if (membershipError) {
       await adminClient.auth.admin.deleteUser(authUser.id);
-      return send(res, 400, { error: membershipError.message || "Erro ao vincular usuário à loja." });
+
+      return send(res, 400, {
+        error: `Erro ao vincular usuário à loja em establishment_users: ${membershipError.message}`
+      });
     }
 
     return send(res, 200, {
@@ -133,6 +172,10 @@ module.exports = async function handler(req, res) {
       establishment_id: establishmentId
     });
   } catch (error) {
-    return send(res, 500, { error: error.message || "Erro interno ao criar usuário." });
+    console.error("create-establishment-user fatal:", error);
+
+    return send(res, 500, {
+      error: error?.message || "Erro interno ao criar usuário."
+    });
   }
-};
+}

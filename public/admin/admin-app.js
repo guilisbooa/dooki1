@@ -358,6 +358,59 @@ function getSuggestedPlanCatalog() {
 // INIT
 // =============================
 
+
+// =============================
+// ESTABLISHMENT AUTH USER
+// =============================
+
+async function createEstablishmentAuthUser({ establishmentId, email, password, name }) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const cleanPassword = String(password || "").trim();
+
+  if (!cleanEmail || !cleanPassword) {
+    return null;
+  }
+
+  if (cleanPassword.length < 6) {
+    throw new Error("A senha do usuário do estabelecimento precisa ter pelo menos 6 caracteres.");
+  }
+
+  const { data: sessionData } = await window.supabaseClient.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+
+  if (!accessToken) {
+    throw new Error("Sessão admin expirada. Faça login novamente.");
+  }
+
+  const response = await fetch("/api/create-establishment-user", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`
+    },
+    body: JSON.stringify({
+      establishment_id: establishmentId,
+      email: cleanEmail,
+      password: cleanPassword,
+      name: name || cleanEmail
+    })
+  });
+
+  let result = null;
+  try {
+    result = await response.json();
+  } catch (_) {
+    result = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(result?.error || "Não foi possível criar o usuário de autenticação.");
+  }
+
+  return result;
+}
+
+
 document.addEventListener("DOMContentLoaded", async () => {
   const ok = await loadAdminSession();
   if (!ok) return;
@@ -1024,20 +1077,42 @@ async function handleStoreCreate(event) {
   event.preventDefault();
 
   const form = event.currentTarget;
+  const authEmail = String(form.auth_email?.value || form.email.value || "").trim().toLowerCase();
+  const authPassword = String(form.auth_password?.value || "").trim();
 
   const payload = {
     name: form.name.value.trim(),
     city: form.city.value.trim(),
     plan_id: form.plan_id.value || null,
     status: form.status.value || "active",
-    email: form.email.value.trim() || null,
+    email: form.email.value.trim() || authEmail || null,
     phone: form.phone.value.trim() || null,
     logo_url: form.logo_url.value.trim() || null,
     banner_url: form.banner_url.value.trim() || null
   };
 
+  let createdStore = null;
+
   try {
-    await api.createEstablishment(payload);
+    createdStore = await api.createEstablishment(payload);
+
+    if (authEmail || authPassword) {
+      if (!authEmail) {
+        throw new Error("Informe o email de acesso do estabelecimento.");
+      }
+
+      if (!authPassword) {
+        throw new Error("Informe a senha de acesso do estabelecimento.");
+      }
+
+      await createEstablishmentAuthUser({
+        establishmentId: createdStore.id,
+        email: authEmail,
+        password: authPassword,
+        name: payload.name
+      });
+    }
+
     form.reset();
     await refreshSnapshot();
     fillCityFilter();
@@ -1046,9 +1121,18 @@ async function handleStoreCreate(event) {
     renderStores();
     renderDashboard();
     renderReports();
-    alert("Estabelecimento cadastrado com sucesso.");
+    alert(authEmail ? "Estabelecimento e usuário de acesso cadastrados com sucesso." : "Estabelecimento cadastrado com sucesso.");
   } catch (error) {
     console.error(error);
+
+    if (createdStore?.id && (authEmail || authPassword)) {
+      try {
+        await api.deleteEstablishment(createdStore.id);
+      } catch (rollbackError) {
+        console.warn("Não foi possível desfazer o cadastro do estabelecimento após erro no usuário.", rollbackError);
+      }
+    }
+
     alert(`Erro ao cadastrar estabelecimento: ${error.message || "erro desconhecido"}`);
   }
 }

@@ -1285,3 +1285,147 @@ body.admin-app-body {
     height: 760px;
   }
 }
+
+
+/* =========================
+   TEMA NEUTRO DOOKI - ADMIN
+========================= */
+
+:root {
+  --admin-bg: #f4f1ea;
+  --admin-surface: rgba(250, 248, 243, 0.94);
+  --admin-white: #fbfaf7;
+  --admin-border: rgba(60, 64, 67, 0.10);
+  --admin-shadow: 0 16px 40px rgba(60, 64, 67, 0.10);
+  --admin-shadow-soft: 0 8px 22px rgba(60, 64, 67, 0.07);
+  --admin-primary: #f97316;
+  --admin-primary-dark: #ea580c;
+  --admin-primary-soft: #fff0df;
+  --admin-accent: #ff7a1a;
+  --admin-text: #1f2933;
+  --admin-muted: #6b7280;
+  --admin-soft: #eee9df;
+  --admin-soft-2: #e6dfd3;
+}
+
+body {
+  background: linear-gradient(180deg, #f5f1e9 0%, #eee8dc 100%) !important;
+  color: var(--admin-text) !important;
+}
+
+.admin-sidebar {
+  background: #f1ece2 !important;
+  border-right: 1px solid rgba(60,64,67,.10) !important;
+  box-shadow: 12px 0 34px rgba(60,64,67,.06) !important;
+}
+
+.admin-sidebar *,
+.admin-sidebar h1,
+.admin-brand,
+.sidebar-user strong {
+  color: var(--admin-text) !important;
+}
+
+.admin-sidebar p,
+.sidebar-user span,
+.admin-nav-item {
+  color: #697386 !important;
+}
+
+.admin-nav-item {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+}
+
+.admin-nav-item:hover,
+.admin-nav-item.active {
+  background: #e7e1d7 !important;
+  color: var(--admin-text) !important;
+  border-color: rgba(60,64,67,.10) !important;
+}
+
+.admin-main {
+  background: transparent !important;
+}
+
+.admin-topbar,
+.screen-hero,
+.panel,
+.metric-card,
+.detail-card,
+.detail-card-box,
+.table-row,
+.pro-store-row,
+.pro-list-card,
+.plan-card,
+.payment-card,
+.ticket-card,
+.report-card,
+.modal-content {
+  background: rgba(250,248,243,.92) !important;
+  border-color: rgba(60,64,67,.10) !important;
+  color: var(--admin-text) !important;
+  box-shadow: 0 14px 32px rgba(60,64,67,.08) !important;
+}
+
+.screen-hero {
+  background: radial-gradient(circle at top right, rgba(249,115,22,.10), transparent 34%), rgba(250,248,243,.94) !important;
+}
+
+.panel-kicker,
+.badge,
+.status-badge {
+  background: #fff0df !important;
+  color: #9a3412 !important;
+  border-color: rgba(249,115,22,.18) !important;
+}
+
+.primary-button,
+button.primary-button,
+.admin-menu-preview-actions .ghost-button.active {
+  background: linear-gradient(135deg, #f97316, #ea580c) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 10px 22px rgba(249,115,22,.22) !important;
+}
+
+.ghost-button,
+.secondary-button {
+  background: rgba(255,255,255,.55) !important;
+  color: var(--admin-text) !important;
+  border-color: rgba(60,64,67,.12) !important;
+}
+
+.input,
+select.input,
+textarea.input {
+  background: #fbfaf7 !important;
+  color: var(--admin-text) !important;
+  border-color: rgba(60,64,67,.13) !important;
+}
+
+.screen-hero h2,
+.panel-head h3,
+.metric-card strong,
+.detail-item strong,
+.table-row strong,
+.admin-menu-preview-toolbar h3 {
+  color: var(--admin-text) !important;
+}
+
+.screen-hero p,
+.panel-head p,
+.metric-card span,
+.detail-item span,
+.table-row span,
+.admin-menu-preview-toolbar p {
+  color: var(--admin-muted) !important;
+}
+
+.admin-menu-preview-stage {
+  background: radial-gradient(circle at top, rgba(249,115,22,.10), transparent 34%), #eee8dc !important;
+}
+
+.admin-menu-preview-stage.is-mobile .admin-menu-preview-device {
+  border-color: #d7d0c3 !important;
+}

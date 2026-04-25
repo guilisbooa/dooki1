@@ -95,3 +95,79 @@ body.is-admin-preview .submit-order {
     position: static !important;
   }
 }
+
+
+/* =========================
+   TEMA NEUTRO DOOKI - CARDÁPIO PÚBLICO
+========================= */
+
+:root {
+  --bg: #f4f1ea;
+  --surface: #fbfaf7;
+  --surface-soft: #f1ece2;
+  --border: rgba(60,64,67,.10);
+  --text: #1f2933;
+  --muted: #6b7280;
+  --gold: #f97316;
+  --gold-dark: #ea580c;
+  --shadow: 0 16px 40px rgba(60,64,67,.10);
+}
+
+body.public-menu-body {
+  background: linear-gradient(180deg, #f5f1e9 0%, #eee8dc 100%) !important;
+  color: var(--text) !important;
+}
+
+.public-menu-hero,
+.public-product-card,
+.public-cart,
+.cart-item,
+.cart-mode-card {
+  background: rgba(251,250,247,.94) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+.public-menu-banner {
+  background: linear-gradient(135deg, rgba(31,41,51,.08), rgba(31,41,51,.02)), linear-gradient(135deg, rgba(249,115,22,.42), rgba(234,88,12,.68)) !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+.mode-pill {
+  background: #fff0df !important;
+  color: #9a3412 !important;
+}
+
+.menu-category-tabs button {
+  background: rgba(251,250,247,.72) !important;
+  color: #4b5563 !important;
+  border-color: rgba(60,64,67,.10) !important;
+}
+
+.menu-category-tabs button.active,
+.add-button,
+.submit-order {
+  background: linear-gradient(135deg, #f97316, #ea580c) !important;
+  color: #fff !important;
+}
+
+.menu-category-block h2 {
+  color: var(--text) !important;
+}
+
+.public-product-card p,
+.public-menu-title p,
+.cart-mode-card,
+.cart-item span,
+.cart-form label {
+  color: var(--muted) !important;
+}
+
+.cart-form input,
+.cart-form textarea {
+  background: #fbfaf7 !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}

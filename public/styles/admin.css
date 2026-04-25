@@ -1264,3 +1264,24 @@ body.admin-app-body {
   color: var(--admin-muted);
   line-height: 1.45;
 }
+
+
+/* =========================
+   ADMIN PREVIEW - CORREÇÃO CARRINHO
+========================= */
+
+.admin-menu-preview-stage.is-mobile .admin-menu-preview-device {
+  width: 430px;
+  height: 780px;
+}
+
+.admin-menu-preview-stage.is-mobile {
+  min-height: 820px;
+}
+
+@media (max-width: 900px) {
+  .admin-menu-preview-stage.is-mobile .admin-menu-preview-device {
+    width: min(430px, 100%);
+    height: 760px;
+  }
+}

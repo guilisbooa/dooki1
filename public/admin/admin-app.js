@@ -986,8 +986,14 @@ function getStoreMenuLink(store) {
   return `${window.location.origin}/menu/menu.html?establishment=${encodeURIComponent(store.id)}`;
 }
 
+function getStoreMenuPreviewLink(store) {
+  if (!store?.id) return "#";
+  return `${getStoreMenuLink(store)}&preview=admin`;
+}
+
 function renderAdminMenuPreview(store) {
   const link = getStoreMenuLink(store);
+  const previewLink = getStoreMenuPreviewLink(store);
 
   return `
     <div class="admin-menu-preview-card">

@@ -11,7 +11,8 @@
       establishmentId: params.get("establishment") || params.get("store") || params.get("id") || "",
       slug: params.get("slug") || "",
       mode: params.get("mode") || params.get("tipo") || "delivery",
-      table: params.get("table") || params.get("mesa") || ""
+      table: params.get("table") || params.get("mesa") || "",
+      preview: params.get("preview") || ""
     };
   }
 
@@ -112,6 +113,7 @@
 
   function render() {
     const params = getParams();
+    document.body.classList.toggle("is-admin-preview", params.preview === "admin");
     const root = document.getElementById("menu-root");
     const store = state.establishment;
     const groups = getGroups();

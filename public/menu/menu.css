@@ -28,3 +28,70 @@
     max-height: 160px;
   }
 }
+
+
+/* =========================
+   MODO PRÉVIA ADMIN
+   Evita conflito do carrinho fixo dentro do iframe
+========================= */
+
+body.is-admin-preview .public-menu-shell {
+  grid-template-columns: 1fr;
+  padding: 12px;
+  padding-bottom: 12px;
+}
+
+body.is-admin-preview .public-cart {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  border-radius: 24px;
+}
+
+body.is-admin-preview .public-menu-banner {
+  height: 150px;
+}
+
+body.is-admin-preview .public-menu-logo {
+  width: 76px;
+  height: 76px;
+  min-width: 76px;
+}
+
+body.is-admin-preview .public-menu-info {
+  padding: 0 16px 16px;
+  margin-top: -34px;
+}
+
+body.is-admin-preview .public-menu-title h1 {
+  font-size: 1.55rem;
+}
+
+body.is-admin-preview .menu-products-grid {
+  grid-template-columns: 1fr;
+}
+
+body.is-admin-preview .cart-items {
+  max-height: 220px;
+}
+
+body.is-admin-preview .cart-form textarea {
+  min-height: 62px;
+}
+
+body.is-admin-preview .submit-order {
+  min-height: 46px;
+}
+
+@media (max-width: 980px) {
+  body.is-admin-preview .public-menu-shell {
+    padding-bottom: 12px;
+  }
+
+  body.is-admin-preview .public-cart {
+    position: static !important;
+  }
+}

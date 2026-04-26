@@ -2002,7 +2002,7 @@
       ? `<div class="orders-list">${historyListHTML}</div>`
       : renderOrdersKanban(activeOrders);
 
-    table.innerHTML = summaryHTML + tabsHTML + urgentHTML + renderManualOrderForm() + workspaceHTML;
+    table.innerHTML = summaryHTML + tabsHTML + urgentHTML + workspaceHTML + renderManualOrderForm();
   }
 
 

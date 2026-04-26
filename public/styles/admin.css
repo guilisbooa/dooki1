@@ -1298,3 +1298,39 @@ body.admin-app-body {
     height: 760px;
   }
 }
+
+/* ===== UPGRADE CARDS ADMIN ===== */
+
+.stat-card,
+.pro-list-card,
+.pro-store-row,
+.store-mini-card,
+.detail-card {
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 14px 32px rgba(2, 6, 23, 0.10);
+  transition: 0.2s;
+}
+
+.stat-card:hover,
+.pro-list-card:hover,
+.pro-store-row:hover,
+.store-mini-card:hover,
+.detail-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(218, 165, 32, 0.22);
+  box-shadow: 0 20px 42px rgba(2, 6, 23, 0.14);
+}
+
+.stat-card strong {
+  color: #0f172a;
+}
+
+.pro-store-row-content strong {
+  color: #0f172a;
+}
+
+.pro-store-row-content span {
+  color: #64748b;
+}

@@ -2691,3 +2691,25 @@ body.orders-focus-mode .establishment-content,
 .admin-nav-item.active::before {
   background: linear-gradient(180deg, #daa520, #facc15);
 }
+
+/* ===== UPGRADE CARDS ESTABELECIMENTO ===== */
+
+.stat-card,
+.catalog-card,
+.order-card,
+.pro-store-row {
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 14px 32px rgba(2, 6, 23, 0.10);
+  transition: 0.2s;
+}
+
+.stat-card:hover,
+.catalog-card:hover,
+.order-card:hover,
+.pro-store-row:hover {
+  transform: translateY(-2px);
+  border-color: rgba(218, 165, 32, 0.22);
+  box-shadow: 0 20px 42px rgba(2, 6, 23, 0.14);
+}

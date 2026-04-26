@@ -31,16 +31,28 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Plano inválido." });
     }
 
-    const paymentRow = {
-      establishment_id,
-      plan_name,
-      amount,
-      status: "pending"
-    };
+    const { data: establishment, error: establishmentError } = await supabaseAdmin
+      .from("establishments")
+      .select("id, name")
+      .eq("id", establishment_id)
+      .maybeSingle();
+
+    if (establishmentError) throw establishmentError;
+
+    if (!establishment) {
+      return res.status(404).json({
+        error: "Estabelecimento não encontrado."
+      });
+    }
 
     const { data: paymentDb, error: insertError } = await supabaseAdmin
       .from("plan_payments")
-      .insert(paymentRow)
+      .insert({
+        establishment_id,
+        plan_name,
+        amount,
+        status: "pending"
+      })
       .select()
       .single();
 
@@ -55,13 +67,11 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         transaction_amount: Number(amount),
-        description: `Mensalidade Dooki - Plano ${plan_name}`,
+        description: `Plano Dooki - ${plan_name}`,
         payment_method_id: "pix",
         payer: {
           email: payer_email || "cliente@dooki.online"
-        },
-        external_reference: paymentDb.id,
-        notification_url: "https://www.dooki.online/api/mercadopago-webhook"
+        }
       })
     });
 
@@ -69,7 +79,18 @@ export default async function handler(req, res) {
 
     if (!mpResponse.ok) {
       console.error("Erro Mercado Pago:", mpData);
-      return res.status(400).json({ error: "Erro ao gerar Pix.", details: mpData });
+
+      await supabaseAdmin
+        .from("plan_payments")
+        .update({
+          status: "failed"
+        })
+        .eq("id", paymentDb.id);
+
+      return res.status(400).json({
+        error: "Erro ao gerar Pix.",
+        details: mpData
+      });
     }
 
     const tx = mpData.point_of_interaction?.transaction_data || {};
@@ -96,10 +117,14 @@ export default async function handler(req, res) {
       amount,
       qr_code: tx.qr_code,
       qr_code_base64: tx.qr_code_base64,
-      ticket_url: tx.ticket_url
+      ticket_url: tx.ticket_url,
+      status: mpData.status
     });
   } catch (error) {
     console.error("Erro ao criar pagamento:", error);
-    return res.status(500).json({ error: error.message || "Erro interno." });
+
+    return res.status(500).json({
+      error: error.message || "Erro interno."
+    });
   }
 }

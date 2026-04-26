@@ -2462,52 +2462,77 @@ if (!["completed", "delivered"].includes(status)) return;
 
 function renderFinancialDashboard() {
   const m = calculateFinancialMetrics(state.orders);
+  const maxValue = Math.max(...m.last7Days.map(d => d.total), 1);
 
   return `
-    <section class="finance-panel">
+    <section class="finance-dashboard">
 
-      <div class="finance-cards">
-
-        <div class="finance-card">
-          <span>Hoje</span>
+      <div class="finance-grid">
+        <article class="finance-card">
+          <span>Receita hoje</span>
           <strong>${formatMoney(m.todayRevenue)}</strong>
-        </div>
+          <small>Pedidos concluídos hoje</small>
+        </article>
 
-        <div class="finance-card">
-          <span>Mês</span>
-          <strong>R$ ${m.monthRevenue.toFixed(2)}</strong>
-        </div>
+        <article class="finance-card">
+          <span>Receita do mês</span>
+          <strong>${formatMoney(m.monthRevenue)}</strong>
+          <small>Total faturado no período</small>
+        </article>
 
-        <div class="finance-card">
-          <span>Pedidos</span>
+        <article class="finance-card">
+          <span>Pedidos concluídos</span>
           <strong>${m.totalOrders}</strong>
-        </div>
+          <small>Baseado em completed/delivered</small>
+        </article>
 
-        <div class="finance-card">
+        <article class="finance-card">
           <span>Ticket médio</span>
-          <strong>R$ ${m.avgTicket.toFixed(2)}</strong>
-        </div>
+          <strong>${formatMoney(m.avgTicket)}</strong>
+          <small>Média por pedido</small>
+        </article>
 
-        <div class="finance-card">
+        <article class="finance-card">
           <span>Comissão Dooki</span>
-          <strong>R$ ${m.dookiCommission.toFixed(2)}</strong>
-        </div>
+          <strong>${formatMoney(m.dookiCommission)}</strong>
+          <small>Valor estimado da plataforma</small>
+        </article>
 
-        <div class="finance-card destaque">
-          <span>Lucro líquido</span>
-          <strong>R$ ${m.netRevenue.toFixed(2)}</strong>
-        </div>
-
+        <article class="finance-card finance-card-highlight">
+          <span>Lucro líquido estimado</span>
+          <strong>${formatMoney(m.netRevenue)}</strong>
+          <small>Receita menos comissão</small>
+        </article>
       </div>
 
-      <div class="finance-chart">
-        ${m.last7Days.map(d => `
-          <div class="bar">
-            <span>R$ ${d.total.toFixed(0)}</span>
-            <div style="height:${Math.max(d.total / 2, 5)}px"></div>
+      <section class="finance-chart-card">
+        <div class="finance-chart-head">
+          <div>
+            <span class="panel-kicker">Últimos 7 dias</span>
+            <h3>Receita por dia</h3>
           </div>
-        `).join("")}
-      </div>
+        </div>
+
+        <div class="finance-chart-bars">
+          ${m.last7Days.map(d => {
+            const height = Math.max((d.total / maxValue) * 120, 8);
+            const label = new Date(d.date + "T00:00:00").toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit"
+            });
+
+            return `
+              <div class="finance-bar-item">
+                <span>${formatMoney(d.total)}</span>
+                <div class="finance-bar-track">
+                  <div class="finance-bar-fill" style="height:${height}px"></div>
+                </div>
+                <small>${label}</small>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </section>
 
     </section>
   `;

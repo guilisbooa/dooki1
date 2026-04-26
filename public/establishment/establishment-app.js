@@ -13,7 +13,9 @@
     inventoryMovements: [],
     finance: null,
     manualOrderItems: [],
-    currentScreen: "dashboard"
+    currentScreen: "dashboard",
+    knownOrderIds: new Set(),
+    orderAlertReady: false
   };
 
   const screenMeta = {
@@ -537,6 +539,8 @@
 
   async function bootstrap() {
     await loadAllData();
+    rememberCurrentOrders();
+    requestOrderNotificationPermission();
     renderHeader();
     renderSidebar();
     renderDashboard();
@@ -550,6 +554,102 @@
     refreshMenuPreview();
     startAutoRefresh();
   }
+
+
+  function rememberCurrentOrders() {
+    state.knownOrderIds = new Set(
+      state.orders
+        .map(function (order) { return String(normalizeUuidValue(order.id)); })
+        .filter(Boolean)
+    );
+    state.orderAlertReady = true;
+  }
+
+  function getNewOrdersFromList(nextOrders) {
+    if (!state.orderAlertReady) return [];
+
+    return (nextOrders || []).filter(function (order) {
+      const id = String(normalizeUuidValue(order.id));
+      if (!id) return false;
+      return !state.knownOrderIds.has(id);
+    });
+  }
+
+  function playNewOrderSound() {
+    try {
+      let audio = document.getElementById("new-order-sound");
+
+      if (!audio) {
+        audio = document.createElement("audio");
+        audio.id = "new-order-sound";
+        audio.preload = "auto";
+        audio.src = "https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3";
+        document.body.appendChild(audio);
+      }
+
+      audio.currentTime = 0;
+      audio.play().catch(function () {
+        console.warn("Som de novo pedido bloqueado pelo navegador até uma interação do usuário.");
+      });
+    } catch (error) {
+      console.warn("Não foi possível tocar o som do pedido.", error);
+    }
+  }
+
+  function flashNewOrderCards(newOrders) {
+    window.setTimeout(function () {
+      newOrders.forEach(function (order) {
+        const id = String(normalizeUuidValue(order.id));
+        if (!id) return;
+
+        document
+          .querySelectorAll(`[data-order-id="${id}"]`)
+          .forEach(function (card) {
+            card.classList.add("order-new-highlight");
+
+            window.setTimeout(function () {
+              card.classList.remove("order-new-highlight");
+            }, 5200);
+          });
+      });
+    }, 120);
+  }
+
+  function notifyNewOrders(newOrders) {
+    if (!newOrders || !newOrders.length) return;
+
+    playNewOrderSound();
+
+    if (state.currentScreen === "orders") {
+      flashNewOrderCards(newOrders);
+    }
+
+    if ("Notification" in window && Notification.permission === "granted") {
+      try {
+        new Notification("Novo pedido na Dooki", {
+          body: `${newOrders.length} pedido(s) chegaram no painel.`,
+          icon: "/assets/logo-dooki.png"
+        });
+      } catch (_) {}
+    }
+  }
+
+  function updateKnownOrders(nextOrders) {
+    state.knownOrderIds = new Set(
+      (nextOrders || [])
+        .map(function (order) { return String(normalizeUuidValue(order.id)); })
+        .filter(Boolean)
+    );
+    state.orderAlertReady = true;
+  }
+
+  function requestOrderNotificationPermission() {
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "default") return;
+
+    Notification.requestPermission().catch(function () {});
+  }
+
 
   async function loadAllData() {
     const client = getClient();
@@ -594,7 +694,12 @@
     state.plan = resolvedPlan || derivePlanFromEstablishment(state.establishment) || null;
 
     state.features = normalizeFeatures(featuresRes || [], state.establishment, state.plan);
-    state.orders = stabilizeCollection(ordersRes, state.orders);
+
+    const nextOrders = stabilizeCollection(ordersRes, state.orders);
+    const newOrders = getNewOrdersFromList(nextOrders);
+    state.orders = nextOrders;
+    updateKnownOrders(state.orders);
+    notifyNewOrders(newOrders);
     state.products = stabilizeCollection(productsRes, state.products);
     state.categories = stabilizeCollection(categoriesRes, state.categories);
     state.tickets = stabilizeCollection(ticketsRes, state.tickets);
@@ -1772,7 +1877,7 @@
     const createdAt = formatDate(order.created_at);
 
     return `
-      <article class="kanban-order-card status-${status}">
+      <article class="kanban-order-card status-${status}" data-order-id="${order.id}">
         <div class="kanban-order-top">
           <div>
             <span class="kanban-order-id">#${String(order.id).slice(0, 8)}</span>
@@ -1941,7 +2046,7 @@
               const status = normalizeOrderStatus(order.status);
 
               return `
-                <article class="incoming-order-card incoming-order-square">
+                <article class="incoming-order-card incoming-order-square" data-order-id="${order.id}">
                   <div class="incoming-order-top">
                     <div class="incoming-order-pulse">!</div>
                     <span class="order-status ${getOrderStatusClass(status)}">${getOrderStatusLabel(status)}</span>
@@ -1971,7 +2076,7 @@
           const status = normalizeOrderStatus(order.status);
 
           return `
-            <article class="order-card order-management-card">
+            <article class="order-card order-management-card" data-order-id="${order.id}">
               <div class="order-left">
                 <div class="order-avatar">#</div>
 
@@ -2909,6 +3014,11 @@ function renderCategories() {
           .on(
             "postgres_changes",
             { event: "*", schema: "public", table: "products", filter: `establishment_id=eq.${establishmentId}` },
+            function () { refreshAllData({ silent: true }); }
+          )
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "orders", filter: `establishment_id=eq.${establishmentId}` },
             function () { refreshAllData({ silent: true }); }
           )
           .subscribe();

@@ -3403,3 +3403,8 @@ textarea.input:focus {
     box-shadow: 0 0 0 rgba(218, 165, 32, 0);
   }
 }
+
+.finance-card.destaque {
+  border: 2px solid rgba(218,165,32,0.4);
+  background: rgba(218,165,32,0.05);
+}

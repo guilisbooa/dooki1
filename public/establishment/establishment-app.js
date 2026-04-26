@@ -2401,41 +2401,124 @@ function renderCategories() {
       : emptyState("Nenhuma mesa cadastrada para a loja.");
   }
 
-  function renderFinance() {
-    const revenue = document.getElementById("finance-revenue");
-    const cost = document.getElementById("finance-cost");
-    const profitBefore = document.getElementById("finance-profit-before");
-    const profitAfter = document.getElementById("finance-profit-after");
-    const summary = document.getElementById("finance-summary-list");
+  function calculateFinancialMetrics(orders) {
+  const now = new Date();
 
-    if (revenue) revenue.textContent = formatMoney(state.finance.grossRevenue);
-    if (cost) cost.textContent = formatMoney(state.finance.totalCost);
-    if (profitBefore) profitBefore.textContent = formatMoney(state.finance.profitBefore);
-    if (profitAfter) profitAfter.textContent = formatMoney(state.finance.profitAfter);
+  let todayRevenue = 0;
+  let monthRevenue = 0;
+  let totalOrders = 0;
+  let dookiCommission = 0;
 
-    if (summary) {
-      const items = [
-        summaryItem("Plano atual", getPlanLabel()),
-        summaryItem("Comissão Dooki", `${String(getCommissionPercent()).replace(".", ",")}%`),
-        summaryItem("Marca d’água", isWatermarkEnabled() ? "Com Dooki" : "Sem marca"),
-        summaryItem("Suporte", hasFeature("support_24h") ? "24h" : "Ticket padrão")
-      ];
+  const last7Days = [];
 
-      if (hasFeature("profit_analysis")) {
-        items.push(summaryItem("Análise de gastos/ganhos", "Liberada"));
-      }
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
 
-      if (hasFeature("split_bill")) {
-        items.push(summaryItem("Divisão de conta", "Liberada"));
-      }
-
-      if (hasFeature("custom_packaging")) {
-        items.push(summaryItem("Embalagens Dooki", "Incluídas"));
-      }
-
-      summary.innerHTML = items.join("");
-    }
+    last7Days.push({
+      date: d.toISOString().slice(0, 10),
+      total: 0
+    });
   }
+
+  orders.forEach(order => {
+    const status = String(order.status || "").toLowerCase();
+if (!["completed", "delivered"].includes(status)) return;
+
+    const value = Number(order.total_amount || 0);
+    const commission = order.dooki_commission_amount != null
+    ? Number(order.dooki_commission_amount)
+    : value * (getCommissionPercent() / 100);
+    const date = new Date(order.completed_at || order.created_at);
+
+    totalOrders += 1;
+    monthRevenue += value;
+    dookiCommission += commission;
+
+    if (date.toDateString() === now.toDateString()) {
+      todayRevenue += value;
+    }
+
+    const key = date.toISOString().slice(0, 10);
+
+    const found = last7Days.find(d => d.date === key);
+    if (found) {
+      found.total += value;
+    }
+  });
+
+  const avgTicket = totalOrders > 0 ? monthRevenue / totalOrders : 0;
+
+  return {
+    todayRevenue,
+    monthRevenue,
+    totalOrders,
+    avgTicket,
+    dookiCommission,
+    netRevenue: monthRevenue - dookiCommission,
+    last7Days
+  };
+}
+
+function renderFinancialDashboard() {
+  const m = calculateFinancialMetrics(state.orders);
+
+  return `
+    <section class="finance-panel">
+
+      <div class="finance-cards">
+
+        <div class="finance-card">
+          <span>Hoje</span>
+          <strong>${formatMoney(m.todayRevenue)}</strong>
+        </div>
+
+        <div class="finance-card">
+          <span>Mês</span>
+          <strong>R$ ${m.monthRevenue.toFixed(2)}</strong>
+        </div>
+
+        <div class="finance-card">
+          <span>Pedidos</span>
+          <strong>${m.totalOrders}</strong>
+        </div>
+
+        <div class="finance-card">
+          <span>Ticket médio</span>
+          <strong>R$ ${m.avgTicket.toFixed(2)}</strong>
+        </div>
+
+        <div class="finance-card">
+          <span>Comissão Dooki</span>
+          <strong>R$ ${m.dookiCommission.toFixed(2)}</strong>
+        </div>
+
+        <div class="finance-card destaque">
+          <span>Lucro líquido</span>
+          <strong>R$ ${m.netRevenue.toFixed(2)}</strong>
+        </div>
+
+      </div>
+
+      <div class="finance-chart">
+        ${m.last7Days.map(d => `
+          <div class="bar">
+            <span>R$ ${d.total.toFixed(0)}</span>
+            <div style="height:${Math.max(d.total / 2, 5)}px"></div>
+          </div>
+        `).join("")}
+      </div>
+
+    </section>
+  `;
+}
+
+  function renderFinance() {
+  const panel = document.querySelector('[data-panel="finance"]');
+  if (!panel) return;
+
+  panel.innerHTML = renderFinancialDashboard();
+}
 
   function renderSupport() {
     const table = document.getElementById("support-tickets-table");

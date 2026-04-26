@@ -2713,3 +2713,17 @@ body.orders-focus-mode .establishment-content,
   border-color: rgba(218, 165, 32, 0.22);
   box-shadow: 0 20px 42px rgba(2, 6, 23, 0.14);
 }
+
+/* Corrigir texto dentro dos cards claros */
+
+.stat-card {
+  color: #0f172a; /* texto principal escuro */
+}
+
+.stat-card span {
+  color: #64748b; /* label */
+}
+
+.stat-card strong {
+  color: #0f172a; /* número principal */
+}

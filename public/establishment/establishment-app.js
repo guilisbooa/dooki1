@@ -38,8 +38,8 @@
       copy: "Controle quantidades, custos e itens com baixa."
     },
     tables: {
-      title: "Mesas e Links",
-      copy: "Gere QR Codes de mesa e copie o link de delivery da loja."
+      title: "Mesas",
+      copy: "Gestão prática para atendimento por QR code."
     },
     finance: {
       title: "Financeiro",
@@ -1055,8 +1055,8 @@
         <div class="menu-links-head">
           <div>
             <span class="panel-kicker">Links do cardápio</span>
-            <h3>Mesas e Links</h3>
-            <p>Gerencie o link de delivery e gere QR Codes para pedidos presenciais por mesa.</p>
+            <h3>Compartilhe o cardápio da loja</h3>
+            <p>Use o link de delivery para clientes externos e o QR de mesa para pedidos presenciais.</p>
           </div>
         </div>
 
@@ -1103,13 +1103,13 @@
   }
 
   function injectMenuLinksPanel() {
-    const tablesPanel = document.querySelector('[data-panel="tables"]');
-    if (!tablesPanel) return;
+    const dashboardPanel = document.querySelector('[data-panel="dashboard"]');
+    if (!dashboardPanel) return;
 
     let panel = document.getElementById("menu-links-panel");
 
     if (!panel) {
-      tablesPanel.insertAdjacentHTML("afterbegin", renderMenuLinksPanel());
+      dashboardPanel.insertAdjacentHTML("afterbegin", renderMenuLinksPanel());
       return;
     }
 
@@ -1138,6 +1138,8 @@
   }
 
   function renderDashboard() {
+    injectMenuLinksPanel();
+
     const completedOrdersEl = document.getElementById("kpi-orders-completed");
     if (completedOrdersEl) completedOrdersEl.textContent = String(state.finance.completedOrders);
 
@@ -1720,6 +1722,131 @@
     });
   }
 
+
+  function getOrdersKanbanColumns() {
+    return [
+      {
+        key: "new",
+        title: "Novos",
+        hint: "Aceitar ou recusar",
+        statuses: ["pending"],
+        icon: "⚡"
+      },
+      {
+        key: "accepted",
+        title: "Aceitos",
+        hint: "Enviar para cozinha",
+        statuses: ["confirmed"],
+        icon: "✅"
+      },
+      {
+        key: "kitchen",
+        title: "Cozinha",
+        hint: "Em preparo",
+        statuses: ["kitchen", "preparing"],
+        icon: "👨‍🍳"
+      },
+      {
+        key: "ready",
+        title: "Prontos",
+        hint: "Retirada ou entrega",
+        statuses: ["ready"],
+        icon: "🔔"
+      },
+      {
+        key: "delivery",
+        title: "Entrega",
+        hint: "A caminho",
+        statuses: ["delivery"],
+        icon: "🛵"
+      }
+    ];
+  }
+
+  function renderOrderKanbanCard(order) {
+    const status = normalizeOrderStatus(order.status);
+    const source = getOrderSourceLabel(order);
+    const customer = order.customer_name || "Cliente";
+    const phone = order.customer_phone || order.phone || "";
+    const total = formatMoney(order.total_amount || 0);
+    const createdAt = formatDate(order.created_at);
+
+    return `
+      <article class="kanban-order-card status-${status}">
+        <div class="kanban-order-top">
+          <div>
+            <span class="kanban-order-id">#${String(order.id).slice(0, 8)}</span>
+            <strong>${customer}</strong>
+          </div>
+          <span class="order-status ${getOrderStatusClass(status)}">${getOrderStatusLabel(status)}</span>
+        </div>
+
+        <div class="kanban-order-meta">
+          <span>${source}</span>
+          <span>${createdAt}</span>
+          ${phone ? `<span>${phone}</span>` : ""}
+        </div>
+
+        <div class="kanban-order-total">
+          <small>Total</small>
+          <b>${total}</b>
+        </div>
+
+        <div class="kanban-order-actions">
+          <button class="ghost-button small" onclick="window.EstablishmentPanel.showOrderDetails('${order.id}')">Detalhes</button>
+          ${getOrderActionButtons(order)}
+        </div>
+      </article>
+    `;
+  }
+
+  function renderOrdersKanban(activeOrders) {
+    const columns = getOrdersKanbanColumns();
+
+    return `
+      <section class="orders-kanban-shell">
+        <div class="orders-kanban-head">
+          <div>
+            <span class="panel-kicker">Operação ao vivo</span>
+            <h3>Fluxo de pedidos</h3>
+            <p>Gerencie cada pedido por etapa: novo, aceito, cozinha, pronto e entrega.</p>
+          </div>
+        </div>
+
+        <div class="orders-kanban-board">
+          ${columns.map(function (column) {
+            const orders = activeOrders.filter(function (order) {
+              return column.statuses.includes(normalizeOrderStatus(order.status));
+            });
+
+            return `
+              <section class="orders-kanban-column kanban-${column.key}">
+                <div class="kanban-column-head">
+                  <div>
+                    <span>${column.icon}</span>
+                    <strong>${column.title}</strong>
+                  </div>
+                  <b>${orders.length}</b>
+                </div>
+
+                <small class="kanban-column-hint">${column.hint}</small>
+
+                <div class="kanban-column-list">
+                  ${
+                    orders.length
+                      ? orders.map(renderOrderKanbanCard).join("")
+                      : `<div class="kanban-empty">Nenhum pedido nesta etapa.</div>`
+                  }
+                </div>
+              </section>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+
   function renderOrders(searchTerm) {
     const table = document.getElementById("orders-table");
     if (!table) return;
@@ -1839,7 +1966,7 @@
       `
       : "";
 
-    const listHTML = visibleOrders.length
+    const historyListHTML = visibleOrders.length
       ? visibleOrders.map(function (order) {
           const status = normalizeOrderStatus(order.status);
 
@@ -1864,16 +1991,18 @@
                   <button class="ghost-button small" onclick="window.EstablishmentPanel.showOrderDetails('${order.id}')">
                     Detalhes
                   </button>
-
-                  ${activeTab === "active" ? getOrderActionButtons(order) : ""}
                 </div>
               </div>
             </article>
           `;
         }).join("")
-      : emptyState(activeTab === "history" ? "Nenhum pedido no histórico." : "Nenhum pedido em andamento.");
+      : emptyState("Nenhum pedido no histórico.");
 
-    table.innerHTML = summaryHTML + tabsHTML + urgentHTML + renderManualOrderForm() + `<div class="orders-list">${listHTML}</div>`;
+    const workspaceHTML = activeTab === "history"
+      ? `<div class="orders-list">${historyListHTML}</div>`
+      : renderOrdersKanban(activeOrders);
+
+    table.innerHTML = summaryHTML + tabsHTML + urgentHTML + renderManualOrderForm() + workspaceHTML;
   }
 
 
@@ -2136,8 +2265,6 @@ function renderCategories() {
   }
 
   function renderTables() {
-    injectMenuLinksPanel();
-
     const tablesTable = document.getElementById("tables-table");
     if (!tablesTable) return;
 

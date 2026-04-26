@@ -234,7 +234,9 @@ body.admin-app-body {
   flex-direction: column;
   justify-content: space-between;
   gap: 16px;
-  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
+  box-shadow:
+  inset -1px 0 0 rgba(255,255,255,0.04),
+  6px 0 24px rgba(0,0,0,0.25);
 }
 
 .admin-sidebar-top {
@@ -277,13 +279,14 @@ body.admin-app-body {
 
 .admin-nav {
   display: grid;
-  gap: 6px;
+  gap: 10px;
 }
 
 .admin-nav-item {
   width: 100%;
   min-height: 44px;
-  padding: 10px 12px;
+  padding: 12px 14px;
+  gap: 10px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.04);
   border-radius: 16px;
@@ -294,19 +297,29 @@ body.admin-app-body {
   font-weight: 700;
   transition: all 0.18s ease;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  position: relative;
+  overflow: hidden;
 }
 
 .admin-nav-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.10);
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateX(4px);
 }
 
-.admin-nav-item.active {
-  background: linear-gradient(135deg, rgba(218, 165, 32, 0.95), rgba(234, 179, 8, 0.84));
-  border-color: rgba(250, 204, 21, 0.55);
-  color: #3f2d00;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.20), 0 8px 18px rgba(218, 165, 32, 0.18);
+.admin-nav-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  border-radius: 4px;
+  background: transparent;
+  transition: 0.2s;
+}
+
+.admin-nav-item.active::before {
+  background: linear-gradient(180deg, #daa520, #facc15);
 }
 
 .admin-hidden-nav {

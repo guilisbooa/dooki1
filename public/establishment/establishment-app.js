@@ -12,6 +12,7 @@
     tables: [],
     inventoryMovements: [],
     finance: null,
+    subscription: null,
     manualOrderItems: [],
     currentScreen: "dashboard",
     knownOrderIds: new Set(),
@@ -461,6 +462,321 @@
     return getPlanKey() !== "enterprise";
   }
 
+
+  function formatDateOnly(value) {
+    if (!value) return "—";
+
+    try {
+      return new Date(value).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+    } catch {
+      return "—";
+    }
+  }
+
+  function getPlanDueDate() {
+    return (
+      state.subscription?.next_due_date ||
+      state.subscription?.expires_at ||
+      state.plan?.next_due_date ||
+      state.plan?.expires_at ||
+      null
+    );
+  }
+
+  function getSubscriptionStatus() {
+    const dueDate = getPlanDueDate();
+
+    const rawPaymentStatus = String(
+      state.subscription?.payment_status ||
+      state.plan?.payment_status ||
+      ""
+    ).toLowerCase();
+
+    const rawStatus = String(
+      state.subscription?.status ||
+      state.plan?.status ||
+      state.establishment?.status ||
+      ""
+    ).toLowerCase();
+
+    if (dueDate && new Date(dueDate) < new Date()) {
+      return "overdue";
+    }
+
+    if (["blocked", "suspended"].includes(rawStatus)) {
+      return "overdue";
+    }
+
+    if (["paid", "active", "approved"].includes(rawPaymentStatus) || rawStatus === "active") {
+      return "active";
+    }
+
+    if (["pending", "waiting", "in_process"].includes(rawPaymentStatus)) {
+      return "pending";
+    }
+
+    return dueDate ? "active" : "pending";
+  }
+
+  function getSubscriptionStatusLabel(status) {
+    const map = {
+      active: "Ativo",
+      pending: "Pagamento pendente",
+      overdue: "Plano vencido"
+    };
+
+    return map[status] || "Pendente";
+  }
+
+  function getPlanMonthlyPrice(planName) {
+    const key = String(planName || getPlanKey()).toLowerCase();
+
+    const prices = {
+      standard: 29.9,
+      standart: 29.9,
+      premium: 49.9,
+      enterprise: 79.9
+    };
+
+    return prices[key] || 0;
+  }
+
+  function renderPlanStatusPanel() {
+    const status = getSubscriptionStatus();
+    const dueDate = getPlanDueDate();
+    const planName = getPlanLabel();
+    const price = getPlanMonthlyPrice(planName);
+
+    return `
+      <section class="plan-status-panel plan-status-${status}" id="plan-status-panel">
+        <div class="plan-status-main">
+          <div>
+            <span class="panel-kicker">Assinatura Dooki</span>
+            <h3>Plano ${planName}</h3>
+            <p>
+              ${status === "active"
+                ? "Sua assinatura está ativa e a loja está liberada para operar."
+                : status === "overdue"
+                  ? "O plano está vencido. Regularize o pagamento para liberar o painel."
+                  : "Existe uma mensalidade pendente para manter sua loja ativa."}
+            </p>
+          </div>
+
+          <span class="plan-status-badge ${status}">
+            ${getSubscriptionStatusLabel(status)}
+          </span>
+        </div>
+
+        <div class="plan-status-grid">
+          <div>
+            <span>Mensalidade</span>
+            <strong>${price ? formatMoney(price) : "—"}</strong>
+          </div>
+
+          <div>
+            <span>Vencimento</span>
+            <strong>${formatDateOnly(dueDate)}</strong>
+          </div>
+
+          <div>
+            <span>Comissão Dooki</span>
+            <strong>${String(getCommissionPercent()).replace(".", ",")}%</strong>
+          </div>
+
+          <div class="plan-status-actions">
+            <button type="button" class="primary-button small" onclick="window.EstablishmentPanel.openPlanPayment()">
+              ${status === "active" ? "Pagar próxima mensalidade" : "Pagar agora"}
+            </button>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  function injectPlanStatusPanel() {
+    const dashboardPanel = document.querySelector('[data-panel="dashboard"]');
+    if (!dashboardPanel) return;
+
+    const current = document.getElementById("plan-status-panel");
+
+    if (current) {
+      current.outerHTML = renderPlanStatusPanel();
+      return;
+    }
+
+    dashboardPanel.insertAdjacentHTML("afterbegin", renderPlanStatusPanel());
+  }
+
+  function ensurePlanPaymentModal() {
+    let modal = document.getElementById("plan-payment-modal");
+
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "plan-payment-modal";
+      modal.className = "plan-payment-modal";
+      modal.innerHTML = `
+        <div class="plan-payment-backdrop" onclick="window.EstablishmentPanel.closePlanPaymentModal()"></div>
+        <div class="plan-payment-dialog">
+          <button type="button" class="plan-payment-close" onclick="window.EstablishmentPanel.closePlanPaymentModal()">×</button>
+          <div class="plan-payment-body"></div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    return modal;
+  }
+
+  function openPlanPaymentModal(contentHtml) {
+    const modal = ensurePlanPaymentModal();
+    const body = modal.querySelector(".plan-payment-body");
+    if (body) body.innerHTML = contentHtml;
+
+    modal.classList.add("active");
+    document.body.classList.add("has-plan-payment-modal");
+  }
+
+  function closePlanPaymentModal() {
+    const modal = document.getElementById("plan-payment-modal");
+    if (modal) modal.classList.remove("active");
+    document.body.classList.remove("has-plan-payment-modal");
+  }
+
+  async function openPlanPayment() {
+    const establishmentId = state.membership?.establishment_id || state.establishment?.id;
+    const planName = getPlanKey() || "standard";
+    const price = getPlanMonthlyPrice(planName);
+
+    if (!establishmentId) {
+      alert("Estabelecimento não identificado.");
+      return;
+    }
+
+    openPlanPaymentModal(`
+      <div class="plan-payment-loading">
+        <span class="panel-kicker">Pagamento</span>
+        <h3>Gerando checkout Mercado Pago...</h3>
+        <p>Aguarde enquanto preparamos o pagamento do plano ${getPlanLabel()}.</p>
+      </div>
+    `);
+
+    try {
+      const response = await fetch("/api/create-plan-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          establishment_id: establishmentId,
+          plan_name: planName,
+          payer_email: state.user?.email || state.establishment?.email || "cliente@dooki.online"
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.checkout_url) {
+        console.error("Erro ao criar pagamento:", data);
+        throw new Error(data.error || "Não foi possível gerar o pagamento.");
+      }
+
+      openPlanPaymentModal(`
+        <div class="plan-payment-success">
+          <span class="panel-kicker">Mercado Pago</span>
+          <h3>Pagamento gerado</h3>
+          <p>Mensalidade do plano <strong>${getPlanLabel()}</strong> no valor de <strong>${formatMoney(price)}</strong>.</p>
+
+          <div class="plan-payment-actions">
+            <a class="primary-button" href="${data.checkout_url}" target="_blank" rel="noopener">
+              Abrir pagamento
+            </a>
+
+            <button type="button" class="ghost-button" onclick="window.EstablishmentPanel.refreshSubscriptionAfterPayment()">
+              Já paguei / atualizar status
+            </button>
+          </div>
+
+          <small>Após o pagamento, o Mercado Pago confirma automaticamente via webhook. Caso não atualize na hora, aguarde alguns segundos e clique em atualizar.</small>
+        </div>
+      `);
+
+      window.open(data.checkout_url, "_blank");
+    } catch (error) {
+      console.error("Erro ao abrir pagamento do plano:", error);
+      openPlanPaymentModal(`
+        <div class="plan-payment-error">
+          <span class="panel-kicker">Pagamento</span>
+          <h3>Não foi possível gerar o pagamento</h3>
+          <p>${error.message || "Tente novamente em alguns instantes."}</p>
+          <button type="button" class="primary-button" onclick="window.EstablishmentPanel.closePlanPaymentModal()">
+            Fechar
+          </button>
+        </div>
+      `);
+    }
+  }
+
+  async function refreshSubscriptionAfterPayment() {
+    await refreshAllData({ silent: true });
+    renderPlanAccessBlocker();
+    injectPlanStatusPanel();
+    renderHeader();
+    alert("Status da assinatura atualizado.");
+  }
+
+  function isPlanAccessBlocked() {
+    return getSubscriptionStatus() === "overdue";
+  }
+
+  function renderPlanAccessBlocker() {
+    let blocker = document.getElementById("plan-access-blocker");
+
+    if (!isPlanAccessBlocked()) {
+      if (blocker) blocker.remove();
+      document.body.classList.remove("is-plan-blocked");
+      return;
+    }
+
+    if (!blocker) {
+      blocker = document.createElement("div");
+      blocker.id = "plan-access-blocker";
+      blocker.className = "plan-access-blocker";
+      document.body.appendChild(blocker);
+    }
+
+    document.body.classList.add("is-plan-blocked");
+
+    blocker.innerHTML = `
+      <div class="plan-access-card">
+        <span class="panel-kicker">Assinatura vencida</span>
+        <h2>Seu plano Dooki precisa ser regularizado</h2>
+        <p>O acesso ao painel está bloqueado até a confirmação do pagamento da mensalidade.</p>
+
+        <div class="plan-access-details">
+          <div>
+            <span>Plano atual</span>
+            <strong>${getPlanLabel()}</strong>
+          </div>
+          <div>
+            <span>Vencimento</span>
+            <strong>${formatDateOnly(getPlanDueDate())}</strong>
+          </div>
+        </div>
+
+        <button type="button" class="primary-button" onclick="window.EstablishmentPanel.openPlanPayment()">
+          Pagar agora
+        </button>
+
+        <button type="button" class="ghost-button" onclick="window.EstablishmentPanel.refreshSubscriptionAfterPayment()">
+          Já paguei / atualizar status
+        </button>
+      </div>
+    `;
+  }
+
+
   function bindBaseEvents() {
     const logoutButton = document.getElementById("establishment-logout");
     if (logoutButton) {
@@ -544,6 +860,7 @@
     renderHeader();
     renderSidebar();
     renderDashboard();
+    renderPlanAccessBlocker();
     renderProducts();
     renderCategories();
     renderInventory();
@@ -692,6 +1009,7 @@
       resolvedPlan = await safePlanById(state.establishment.plan_id, state.establishment.id);
     }
     state.plan = resolvedPlan || derivePlanFromEstablishment(state.establishment) || null;
+    state.subscription = state.plan;
 
     state.features = normalizeFeatures(featuresRes || [], state.establishment, state.plan);
 
@@ -731,6 +1049,9 @@
         watermark_enabled: data.watermark_enabled ?? true,
         support_level: data.support_level || "ticket",
         status: "active",
+        payment_status: "paid",
+        next_due_date: null,
+        blocked_at: null,
         started_at: null,
         expires_at: null
       };
@@ -755,6 +1076,9 @@
           commission_percent_snapshot,
           watermark_enabled_snapshot,
           support_level_snapshot,
+          payment_status,
+          next_due_date,
+          blocked_at,
           plans ( id, name, commission_percent, watermark_enabled, support_level )
         `)
         .eq("establishment_id", establishmentId)
@@ -774,6 +1098,9 @@
         watermark_enabled: data.watermark_enabled_snapshot ?? data.plans?.watermark_enabled ?? true,
         support_level: data.support_level_snapshot ?? data.plans?.support_level ?? "ticket",
         status: data.status,
+        payment_status: data.payment_status || "pending",
+        next_due_date: data.next_due_date || data.expires_at || null,
+        blocked_at: data.blocked_at || null,
         started_at: data.started_at,
         expires_at: data.expires_at
       };
@@ -798,7 +1125,10 @@
       plan_display_name: planName || "Standard",
       commission_percent: establishment.current_commission_percent ?? 0,
       watermark_enabled: establishment.watermark_enabled ?? true,
-      support_level: establishment.support_level || "ticket"
+      support_level: establishment.support_level || "ticket",
+      payment_status: establishment.payment_status || "pending",
+      next_due_date: establishment.next_due_date || establishment.expires_at || null,
+      blocked_at: establishment.blocked_at || null
     };
   }
 
@@ -1244,6 +1574,7 @@
 
   function renderDashboard() {
     injectMenuLinksPanel();
+    injectPlanStatusPanel();
 
     const completedOrdersEl = document.getElementById("kpi-orders-completed");
     if (completedOrdersEl) completedOrdersEl.textContent = String(state.finance.completedOrders);
@@ -2422,13 +2753,10 @@ function renderCategories() {
   }
 
   orders.forEach(order => {
-    const status = String(order.status || "").toLowerCase();
-if (!["completed", "delivered"].includes(status)) return;
+    if (order.status !== "completed") return;
 
     const value = Number(order.total_amount || 0);
-    const commission = order.dooki_commission_amount != null
-    ? Number(order.dooki_commission_amount)
-    : value * (getCommissionPercent() / 100);
+    const commission = Number(order.dooki_commission_amount || 0);
     const date = new Date(order.completed_at || order.created_at);
 
     totalOrders += 1;
@@ -2462,88 +2790,92 @@ if (!["completed", "delivered"].includes(status)) return;
 
 function renderFinancialDashboard() {
   const m = calculateFinancialMetrics(state.orders);
-  const maxValue = Math.max(...m.last7Days.map(d => d.total), 1);
 
   return `
-    <section class="finance-dashboard">
+    <section class="finance-panel">
 
-      <div class="finance-grid">
-        <article class="finance-card">
-          <span>Receita hoje</span>
-          <strong>${formatMoney(m.todayRevenue)}</strong>
-          <small>Pedidos concluídos hoje</small>
-        </article>
+      <div class="finance-cards">
 
-        <article class="finance-card">
-          <span>Receita do mês</span>
-          <strong>${formatMoney(m.monthRevenue)}</strong>
-          <small>Total faturado no período</small>
-        </article>
+        <div class="finance-card">
+          <span>Hoje</span>
+          <strong>R$ ${m.todayRevenue.toFixed(2)}</strong>
+        </div>
 
-        <article class="finance-card">
-          <span>Pedidos concluídos</span>
+        <div class="finance-card">
+          <span>Mês</span>
+          <strong>R$ ${m.monthRevenue.toFixed(2)}</strong>
+        </div>
+
+        <div class="finance-card">
+          <span>Pedidos</span>
           <strong>${m.totalOrders}</strong>
-          <small>Baseado em completed/delivered</small>
-        </article>
+        </div>
 
-        <article class="finance-card">
+        <div class="finance-card">
           <span>Ticket médio</span>
-          <strong>${formatMoney(m.avgTicket)}</strong>
-          <small>Média por pedido</small>
-        </article>
+          <strong>R$ ${m.avgTicket.toFixed(2)}</strong>
+        </div>
 
-        <article class="finance-card">
+        <div class="finance-card">
           <span>Comissão Dooki</span>
-          <strong>${formatMoney(m.dookiCommission)}</strong>
-          <small>Valor estimado da plataforma</small>
-        </article>
+          <strong>R$ ${m.dookiCommission.toFixed(2)}</strong>
+        </div>
 
-        <article class="finance-card finance-card-highlight">
-          <span>Lucro líquido estimado</span>
-          <strong>${formatMoney(m.netRevenue)}</strong>
-          <small>Receita menos comissão</small>
-        </article>
+        <div class="finance-card destaque">
+          <span>Lucro líquido</span>
+          <strong>R$ ${m.netRevenue.toFixed(2)}</strong>
+        </div>
+
       </div>
 
-      <section class="finance-chart-card">
-        <div class="finance-chart-head">
-          <div>
-            <span class="panel-kicker">Últimos 7 dias</span>
-            <h3>Receita por dia</h3>
+      <div class="finance-chart">
+        ${m.last7Days.map(d => `
+          <div class="bar">
+            <span>R$ ${d.total.toFixed(0)}</span>
+            <div style="height:${Math.max(d.total / 2, 5)}px"></div>
           </div>
-        </div>
-
-        <div class="finance-chart-bars">
-          ${m.last7Days.map(d => {
-            const height = Math.max((d.total / maxValue) * 120, 8);
-            const label = new Date(d.date + "T00:00:00").toLocaleDateString("pt-BR", {
-              day: "2-digit",
-              month: "2-digit"
-            });
-
-            return `
-              <div class="finance-bar-item">
-                <span>${formatMoney(d.total)}</span>
-                <div class="finance-bar-track">
-                  <div class="finance-bar-fill" style="height:${height}px"></div>
-                </div>
-                <small>${label}</small>
-              </div>
-            `;
-          }).join("")}
-        </div>
-      </section>
+        `).join("")}
+      </div>
 
     </section>
   `;
 }
 
   function renderFinance() {
-  const panel = document.querySelector('[data-panel="finance"]');
-  if (!panel) return;
+    const revenue = document.getElementById("finance-revenue");
+    const cost = document.getElementById("finance-cost");
+    const profitBefore = document.getElementById("finance-profit-before");
+    const profitAfter = document.getElementById("finance-profit-after");
+    const summary = document.getElementById("finance-summary-list");
 
-  panel.innerHTML = renderFinancialDashboard();
-}
+    if (revenue) revenue.textContent = formatMoney(state.finance.grossRevenue);
+    if (cost) cost.textContent = formatMoney(state.finance.totalCost);
+    if (profitBefore) profitBefore.textContent = formatMoney(state.finance.profitBefore);
+    if (profitAfter) profitAfter.textContent = formatMoney(state.finance.profitAfter);
+
+    if (summary) {
+      const items = [
+        summaryItem("Plano atual", getPlanLabel()),
+        summaryItem("Comissão Dooki", `${String(getCommissionPercent()).replace(".", ",")}%`),
+        summaryItem("Marca d’água", isWatermarkEnabled() ? "Com Dooki" : "Sem marca"),
+        summaryItem("Suporte", hasFeature("support_24h") ? "24h" : "Ticket padrão")
+      ];
+
+      if (hasFeature("profit_analysis")) {
+        items.push(summaryItem("Análise de gastos/ganhos", "Liberada"));
+      }
+
+      if (hasFeature("split_bill")) {
+        items.push(summaryItem("Divisão de conta", "Liberada"));
+      }
+
+      if (hasFeature("custom_packaging")) {
+        items.push(summaryItem("Embalagens Dooki", "Incluídas"));
+      }
+
+      summary.innerHTML = items.join("");
+    }
+  }
 
   function renderSupport() {
     const table = document.getElementById("support-tickets-table");
@@ -3068,6 +3400,7 @@ function renderFinancialDashboard() {
     renderHeader();
     renderSidebar();
     renderDashboard();
+    renderPlanAccessBlocker();
     renderProducts();
     renderCategories();
     renderInventory();
@@ -3724,6 +4057,9 @@ async function deleteCategory(categoryId) {
   copyDeliveryMenuLink,
   copyTableMenuLink,
   copyCurrentTableMenuLink,
-  updateTableQrPreview
+  updateTableQrPreview,
+  openPlanPayment,
+  closePlanPaymentModal,
+  refreshSubscriptionAfterPayment
 };
 })();

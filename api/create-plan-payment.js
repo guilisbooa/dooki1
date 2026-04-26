@@ -31,21 +31,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Plano inválido." });
     }
 
-    const { data: establishment, error: establishmentError } = await supabaseAdmin
-      .from("establishments")
-      .select("id, name")
-      .eq("id", establishment_id)
-      .maybeSingle();
-
-    if (establishmentError) throw establishmentError;
-
-    if (!establishment) {
-      return res.status(404).json({
-        error: "Estabelecimento não encontrado."
-      });
-    }
-
-    const { data: paymentDb, error: insertError } = await supabaseAdmin
+    // salva no banco
+    const { data: paymentDb, error } = await supabaseAdmin
       .from("plan_payments")
       .insert({
         establishment_id,
@@ -56,75 +43,64 @@ export default async function handler(req, res) {
       .select()
       .single();
 
-    if (insertError) throw insertError;
+    if (error) throw error;
 
-    const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
+    // CRIA CHECKOUT PRO
+    const mpResponse = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-        "X-Idempotency-Key": paymentDb.id
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        transaction_amount: Number(amount),
-        description: `Plano Dooki - ${plan_name}`,
-        payment_method_id: "pix",
+        items: [
+          {
+            title: `Plano Dooki - ${plan_name}`,
+            quantity: 1,
+            unit_price: Number(amount)
+          }
+        ],
         payer: {
           email: payer_email || "cliente@dooki.online"
-        }
+        },
+        external_reference: paymentDb.id,
+        notification_url: "https://www.dooki.online/api/mercadopago-webhook",
+        back_urls: {
+          success: "https://www.dooki.online/success",
+          failure: "https://www.dooki.online/failure",
+          pending: "https://www.dooki.online/pending"
+        },
+        auto_return: "approved"
       })
     });
 
     const mpData = await mpResponse.json();
 
     if (!mpResponse.ok) {
-      console.error("Erro Mercado Pago:", mpData);
-
-      await supabaseAdmin
-        .from("plan_payments")
-        .update({
-          status: "failed"
-        })
-        .eq("id", paymentDb.id);
-
+      console.error(mpData);
       return res.status(400).json({
-        error: "Erro ao gerar Pix.",
+        error: "Erro ao criar pagamento",
         details: mpData
       });
     }
 
-    const tx = mpData.point_of_interaction?.transaction_data || {};
-
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 30);
-
-    const { error: updateError } = await supabaseAdmin
+    // salva link
+    await supabaseAdmin
       .from("plan_payments")
       .update({
-        mercado_pago_payment_id: String(mpData.id),
-        pix_qr_code: tx.qr_code || null,
-        pix_qr_code_base64: tx.qr_code_base64 || null,
-        pix_ticket_url: tx.ticket_url || null,
-        expires_at: expiresAt.toISOString()
+        mercado_pago_preference_id: mpData.id,
+        checkout_url: mpData.init_point
       })
       .eq("id", paymentDb.id);
 
-    if (updateError) throw updateError;
-
     return res.status(200).json({
-      payment_id: paymentDb.id,
-      mercado_pago_payment_id: mpData.id,
-      amount,
-      qr_code: tx.qr_code,
-      qr_code_base64: tx.qr_code_base64,
-      ticket_url: tx.ticket_url,
-      status: mpData.status
+      checkout_url: mpData.init_point
     });
-  } catch (error) {
-    console.error("Erro ao criar pagamento:", error);
 
+  } catch (err) {
+    console.error(err);
     return res.status(500).json({
-      error: error.message || "Erro interno."
+      error: err.message
     });
   }
 }

@@ -4558,3 +4558,50 @@ body.has-upgrade-modal {
   font-size: 2rem;
   font-weight: 900;
 }
+
+/* =========================
+   FIX MENU ESTILO METRY (SEM QUEBRAR O RESTO)
+========================= */
+
+.establishment-sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 6px 0 20px rgba(0,0,0,0.05) !important;
+}
+
+.sidebar-top h2,
+.sidebar-user strong {
+  color: #111827 !important;
+}
+
+.sidebar-copy,
+.sidebar-user span {
+  color: #6b7280 !important;
+}
+
+.admin-nav-item {
+  background: transparent !important;
+  color: #4b5563 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.admin-nav-item:hover {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+.admin-nav-item.active {
+  background: #e0edff !important;
+  color: #2563eb !important;
+}
+
+.admin-nav-item.active::before {
+  background: #2563eb !important;
+}
+
+.sidebar-button {
+  background: #f9fafb !important;
+  color: #111827 !important;
+  border: 1px solid rgba(0,0,0,0.05) !important;
+}

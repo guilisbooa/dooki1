@@ -33,20 +33,15 @@ export default async function handler(req, res) {
     }
 
     const localPaymentId = payment.external_reference;
+    if (!localPaymentId) return res.status(200).json({ ok: true });
 
-    if (!localPaymentId) {
-      return res.status(200).json({ ok: true });
-    }
-
-    const { data: localPayment, error: localError } = await supabaseAdmin
+    const { data: localPayment } = await supabaseAdmin
       .from("plan_payments")
       .select("*")
       .eq("id", localPaymentId)
       .maybeSingle();
 
-    if (localError || !localPayment) {
-      return res.status(200).json({ ok: true });
-    }
+    if (!localPayment) return res.status(200).json({ ok: true });
 
     if (payment.status === "approved") {
       const now = new Date();
@@ -57,6 +52,7 @@ export default async function handler(req, res) {
         .from("plan_payments")
         .update({
           status: "paid",
+          mercado_pago_payment_id: String(payment.id),
           paid_at: now.toISOString()
         })
         .eq("id", localPaymentId);
@@ -79,10 +75,12 @@ export default async function handler(req, res) {
         .eq("id", localPayment.establishment_id);
     }
 
-    if (["cancelled", "rejected", "expired"].includes(payment.status)) {
+    if (["rejected", "cancelled", "expired"].includes(payment.status)) {
       await supabaseAdmin
         .from("plan_payments")
-        .update({ status: payment.status })
+        .update({
+          status: payment.status
+        })
         .eq("id", localPaymentId);
     }
 

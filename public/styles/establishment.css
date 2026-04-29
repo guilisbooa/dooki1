@@ -4291,3 +4291,24 @@ body:has(.menu-preview-sidebar:not([style*="display: none"])) .establishment-con
     padding-right: 18px !important;
   }
 }
+
+/* Corrige vazio quando a prévia do cardápio está escondida */
+.establishment-content {
+  padding-right: 26px !important;
+}
+
+/* Só cria espaço lateral nas abas Cardápio e Categorias */
+body:has([data-panel="menu"].active) .establishment-content,
+body:has([data-panel="products"].active) .establishment-content,
+body:has([data-screen="menu"].active) .establishment-content,
+body:has([data-screen="products"].active) .establishment-content,
+body:has([data-panel="categories"].active) .establishment-content,
+body:has([data-screen="categories"].active) .establishment-content {
+  padding-right: 390px !important;
+}
+
+@media (max-width: 1360px) {
+  .establishment-content {
+    padding-right: 18px !important;
+  }
+}

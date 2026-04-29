@@ -4249,3 +4249,45 @@ textarea.input:focus {
     border-radius: 16px !important;
   }
 }
+
+/* =========================
+   CORREÇÃO PRÉVIA CARDÁPIO
+   Mostrar apenas em Cardápio e Categorias
+========================= */
+
+/* por padrão, esconde a prévia */
+.menu-preview-sidebar {
+  display: none !important;
+}
+
+/* mostra somente na aba Cardápio */
+body:has([data-panel="menu"].active) .menu-preview-sidebar,
+body:has([data-panel="products"].active) .menu-preview-sidebar,
+body:has([data-screen="menu"].active) .menu-preview-sidebar,
+body:has([data-screen="products"].active) .menu-preview-sidebar {
+  display: block !important;
+}
+
+/* mostra somente na aba Categorias */
+body:has([data-panel="categories"].active) .menu-preview-sidebar,
+body:has([data-screen="categories"].active) .menu-preview-sidebar {
+  display: block !important;
+}
+
+/* quando a prévia aparecer, cria espaço real para não sobrepor */
+body:has(.menu-preview-sidebar:not([style*="display: none"])) .establishment-content {
+  padding-right: 390px !important;
+}
+
+/* telas menores: prévia vai para baixo, sem sobrepor */
+@media (max-width: 1360px) {
+  .menu-preview-sidebar {
+    position: static !important;
+    width: 100% !important;
+    margin-top: 22px !important;
+  }
+
+  .establishment-content {
+    padding-right: 18px !important;
+  }
+}

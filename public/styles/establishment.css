@@ -3644,3 +3644,608 @@ body.is-plan-blocked .menu-preview-sidebar {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* =========================================================
+   DOOKI SaaS CLEAN UI - estilo inspirado em dashboard moderno
+   Aplicado sem alterar HTML/JS
+========================================================= */
+
+:root {
+  --bb-page: #f5f7fb;
+  --bb-sidebar: #ffffff;
+  --bb-card: #ffffff;
+  --bb-card-soft: #f8fafc;
+  --bb-text: #1d2939;
+  --bb-muted: #667085;
+  --bb-line: rgba(15, 23, 42, 0.08);
+  --bb-line-strong: rgba(15, 23, 42, 0.12);
+  --bb-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+  --bb-shadow-soft: 0 8px 20px rgba(15, 23, 42, 0.05);
+  --bb-primary: #101828;
+  --bb-primary-soft: #eef4ff;
+  --bb-blue: #2f80ed;
+  --bb-green-soft: #eafaf1;
+  --bb-yellow-soft: #fff8e8;
+  --bb-purple-soft: #f6edff;
+  --bb-gold: #daa520;
+}
+
+body.establishment-app-body,
+body.admin-app-body {
+  background:
+    radial-gradient(circle at top left, rgba(47, 128, 237, 0.055), transparent 24%),
+    linear-gradient(180deg, #f7f9fc 0%, #f3f5f9 100%) !important;
+  color: var(--bb-text) !important;
+}
+
+.establishment-content,
+.admin-main {
+  background: transparent !important;
+  padding: 26px !important;
+  gap: 22px !important;
+}
+
+.establishment-sidebar,
+.admin-sidebar {
+  background: var(--bb-sidebar) !important;
+  border-right: 1px solid var(--bb-line) !important;
+  box-shadow: 8px 0 28px rgba(15, 23, 42, 0.045) !important;
+  color: var(--bb-text) !important;
+}
+
+.sidebar-logo {
+  max-width: 118px !important;
+}
+
+.sidebar-brand-copy h2,
+.sidebar-top h2,
+.sidebar-user strong {
+  color: var(--bb-text) !important;
+}
+
+.sidebar-copy,
+.sidebar-user span {
+  color: var(--bb-muted) !important;
+}
+
+.admin-chip {
+  background: #f2f4f7 !important;
+  color: #475467 !important;
+  border: 1px solid var(--bb-line) !important;
+}
+
+.admin-nav,
+.establishment-nav,
+.establishment-nav-compact {
+  gap: 8px !important;
+}
+
+.admin-nav-item {
+  min-height: 44px !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  background: transparent !important;
+  color: #475467 !important;
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  padding: 11px 13px !important;
+  font-weight: 800 !important;
+  transform: none !important;
+}
+
+.admin-nav-item:hover {
+  background: #f2f4f7 !important;
+  color: #101828 !important;
+  transform: none !important;
+}
+
+.admin-nav-item.active {
+  background: #eef4ff !important;
+  color: #2563eb !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-nav-item::before,
+.establishment-nav .admin-nav-item::before,
+.establishment-nav-compact .admin-nav-item::before {
+  position: static !important;
+  inset: auto !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: currentColor !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.9rem !important;
+  font-weight: 900 !important;
+}
+
+.admin-nav-item.active::before {
+  background: rgba(37, 99, 235, 0.12) !important;
+  color: #2563eb !important;
+}
+
+.admin-nav .admin-nav-item:nth-child(1)::before { content: "⌂"; }
+.admin-nav .admin-nav-item:nth-child(2)::before { content: "▦"; }
+.admin-nav .admin-nav-item:nth-child(3)::before { content: "◈"; }
+.admin-nav .admin-nav-item:nth-child(4)::before { content: "$"; }
+.admin-nav .admin-nav-item:nth-child(5)::before { content: "?"; }
+.admin-nav .admin-nav-item:nth-child(6)::before { content: "↗"; }
+
+.establishment-nav .admin-nav-item:nth-child(1)::before { content: "⌂"; }
+.establishment-nav .admin-nav-item:nth-child(2)::before { content: "□"; }
+.establishment-nav .admin-nav-item:nth-child(3)::before { content: "▦"; }
+.establishment-nav .admin-nav-item:nth-child(4)::before { content: "☰"; }
+.establishment-nav .admin-nav-item:nth-child(5)::before { content: "▣"; }
+.establishment-nav .admin-nav-item:nth-child(6)::before { content: "⌘"; }
+.establishment-nav .admin-nav-item:nth-child(7)::before { content: "$"; }
+.establishment-nav .admin-nav-item:nth-child(8)::before { content: "?"; }
+.establishment-nav .admin-nav-item:nth-child(9)::before { content: "⚙"; }
+
+.admin-nav-item.is-locked,
+.locked-nav-item {
+  background: #fafafa !important;
+  color: #98a2b3 !important;
+}
+
+.admin-topbar {
+  background: var(--bb-card) !important;
+  color: var(--bb-text) !important;
+  border: 1px solid var(--bb-line) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--bb-shadow) !important;
+  padding: 24px !important;
+}
+
+.admin-topbar h1,
+.admin-topbar-left h1 {
+  color: var(--bb-text) !important;
+  font-size: clamp(1.9rem, 3vw, 2.6rem) !important;
+}
+
+.panel-copy {
+  color: var(--bb-muted) !important;
+}
+
+.panel-kicker {
+  background: var(--bb-yellow-soft) !important;
+  color: #946200 !important;
+  border: 1px solid rgba(218, 165, 32, 0.12) !important;
+}
+
+.status-pill {
+  background: #f8fafc !important;
+  color: #344054 !important;
+  border: 1px solid var(--bb-line) !important;
+  box-shadow: none !important;
+}
+
+.status-pill.alt {
+  background: var(--bb-yellow-soft) !important;
+  color: #946200 !important;
+  border-color: rgba(218, 165, 32, 0.14) !important;
+}
+
+.panel,
+.panel-gold,
+.menu-preview-panel,
+.menu-links-panel,
+.manual-order-panel,
+.orders-kanban-shell,
+.incoming-orders-alert,
+.locked-feature-card,
+.plan-status-panel,
+.finance-chart-card {
+  background: var(--bb-card) !important;
+  border: 1px solid var(--bb-line) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--bb-shadow) !important;
+  color: var(--bb-text) !important;
+  backdrop-filter: none !important;
+}
+
+.panel-head h3,
+.manual-order-head h3,
+.menu-links-head h3,
+.orders-kanban-head h3,
+.incoming-orders-head h3,
+.locked-feature-card h3,
+.plan-status-main h3,
+.finance-chart-head h3 {
+  color: var(--bb-text) !important;
+}
+
+.manual-order-head p,
+.menu-links-head p,
+.orders-kanban-head p,
+.incoming-orders-head p,
+.locked-feature-card p,
+.plan-status-main p {
+  color: var(--bb-muted) !important;
+}
+
+.stat-card,
+.orders-summary-card,
+.quick-action-card,
+.pro-list-card,
+.pro-store-row,
+.pro-support-card,
+.catalog-card,
+.order-card,
+.menu-link-card,
+.upgrade-plan-card,
+.kanban-order-card,
+.store-mini-card,
+.detail-card,
+.thread-message,
+.plan-suggestion-card,
+.plan-revenue-card,
+.plan-db-card,
+.finance-card {
+  background: var(--bb-card) !important;
+  border: 1px solid var(--bb-line) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--bb-shadow-soft) !important;
+  color: var(--bb-text) !important;
+}
+
+.stat-card:hover,
+.pro-list-card:hover,
+.pro-store-row:hover,
+.store-mini-card:hover,
+.detail-card:hover,
+.quick-action-card:hover,
+.catalog-card:hover,
+.kanban-order-card:hover,
+.finance-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08) !important;
+  border-color: rgba(47, 128, 237, 0.16) !important;
+}
+
+.stats-grid .stat-card:nth-child(1),
+.admin-stats .stat-card:nth-child(1),
+.finance-grid .finance-card:nth-child(1) {
+  background: linear-gradient(135deg, #edf4ff, #ffffff) !important;
+}
+
+.stats-grid .stat-card:nth-child(2),
+.admin-stats .stat-card:nth-child(2),
+.finance-grid .finance-card:nth-child(2) {
+  background: linear-gradient(135deg, #eafaf1, #ffffff) !important;
+}
+
+.stats-grid .stat-card:nth-child(3),
+.admin-stats .stat-card:nth-child(3),
+.finance-grid .finance-card:nth-child(3) {
+  background: linear-gradient(135deg, #f6edff, #ffffff) !important;
+}
+
+.stats-grid .stat-card:nth-child(4),
+.admin-stats .stat-card:nth-child(4),
+.finance-grid .finance-card:nth-child(4) {
+  background: linear-gradient(135deg, #fff8e8, #ffffff) !important;
+}
+
+.stat-card span,
+.orders-summary-card span,
+.quick-action-card span,
+.pro-store-row-content span,
+.pro-list-content span,
+.catalog-meta,
+.order-content span,
+.menu-link-card span,
+.finance-card span,
+.finance-card small {
+  color: var(--bb-muted) !important;
+}
+
+.stat-card strong,
+.orders-summary-card strong,
+.quick-action-card strong,
+.pro-store-row-content strong,
+.pro-list-content strong,
+.catalog-card-title-row strong,
+.order-content strong,
+.menu-link-card strong,
+.upgrade-plan-card strong,
+.upgrade-plan-card b,
+.finance-card strong {
+  color: var(--bb-text) !important;
+}
+
+.stat-card {
+  padding: 20px !important;
+  min-height: 112px !important;
+}
+
+.stat-card strong {
+  font-size: clamp(1.7rem, 2.5vw, 2.35rem) !important;
+}
+
+.pro-summary-item,
+.detail-item,
+.order-details-grid div,
+.order-details-section,
+.manual-order-item,
+.manual-order-empty,
+.kanban-empty,
+.finance-bar-track,
+.plan-status-grid > div,
+.plan-access-details div {
+  background: #f8fafc !important;
+  border: 1px solid var(--bb-line) !important;
+  color: var(--bb-text) !important;
+}
+
+.pro-summary-item span,
+.detail-item span,
+.order-details-grid span,
+.manual-order-item span,
+.manual-order-footer span,
+.kanban-empty {
+  color: var(--bb-muted) !important;
+}
+
+.pro-summary-item strong,
+.detail-item strong,
+.order-details-grid strong,
+.manual-order-item strong,
+.manual-order-footer strong,
+.manual-order-item b {
+  color: var(--bb-text) !important;
+}
+
+.pro-empty-state {
+  background: #f8fafc !important;
+  border: 1px dashed var(--bb-line-strong) !important;
+}
+
+.pro-empty-state strong {
+  color: var(--bb-text) !important;
+}
+
+.pro-empty-state span {
+  color: var(--bb-muted) !important;
+}
+
+.field span,
+.admin-login-field span {
+  color: var(--bb-text) !important;
+}
+
+.input,
+.admin-login-input,
+select.input,
+textarea.input {
+  background: #ffffff !important;
+  color: var(--bb-text) !important;
+  border: 1px solid var(--bb-line-strong) !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+
+.input:focus,
+.admin-login-input:focus,
+select.input:focus,
+textarea.input:focus {
+  border-color: rgba(47, 128, 237, 0.45) !important;
+  box-shadow: 0 0 0 4px rgba(47, 128, 237, 0.10) !important;
+}
+
+.primary-button,
+.admin-login-submit {
+  background: #101828 !important;
+  color: #ffffff !important;
+  border: 1px solid #101828 !important;
+  box-shadow: 0 10px 22px rgba(16, 24, 40, 0.16) !important;
+}
+
+.primary-button:hover,
+.admin-login-submit:hover {
+  background: #1d2939 !important;
+  transform: translateY(-1px) !important;
+}
+
+.ghost-button,
+.sidebar-button {
+  background: #ffffff !important;
+  color: var(--bb-text) !important;
+  border: 1px solid var(--bb-line-strong) !important;
+  box-shadow: none !important;
+}
+
+.ghost-button:hover,
+.sidebar-button:hover {
+  background: #f8fafc !important;
+  transform: translateY(-1px) !important;
+}
+
+.ghost-button.small.danger {
+  color: #b42318 !important;
+  border-color: rgba(180, 35, 24, 0.20) !important;
+}
+
+.ghost-button.small.success {
+  background: #12b76a !important;
+  border-color: #12b76a !important;
+  color: #ffffff !important;
+}
+
+.pro-avatar,
+.catalog-avatar,
+.order-avatar {
+  background: var(--bb-yellow-soft) !important;
+  color: #946200 !important;
+}
+
+.category-avatar-enhanced {
+  background: var(--bb-primary-soft) !important;
+  color: #2563eb !important;
+}
+
+.pro-status-badge.success,
+.order-status.success,
+.plan-status-badge.active {
+  background: var(--bb-green-soft) !important;
+  color: #067647 !important;
+}
+
+.pro-status-badge.warning,
+.order-status.warning,
+.plan-status-badge.pending {
+  background: var(--bb-yellow-soft) !important;
+  color: #946200 !important;
+}
+
+.pro-status-badge.danger,
+.order-status.danger,
+.plan-status-badge.overdue {
+  background: #fff1f0 !important;
+  color: #b42318 !important;
+}
+
+.pro-status-badge.neutral,
+.order-status.neutral {
+  background: #f2f4f7 !important;
+  color: #475467 !important;
+}
+
+.orders-kanban-column {
+  background: #f8fafc !important;
+  border: 1px solid var(--bb-line) !important;
+  border-radius: 16px !important;
+}
+
+.kanban-column-head strong,
+.kanban-order-top strong,
+.kanban-order-total b {
+  color: var(--bb-text) !important;
+}
+
+.kanban-column-hint,
+.kanban-order-id,
+.kanban-order-meta,
+.kanban-order-total small {
+  color: var(--bb-muted) !important;
+}
+
+.incoming-orders-alert {
+  background:
+    radial-gradient(circle at top right, rgba(218, 165, 32, 0.10), transparent 30%),
+    #ffffff !important;
+}
+
+.incoming-orders-head > strong,
+.incoming-order-pulse {
+  background: var(--bb-yellow-soft) !important;
+  color: #946200 !important;
+  border: 1px solid rgba(218, 165, 32, 0.14) !important;
+}
+
+.incoming-order-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(218, 165, 32, 0.16) !important;
+  box-shadow: var(--bb-shadow-soft) !important;
+}
+
+.upgrade-plan-dialog,
+.order-details-dialog,
+.plan-payment-dialog,
+.plan-access-card {
+  background: #ffffff !important;
+  color: var(--bb-text) !important;
+  border: 1px solid var(--bb-line) !important;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.18) !important;
+}
+
+.upgrade-plan-head h3,
+.order-details-head h3,
+.order-details-section h4,
+.order-detail-item strong,
+.plan-payment-body h3,
+.plan-access-card h2 {
+  color: var(--bb-text) !important;
+}
+
+.upgrade-plan-head p,
+.order-details-head p,
+.order-details-section p,
+.order-detail-item span,
+.plan-payment-body p,
+.plan-payment-body small,
+.plan-access-card p {
+  color: var(--bb-muted) !important;
+}
+
+.admin-menu-preview-stage {
+  background: #f8fafc !important;
+  border: 1px solid var(--bb-line) !important;
+}
+
+.admin-menu-preview-toolbar h3 {
+  color: var(--bb-text) !important;
+}
+
+.admin-menu-preview-toolbar p {
+  color: var(--bb-muted) !important;
+}
+
+.menu-preview-panel {
+  background: #ffffff !important;
+}
+
+.menu-preview-store strong,
+.menu-preview-category-title,
+.menu-preview-item strong,
+.menu-preview-price {
+  color: var(--bb-text) !important;
+}
+
+.menu-preview-store span,
+.menu-preview-store p,
+.menu-preview-item p {
+  color: var(--bb-muted) !important;
+}
+
+.admin-login-card,
+.establishment-login-modal,
+.minimal-login-modal {
+  background: #ffffff !important;
+  border: 1px solid var(--bb-line) !important;
+  box-shadow: var(--bb-shadow) !important;
+}
+
+.admin-login-copy h1,
+.minimal-login-content h1 {
+  color: var(--bb-text) !important;
+}
+
+.admin-login-copy p,
+.minimal-login-content .panel-copy {
+  color: var(--bb-muted) !important;
+}
+
+@media (max-width: 980px) {
+  .admin-main,
+  .establishment-content {
+    padding: 18px !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-topbar,
+  .panel,
+  .manual-order-panel,
+  .orders-kanban-shell,
+  .menu-links-panel,
+  .plan-status-panel {
+    border-radius: 16px !important;
+  }
+}

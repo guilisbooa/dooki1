@@ -53,8 +53,12 @@
       copy: "Abra tickets e acompanhe o atendimento da sua loja."
     },
     settings: {
-      title: "Configurações",
-      copy: "Atualize os principais dados do estabelecimento."
+    title: "Configurações",
+    copy: "Atualize os principais dados do estabelecimento."
+    },
+    integrations: {
+    title: "Integrações",
+    copy: "Conecte iFood e 99Food ao painel da Dooki."
     }
   };
 
@@ -189,6 +193,10 @@
     if (planKey === "premium") return 2;
     if (planKey === "enterprise") return 3;
     return 0;
+  }
+
+  function isEnterprisePlan(plan) {
+  return String(plan || "").toLowerCase() === "enterprise";
   }
 
   function getPlanLabel() {
@@ -867,6 +875,7 @@
     renderTables();
     renderFinance();
     renderSupport();
+    renderIntegrations();
     fillSettingsForm();
     refreshMenuPreview();
     startAutoRefresh();
@@ -1437,6 +1446,10 @@
         return;
       }
       renderSupport();
+    }
+
+    if (screen === "integrations") {
+    renderIntegrations();
     }
 
     if (screen === "settings") fillSettingsForm();
@@ -2972,6 +2985,80 @@ function renderFinancialDashboard() {
       : emptyState("Nenhum ticket aberto pela loja.");
   }
 
+  function renderIntegrations() {
+  const panel = document.querySelector('[data-panel="integrations"]');
+  if (!panel) return;
+
+  if (!isEnterprisePlan(getPlanKey())) {
+    panel.innerHTML = `
+      <section class="locked-feature-card">
+        <span class="locked-badge">Plano Enterprise</span>
+        <h2>Integrações externas</h2>
+        <p>
+          Conecte iFood e 99Food diretamente na Dooki para centralizar pedidos,
+          sincronizar status e reduzir retrabalho operacional.
+        </p>
+
+        <div class="locked-integrations-list">
+          <div class="integration-mini-card disabled">
+            <strong>iFood</strong>
+            <span>Disponível no Enterprise</span>
+          </div>
+
+          <div class="integration-mini-card disabled">
+            <strong>99Food</strong>
+            <span>Disponível no Enterprise</span>
+          </div>
+        </div>
+
+        <button class="primary-button" disabled>
+          Disponível apenas no Enterprise
+        </button>
+      </section>
+    `;
+    return;
+  }
+
+  panel.innerHTML = `
+    <section class="page-section">
+      <div class="section-header">
+        <div>
+          <h2>Integrações</h2>
+          <p>Conecte marketplaces externos à sua operação na Dooki.</p>
+        </div>
+      </div>
+
+      <div class="integrations-grid">
+        <div class="integration-card">
+          <div class="integration-card-header">
+            <strong>iFood</strong>
+            <span class="integration-status disconnected">Não conectado</span>
+          </div>
+
+          <p>Receba pedidos do iFood diretamente no painel da Dooki.</p>
+
+          <button class="primary-button" data-connect-provider="ifood">
+            Conectar iFood
+          </button>
+        </div>
+
+        <div class="integration-card">
+          <div class="integration-card-header">
+            <strong>99Food</strong>
+            <span class="integration-status disconnected">Não conectado</span>
+          </div>
+
+          <p>Centralize pedidos da 99Food dentro da Dooki.</p>
+
+          <button class="primary-button" data-connect-provider="99food">
+            Conectar 99Food
+          </button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
   function fillSettingsForm() {
     const settingsName = document.getElementById("settings-name");
     const settingsCity = document.getElementById("settings-city");
@@ -3471,6 +3558,7 @@ function renderFinancialDashboard() {
     renderTables();
     renderFinance();
     renderSupport();
+    renderIntegrations();
     fillSettingsForm();
     refreshMenuPreview();
   }
@@ -4124,6 +4212,7 @@ async function deleteCategory(categoryId) {
   updateTableQrPreview,
   openPlanPayment,
   closePlanPaymentModal,
-  refreshSubscriptionAfterPayment
+  refreshSubscriptionAfterPayment,
+  renderIntegrations
 };
 })();

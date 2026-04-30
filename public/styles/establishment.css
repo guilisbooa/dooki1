@@ -4250,45 +4250,285 @@ textarea.input:focus {
   }
 }
 
+
 /* =========================
-   CORREÇÃO PRÉVIA CARDÁPIO
-   Mostrar apenas em Cardápio e Categorias
+   CENTRAL DA LOJA - DASHBOARD MODERNO
 ========================= */
 
-/* por padrão, esconde a prévia */
-.menu-preview-sidebar {
-  display: none !important;
+.store-home-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 26px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
 }
 
-/* mostra somente na aba Cardápio */
-body:has([data-panel="menu"].active) .menu-preview-sidebar,
-body:has([data-panel="products"].active) .menu-preview-sidebar,
-body:has([data-screen="menu"].active) .menu-preview-sidebar,
-body:has([data-screen="products"].active) .menu-preview-sidebar {
-  display: block !important;
+.store-home-hero h2 {
+  margin: 10px 0 6px;
+  color: #1d2939;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(1.6rem, 3vw, 2.25rem);
 }
 
-/* mostra somente na aba Categorias */
-body:has([data-panel="categories"].active) .menu-preview-sidebar,
-body:has([data-screen="categories"].active) .menu-preview-sidebar {
-  display: block !important;
+.store-home-hero p {
+  margin: 0;
+  color: #667085;
+  text-transform: capitalize;
 }
 
-/* quando a prévia aparecer, cria espaço real para não sobrepor */
-body:has(.menu-preview-sidebar:not([style*="display: none"])) .establishment-content {
-  padding-right: 390px !important;
+.store-home-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
 }
 
-/* telas menores: prévia vai para baixo, sem sobrepor */
-@media (max-width: 1360px) {
-  .menu-preview-sidebar {
-    position: static !important;
-    width: 100% !important;
-    margin-top: 22px !important;
+.store-home-metric {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 116px;
+  padding: 20px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.store-home-metric.is-blue { background: linear-gradient(135deg, #edf4ff, #ffffff); }
+.store-home-metric.is-green { background: linear-gradient(135deg, #eafaf1, #ffffff); }
+.store-home-metric.is-purple { background: linear-gradient(135deg, #f6edff, #ffffff); }
+.store-home-metric.is-yellow { background: linear-gradient(135deg, #fff8e8, #ffffff); }
+
+.store-home-icon {
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 24, 40, 0.08);
+  color: #1d2939;
+  font-weight: 900;
+}
+
+.store-home-metric span {
+  display: block;
+  color: #667085;
+  font-weight: 800;
+  font-size: 0.86rem;
+  margin-bottom: 5px;
+}
+
+.store-home-metric strong {
+  display: block;
+  color: #1d2939;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.store-home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.85fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.store-home-side {
+  display: grid;
+  gap: 16px;
+}
+
+.store-home-card {
+  padding: 20px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.store-home-card-large {
+  min-height: 100%;
+}
+
+.store-home-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.store-home-card-head h3 {
+  margin: 9px 0 0;
+  color: #1d2939;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.25rem;
+}
+
+.store-home-list {
+  display: grid;
+  gap: 10px;
+}
+
+.store-home-order {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.store-home-order-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.store-home-order-avatar {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 14px;
+  background: #eef4ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+}
+
+.store-home-order-left strong {
+  display: block;
+  color: #1d2939;
+  margin-bottom: 4px;
+}
+
+.store-home-order-left span {
+  display: block;
+  color: #667085;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.store-home-order-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.store-home-order-right strong {
+  color: #1d2939;
+  white-space: nowrap;
+}
+
+.store-home-link-box {
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: #475467;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.store-home-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.store-home-quick {
+  display: grid;
+  gap: 10px;
+}
+
+.store-home-quick button {
+  min-height: 42px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #1d2939;
+  font-weight: 850;
+  cursor: pointer;
+  text-align: left;
+  padding: 0 14px;
+  transition: 0.18s ease;
+}
+
+.store-home-quick button:hover {
+  background: #eef4ff;
+  color: #2563eb;
+}
+
+.store-home-status-list {
+  display: grid;
+  gap: 10px;
+}
+
+.store-home-status-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.store-home-status-list div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.store-home-status-list span {
+  color: #667085;
+  font-weight: 800;
+}
+
+.store-home-status-list strong {
+  color: #1d2939;
+}
+
+@media (max-width: 1180px) {
+  .store-home-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .establishment-content {
-    padding-right: 18px !important;
+  .store-home-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .store-home-hero,
+  .store-home-card-head,
+  .store-home-order {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .store-home-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .store-home-order-right,
+  .store-home-actions,
+  .store-home-actions .primary-button,
+  .store-home-actions .ghost-button {
+    width: 100%;
   }
 }
 

@@ -1573,138 +1573,202 @@
   }
 
   function renderDashboard() {
-    injectMenuLinksPanel();
-    injectPlanStatusPanel();
+    const panel = document.querySelector('[data-panel="dashboard"]');
+    if (!panel) return;
 
-    const completedOrdersEl = document.getElementById("kpi-orders-completed");
-    if (completedOrdersEl) completedOrdersEl.textContent = String(state.finance.completedOrders);
+    const now = new Date();
+    const todayKey = now.toISOString().slice(0, 10);
 
-    const grossRevenueEl = document.getElementById("kpi-gross-revenue");
-    if (grossRevenueEl) grossRevenueEl.textContent = formatMoney(state.finance.grossRevenue);
+    const completedOrders = state.orders.filter(function (order) {
+      const status = String(order.status || "").toLowerCase();
+      return ["completed", "delivered", "done", "finalizado", "entregue"].includes(status);
+    });
 
-    const dookiFeeEl = document.getElementById("kpi-dooki-fee");
-    if (dookiFeeEl) dookiFeeEl.textContent = formatMoney(state.finance.dookiFee);
+    const todayOrders = state.orders.filter(function (order) {
+      const createdKey = new Date(order.created_at || Date.now()).toISOString().slice(0, 10);
+      return createdKey === todayKey;
+    });
 
-    const productsActiveEl = document.getElementById("kpi-products-active");
-    if (productsActiveEl) {
-      productsActiveEl.textContent = String(
-        state.products.filter(function (product) { return product.active !== false; }).length
-      );
-    }
+    const todayRevenue = completedOrders.reduce(function (acc, order) {
+      const createdKey = new Date(order.completed_at || order.created_at || Date.now()).toISOString().slice(0, 10);
+      if (createdKey !== todayKey) return acc;
+      return acc + Number(order.total_amount || order.total || 0);
+    }, 0);
 
-    const quickActionsGrid = document.getElementById("quick-actions-grid");
-    if (quickActionsGrid) {
-      quickActionsGrid.innerHTML = [
-        quickActionButton("Novo produto", "products", true),
-        quickActionButton("Nova categoria", "categories", true),
-        quickActionButton("Ver pedidos", "orders", true),
-        quickActionButton("Abrir suporte", "support", hasFeature("ticket_support")),
-        quickActionButton("Gerenciar mesas", "tables", hasFeature("table_qr_code")),
-        quickActionButton("Financeiro", "finance", true)
-      ].join("");
-    }
+    const pendingOrders = state.orders.filter(function (order) {
+      const status = String(order.status || "").toLowerCase();
+      return ["pending", "new", "novo", "aguardando"].includes(status);
+    });
 
-    const featureList = document.getElementById("dashboard-feature-list");
-    if (featureList) {
-      featureList.innerHTML = state.features.length
-  ? state.features
-      .filter(function (feature) {
-        if (!feature.enabled) return false;
+    const activeProducts = state.products.filter(function (product) {
+      return product.active !== false;
+    });
 
-        if (feature.feature_key === "dooki_watermark") {
-          return getPlanKey() === "enterprise";
-        }
-
-        return true;
-      })
-      .map(function (feature) {
-        return `
-          <article class="pro-list-card">
-            <div class="pro-list-main">
-              <div class="pro-list-content">
-                <strong>${humanizeFeature(feature.feature_key)}</strong>
-                <span>Liberado no plano ${getPlanLabel()}.</span>
-              </div>
-              <span class="pro-status-badge success">Ativo</span>
-            </div>
-          </article>
-        `;
-      }).join("")
-  : emptyState("Nenhum recurso ativo encontrado.");
-    }
-
-    const recentOrders = document.getElementById("dashboard-recent-orders");
-    if (recentOrders) {
-      recentOrders.innerHTML = state.orders.length
-        ? state.orders.slice(0, 6).map(function (order) {
-            return `
-              <article class="pro-store-row">
-                <div class="pro-store-row-left">
-                  <div class="pro-avatar">#</div>
-                  <div class="pro-store-row-content">
-                    <strong>Pedido #${String(order.id).slice(0, 8)}</strong>
-                    <span>${order.customer_name || "Cliente"} • ${formatDate(order.created_at)}</span>
-                  </div>
-                </div>
-                <div class="pro-store-row-right">
-                  <span class="pro-status-badge ${getOrderStatusClass(order.status)}">${order.status || "pendente"}</span>
-                  <strong>${formatMoney(order.total_amount || 0)}</strong>
-                </div>
-              </article>
-            `;
-          }).join("")
-        : emptyState("Nenhum pedido cadastrado ainda.");
-    }
-
-    const summaryList = document.getElementById("dashboard-summary-list");
-    if (summaryList) {
-      summaryList.innerHTML = [
-        summaryItem("Cidade", state.establishment?.city || "—"),
-        summaryItem("Pedidos cadastrados", String(state.orders.length)),
-        summaryItem("Categorias", String(state.categories.length)),
-        summaryItem("Tickets abertos", String(
-          state.tickets.filter(function (ticket) {
-            return !["fechado", "resolvido", "closed"].includes(String(ticket.status || "").toLowerCase());
-          }).length
-        ))
-      ].join("");
-    }
+    const uniqueCustomers = new Set(
+      state.orders
+        .map(function (order) {
+          return String(order.customer_phone || order.customer_name || "").trim().toLowerCase();
+        })
+        .filter(Boolean)
+    );
 
     const lowStock = state.products.filter(function (product) {
       return product.track_inventory !== false &&
         Number(product.stock_quantity || 0) <= Number(product.stock_min_quantity || 0);
     });
 
-    const lowStockContainer = document.getElementById("dashboard-low-stock");
-    if (lowStockContainer) {
-      lowStockContainer.innerHTML = lowStock.length
-        ? lowStock.slice(0, 6).map(function (product) {
-            return `
-              <article class="pro-list-card">
-                <div class="pro-list-main">
-                  <div class="pro-list-content">
-                    <strong>${product.name || "Produto"}</strong>
-                    <span>Atual: ${Number(product.stock_quantity || 0)} • mínimo: ${Number(product.stock_min_quantity || 0)}</span>
+    const recentOrders = state.orders.slice(0, 5);
+    const deliveryLink = getDeliveryMenuLink();
+
+    panel.innerHTML = `
+      ${renderPlanStatusPanel()}
+
+      <section class="store-home-hero">
+        <div>
+          <span class="panel-kicker">Visão geral</span>
+          <h2>Bem-vindo, ${state.establishment?.name || "loja"}!</h2>
+          <p>${new Date().toLocaleDateString("pt-BR", {
+            weekday: "long",
+            day: "2-digit",
+            month: "long",
+            year: "numeric"
+          })}</p>
+        </div>
+
+        <button type="button" class="primary-button" onclick="window.EstablishmentPanel.goTo('orders')">
+          Ver pedidos
+        </button>
+      </section>
+
+      <section class="store-home-metrics">
+        <article class="store-home-metric is-blue">
+          <div class="store-home-icon">□</div>
+          <div>
+            <span>Pedidos hoje</span>
+            <strong>${todayOrders.length}</strong>
+          </div>
+        </article>
+
+        <article class="store-home-metric is-green">
+          <div class="store-home-icon">R$</div>
+          <div>
+            <span>Receita hoje</span>
+            <strong>${formatMoney(todayRevenue)}</strong>
+          </div>
+        </article>
+
+        <article class="store-home-metric is-purple">
+          <div class="store-home-icon">●</div>
+          <div>
+            <span>Clientes</span>
+            <strong>${uniqueCustomers.size}</strong>
+          </div>
+        </article>
+
+        <article class="store-home-metric is-yellow">
+          <div class="store-home-icon">▦</div>
+          <div>
+            <span>Produtos ativos</span>
+            <strong>${activeProducts.length}</strong>
+          </div>
+        </article>
+      </section>
+
+      <section class="store-home-grid">
+        <article class="store-home-card store-home-card-large">
+          <div class="store-home-card-head">
+            <div>
+              <span class="panel-kicker">Operação</span>
+              <h3>Pedidos recentes</h3>
+            </div>
+
+            <button type="button" class="ghost-button small" onclick="window.EstablishmentPanel.goTo('orders')">
+              Abrir pedidos
+            </button>
+          </div>
+
+          <div class="store-home-list">
+            ${recentOrders.length ? recentOrders.map(function (order) {
+              return `
+                <article class="store-home-order">
+                  <div class="store-home-order-left">
+                    <div class="store-home-order-avatar">#</div>
+                    <div>
+                      <strong>${order.customer_name || "Cliente"}</strong>
+                      <span>Pedido #${String(order.id || "").slice(0, 8)} • ${formatDate(order.created_at)}</span>
+                    </div>
                   </div>
-                  <span class="pro-status-badge warning">Baixo</span>
-                </div>
-              </article>
-            `;
-          }).join("")
-        : emptyState("Nenhum item com estoque baixo.");
-    }
 
-    const planSummary = document.getElementById("dashboard-plan-summary");
-    if (planSummary) {
-      planSummary.innerHTML = [
-        summaryItem("Plano atual", getPlanLabel()),
-        summaryItem("Comissão da plataforma", `${String(getCommissionPercent()).replace(".", ",")}%`),
-        summaryItem("Marca d’água", isWatermarkEnabled() ? "Ativada" : "Desativada"),
-        summaryItem("Suporte", hasFeature("support_24h") ? "24h" : "Ticket")
-      ].join("");
-    }
+                  <div class="store-home-order-right">
+                    <span class="pro-status-badge ${getOrderStatusClass(order.status)}">${order.status || "pendente"}</span>
+                    <strong>${formatMoney(order.total_amount || order.total || 0)}</strong>
+                  </div>
+                </article>
+              `;
+            }).join("") : emptyState("Nenhum pedido cadastrado ainda.")}
+          </div>
+        </article>
+
+        <aside class="store-home-side">
+          <article class="store-home-card">
+            <div class="store-home-card-head">
+              <div>
+                <span class="panel-kicker">Cardápio</span>
+                <h3>Seu link da loja</h3>
+              </div>
+            </div>
+
+            <div class="store-home-link-box">${deliveryLink}</div>
+
+            <div class="store-home-actions">
+              <button type="button" class="primary-button small" onclick="window.EstablishmentPanel.copyDeliveryMenuLink()">Copiar link</button>
+              <a class="ghost-button small" href="${deliveryLink}" target="_blank" rel="noopener">Abrir</a>
+            </div>
+          </article>
+
+          <article class="store-home-card">
+            <div class="store-home-card-head">
+              <div>
+                <span class="panel-kicker">Ações rápidas</span>
+                <h3>Atalhos</h3>
+              </div>
+            </div>
+
+            <div class="store-home-quick">
+              <button type="button" onclick="window.EstablishmentPanel.goTo('products')">Novo produto</button>
+              <button type="button" onclick="window.EstablishmentPanel.goTo('categories')">Categorias</button>
+              <button type="button" onclick="window.EstablishmentPanel.goTo('tables')">Mesas e links</button>
+              <button type="button" onclick="window.EstablishmentPanel.goTo('finance')">Financeiro</button>
+            </div>
+          </article>
+
+          <article class="store-home-card">
+            <div class="store-home-card-head">
+              <div>
+                <span class="panel-kicker">Atenção</span>
+                <h3>Status da operação</h3>
+              </div>
+            </div>
+
+            <div class="store-home-status-list">
+              <div>
+                <span>Pedidos aguardando</span>
+                <strong>${pendingOrders.length}</strong>
+              </div>
+              <div>
+                <span>Estoque baixo</span>
+                <strong>${lowStock.length}</strong>
+              </div>
+              <div>
+                <span>Vencimento do plano</span>
+                <strong>${formatDateOnly(getPlanDueDate())}</strong>
+              </div>
+            </div>
+          </article>
+        </aside>
+      </section>
+    `;
   }
-
 
   function getManualOrderTotal() {
     return state.manualOrderItems.reduce(function (acc, item) {

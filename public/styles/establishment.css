@@ -1220,203 +1220,6 @@ textarea.input {
   }
 }
 
-/* =========================
-   PRÉVIA DO CARDÁPIO
-========================= */
-
-.menu-preview-sidebar {
-  position: fixed;
-  top: 110px;
-  right: 24px;
-  width: 340px;
-  z-index: 20;
-}
-
-.menu-preview-panel {
-  display: grid;
-  gap: 16px;
-  padding: 18px;
-  background: rgba(15, 23, 42, 0.76);
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 24px;
-  box-shadow: 0 18px 42px rgba(2, 6, 23, 0.20);
-  backdrop-filter: blur(10px);
-}
-
-.menu-preview-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.menu-preview-actions .small {
-  flex: 1 1 140px;
-}
-
-.menu-preview-phone {
-  border-radius: 34px;
-  border: 10px solid #0f172a;
-  background: #ffffff;
-  overflow: hidden;
-  box-shadow: 0 28px 50px rgba(15, 23, 42, 0.22);
-  min-height: 620px;
-}
-
-.menu-preview-banner {
-  height: 110px;
-  background:
-    linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.02)),
-    linear-gradient(135deg, rgba(218, 165, 32, 0.38), rgba(184, 134, 11, 0.52));
-  background-size: cover;
-  background-position: center;
-}
-
-.menu-preview-logo-wrap {
-  display: flex;
-  justify-content: center;
-  margin-top: -34px;
-  position: relative;
-  z-index: 2;
-}
-
-.menu-preview-logo {
-  width: 78px;
-  height: 78px;
-  border-radius: 24px;
-  object-fit: cover;
-  background: #fff;
-  border: 4px solid #fff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
-}
-
-.menu-preview-store {
-  padding: 10px 18px 0;
-  text-align: center;
-  display: grid;
-  gap: 6px;
-}
-
-.menu-preview-store strong {
-  font-size: 1.4rem;
-  color: #111827;
-}
-
-.menu-preview-store span,
-.menu-preview-store p {
-  color: #64748b;
-}
-
-.menu-preview-store p {
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
-.menu-preview-tabs {
-  display: flex;
-  gap: 8px;
-  padding: 16px 14px 8px;
-  overflow-x: auto;
-}
-
-.menu-preview-tab {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: #fff;
-  color: #1f2937;
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-weight: 800;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.menu-preview-tab.active {
-  background: linear-gradient(135deg, var(--est-primary), var(--est-primary-dark));
-  color: #1f1f1f;
-  border-color: transparent;
-}
-
-.menu-preview-list {
-  padding: 8px 14px 18px;
-  display: grid;
-  gap: 12px;
-  max-height: 360px;
-  overflow: auto;
-}
-
-.menu-preview-empty {
-  border: 1px dashed rgba(15, 23, 42, 0.12);
-  border-radius: 20px;
-  padding: 18px;
-  text-align: center;
-  color: #64748b;
-  background: rgba(248, 250, 252, 0.9);
-}
-
-.menu-preview-category {
-  display: grid;
-  gap: 10px;
-}
-
-.menu-preview-category-title {
-  font-size: 1rem;
-  font-weight: 800;
-  padding: 0 4px;
-  color: #111827;
-}
-
-.menu-preview-item {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 20px;
-  padding: 12px;
-  background: #fff;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  align-items: start;
-}
-
-.menu-preview-item strong {
-  display: block;
-  margin-bottom: 4px;
-  color: #111827;
-}
-
-.menu-preview-item p {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.85rem;
-  line-height: 1.45;
-}
-
-.menu-preview-price {
-  font-weight: 900;
-  color: #111827;
-}
-
-@media (max-width: 1360px) {
-  .establishment-content {
-    padding-right: 0;
-  }
-
-  .menu-preview-sidebar {
-    position: static;
-    width: 100%;
-    margin-top: 22px;
-  }
-
-  .menu-preview-phone {
-    min-height: initial;
-  }
-}
-
-@media (max-width: 768px) {
-  .menu-preview-actions {
-    flex-direction: column;
-  }
-}
-
 .locked-feature-pill {
   display: inline-flex;
   align-items: center;
@@ -2309,20 +2112,6 @@ body.has-order-details-modal {
     align-items: flex-start;
     flex-direction: column;
   }
-}
-
-
-/* =========================
-   FOCO TOTAL NA ABA PEDIDOS
-========================= */
-
-.menu-preview-sidebar.is-hidden-for-orders {
-  display: none !important;
-}
-
-body.orders-focus-mode .establishment-content,
-.establishment-content.orders-focus-content {
-  padding-right: 26px;
 }
 
 /* =========================
@@ -3616,10 +3405,6 @@ textarea.input:focus {
   margin-top: 10px;
 }
 
-body.is-plan-blocked .menu-preview-sidebar {
-  pointer-events: none;
-}
-
 @media (max-width: 900px) {
   .plan-status-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -4532,23 +4317,15 @@ textarea.input:focus {
   }
 }
 
-/* Corrige vazio quando a prévia do cardápio está escondida */
+/* Remove espaço reservado da antiga prévia do cardápio */
 .establishment-content {
+  padding: 26px !important;
   padding-right: 26px !important;
 }
 
-/* Só cria espaço lateral nas abas Cardápio e Categorias */
-body:has([data-panel="menu"].active) .establishment-content,
-body:has([data-panel="products"].active) .establishment-content,
-body:has([data-screen="menu"].active) .establishment-content,
-body:has([data-screen="products"].active) .establishment-content,
-body:has([data-panel="categories"].active) .establishment-content,
-body:has([data-screen="categories"].active) .establishment-content {
-  padding-right: 390px !important;
-}
-
-@media (max-width: 1360px) {
+@media (max-width: 980px) {
   .establishment-content {
+    padding: 18px !important;
     padding-right: 18px !important;
   }
 }

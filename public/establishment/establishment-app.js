@@ -806,13 +806,6 @@
       });
     }
 
-    const previewProductsButton = document.getElementById("menu-preview-go-products");
-    if (previewProductsButton) {
-      previewProductsButton.addEventListener("click", function () {
-        openScreen("products");
-      });
-    }
-
     document.querySelectorAll("[data-screen]").forEach(function (button) {
       button.addEventListener("click", function () {
         const featureKey = button.dataset.feature;
@@ -877,7 +870,6 @@
     renderSupport();
     renderIntegrations();
     fillSettingsForm();
-    refreshMenuPreview();
     startAutoRefresh();
   }
 
@@ -1338,8 +1330,6 @@
         : "Sem marca d’água";
     }
 
-
-    renderMenuPreview();
   }
 
   function renderSidebar() {
@@ -1373,24 +1363,8 @@
       }).join("");
   }
 
-  function toggleMenuPreviewByScreen(screen) {
-    const preview = document.querySelector(".menu-preview-sidebar");
-    const content = document.querySelector(".establishment-content");
-
-    if (!preview) return;
-
-    const shouldHide = screen === "orders";
-    preview.classList.toggle("is-hidden-for-orders", shouldHide);
-    document.body.classList.toggle("orders-focus-mode", shouldHide);
-
-    if (content) {
-      content.classList.toggle("orders-focus-content", shouldHide);
-    }
-  }
-
   function openScreen(screen) {
     state.currentScreen = screen;
-    toggleMenuPreviewByScreen(screen);
 
     document.querySelectorAll(".admin-nav-item").forEach(function (button) {
       button.classList.toggle("active", button.dataset.screen === screen);
@@ -1967,7 +1941,6 @@
       renderDashboard();
       renderInventory();
       renderFinance();
-      refreshMenuPreview();
 
       alert("Pedido manual cadastrado com sucesso.");
     } catch (error) {
@@ -3037,10 +3010,10 @@ function renderFinancialDashboard() {
 
           <p>Receba pedidos do iFood diretamente no painel da Dooki.</p>
 
-          <button class="primary-button" data-connect-provider="ifood">
-            Conectar iFood
+          <button class="primary-button" type="button" onclick="window.EstablishmentPanel.connectIfood()">
+          Conectar iFood
           </button>
-        </div>
+          </div>
 
         <div class="integration-card">
           <div class="integration-card-header">
@@ -3450,103 +3423,6 @@ function renderFinancialDashboard() {
     return `/menu/menu.html${search}`;
   }
 
-  function refreshMenuPreview() {
-    const activeCategoryId = document.getElementById("menu-preview-tabs")?.dataset?.activeCategoryId || "";
-    renderMenuPreview(activeCategoryId);
-  }
-
-  function renderMenuPreview(activeCategoryId) {
-    const banner = document.getElementById("menu-preview-banner");
-    const logo = document.getElementById("menu-preview-logo");
-    const name = document.getElementById("menu-preview-name");
-    const city = document.getElementById("menu-preview-city");
-    const description = document.getElementById("menu-preview-description");
-    const tabs = document.getElementById("menu-preview-tabs");
-    const list = document.getElementById("menu-preview-list");
-    const openLink = document.getElementById("menu-preview-open");
-
-    if (!banner || !logo || !name || !city || !description || !tabs || !list) return;
-
-    const bannerUrl = resolveMediaUrl(state.establishment?.banner_url, "");
-    const logoUrl = resolveMediaUrl(state.establishment?.logo_url, "/assets/logo-dooki.png");
-
-    banner.style.backgroundImage = bannerUrl && bannerUrl !== "/assets/logo-dooki.png"
-      ? `linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.02)), url("${bannerUrl}")`
-      : 'linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0.02)), linear-gradient(135deg, rgba(218, 165, 32, 0.38), rgba(184, 134, 11, 0.52))';
-    applyImageWithFallback(logo, logoUrl, "/assets/logo-dooki.png");
-    name.textContent = state.establishment?.name || "Minha Loja";
-    city.textContent = "";
-    description.textContent = state.establishment?.description || "";
-
-    if (openLink) {
-      openLink.href = getPublicMenuUrl();
-    }
-
-    const categories = sortCategoriesForMenu(
-      state.categories.filter(function (category) { return category.active !== false; })
-    );
-
-    const visibleProducts = state.products.filter(function (product) {
-      return isProductActive(product);
-    });
-
-    const groups = categories.map(function (category) {
-      const items = sortProductsForMenu(
-        visibleProducts.filter(function (product) {
-          return String(normalizeUuidValue(product.category_id) || "") === String(normalizeUuidValue(category.id));
-        })
-      );
-      return { category, items };
-    }).filter(function (group) {
-      return group.items.length > 0;
-    });
-
-
-    const currentCategoryId = activeCategoryId || tabs.dataset.activeCategoryId || groups[0]?.category?.id || "";
-
-    tabs.innerHTML = groups.length
-      ? groups.map(function (group) {
-          const active = String(normalizeUuidValue(group.category.id) || group.category.id) === String(normalizeUuidValue(currentCategoryId) || currentCategoryId);
-          return `<button type="button" class="menu-preview-tab ${active ? "active" : ""}" data-preview-category-id="${group.category.id}">${group.category.name}</button>`;
-        }).join("")
-      : "";
-
-    tabs.dataset.activeCategoryId = currentCategoryId;
-
-    const selectedGroups = groups.length
-      ? groups.filter(function (group) {
-          return !currentCategoryId || String(normalizeUuidValue(group.category.id) || group.category.id) === String(normalizeUuidValue(currentCategoryId) || currentCategoryId);
-        })
-      : [];
-
-    list.innerHTML = selectedGroups.length
-      ? selectedGroups.map(function (group) {
-          return `
-            <section class="menu-preview-category">
-              <div class="menu-preview-category-title">${group.category.name}</div>
-              ${group.items.slice(0, 8).map(function (product) {
-                return `
-                  <article class="menu-preview-item">
-                    <div>
-                      <strong>${product.name || "Produto"}</strong>
-                      <p>${product.description || "Descrição não informada."}</p>
-                    </div>
-                    <div class="menu-preview-price">${formatMoney(getProductPrice(product))}</div>
-                  </article>
-                `;
-              }).join("")}
-            </section>
-          `;
-        }).join("")
-      : `<div class="menu-preview-empty">Cadastre categorias e produtos para visualizar o cardápio digital aqui.</div>`;
-
-    tabs.querySelectorAll("[data-preview-category-id]").forEach(function (button) {
-      button.addEventListener("click", function () {
-        renderMenuPreview(button.dataset.previewCategoryId);
-      });
-    });
-  }
-
   function rerenderAllPanels() {
     renderHeader();
     renderSidebar();
@@ -3560,7 +3436,6 @@ function renderFinancialDashboard() {
     renderSupport();
     renderIntegrations();
     fillSettingsForm();
-    refreshMenuPreview();
   }
 
   async function refreshAllData(options = {}) {
@@ -3693,7 +3568,6 @@ function renderFinancialDashboard() {
     renderProducts();
     renderDashboard();
     renderInventory();
-    refreshMenuPreview();
 
     alert(editingId ? "Produto atualizado com sucesso." : "Produto cadastrado com sucesso.");
   } catch (error) {
@@ -3810,7 +3684,6 @@ async function deleteProduct(productId) {
     renderProducts();
     renderDashboard();
     renderInventory();
-    refreshMenuPreview();
     resetProductFormMode();
 
     alert("Produto excluído com sucesso.");
@@ -3860,7 +3733,6 @@ async function deleteProduct(productId) {
     renderCategories();
     renderProducts();
     renderDashboard();
-    refreshMenuPreview();
 
     alert(editingId ? "Categoria atualizada com sucesso." : "Categoria cadastrada com sucesso.");
   } catch (error) {
@@ -3967,7 +3839,6 @@ async function deleteCategory(categoryId) {
     renderCategories();
     renderProducts();
     renderDashboard();
-    refreshMenuPreview();
     resetCategoryFormMode();
 
     alert("Categoria excluída com sucesso.");
@@ -4081,7 +3952,6 @@ async function deleteCategory(categoryId) {
       await loadAllData();
       renderHeader();
       fillSettingsForm();
-      refreshMenuPreview();
       alert("Dados do estabelecimento atualizados com sucesso.");
     } catch (error) {
       console.error("Erro ao salvar configurações:", error);
@@ -4118,7 +3988,6 @@ async function deleteCategory(categoryId) {
       });
 
       renderProducts();
-      refreshMenuPreview();
     } catch (error) {
       console.error("Erro ao ordenar produto:", error);
       alert(error.message || "Não foi possível ordenar o produto.");
@@ -4147,7 +4016,6 @@ async function deleteCategory(categoryId) {
       populateCategorySelect();
       renderCategories();
       renderProducts();
-      refreshMenuPreview();
     } catch (error) {
       console.error("Erro ao ordenar categoria:", error);
       alert(error.message || "Não foi possível ordenar a categoria.");
@@ -4191,6 +4059,47 @@ async function deleteCategory(categoryId) {
     openScreen(screen);
   }
 
+  async function connectIfood() {
+  const establishmentId = state.membership?.establishment_id || state.establishment?.id;
+
+  if (!establishmentId) {
+    alert("Estabelecimento não identificado.");
+    return;
+  }
+
+  if (!isEnterprisePlan(getPlanKey())) {
+    alert("A integração com iFood está disponível apenas no plano Enterprise.");
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/integrations/ifood/connect", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        establishment_id: establishmentId
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Não foi possível iniciar a conexão com o iFood.");
+    }
+
+    if (!data.authorization_url) {
+      throw new Error("URL de autorização do iFood não retornada.");
+    }
+
+    window.location.href = data.authorization_url;
+  } catch (error) {
+    console.error("Erro ao conectar iFood:", error);
+    alert(error.message || "Erro ao conectar iFood.");
+  }
+}
+
   window.EstablishmentPanel = {
   goTo,
   updateOrderStatus,
@@ -4213,6 +4122,7 @@ async function deleteCategory(categoryId) {
   openPlanPayment,
   closePlanPaymentModal,
   refreshSubscriptionAfterPayment,
-  renderIntegrations
+  renderIntegrations,
+  connectIfood
 };
 })();
